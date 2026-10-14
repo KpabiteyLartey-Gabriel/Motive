@@ -1,0 +1,88 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/useAuth';
+import DashboardShell from '@/components/dashboard/DashboardShell';
+import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
+import { vehiclesApi } from '@/lib/api';
+import VehiclePhotos from '@/components/vehicles/VehiclePhotos';
+
+import VehicleDocuments from '@/components/vehicles/VehicleDocuments';
+
+const NAV = [
+  { href: '/company/dashboard',    icon: 'dashboard', label: 'Dashboard' },
+  { href: '/company/vehicles',     icon: 'vehicle', label: 'Fleet' },
+  { href: '/company/drivers',      icon: 'drivers', label: 'Drivers' },
+  { href: '/company/contracts',    icon: 'contract', label: 'Contracts' },
+  { href: '/company/payments',     icon: 'payments', label: 'Payments' },
+  { href: '/company/maintenance',  icon: 'maintenance', label: 'Maintenance' },
+  { href: '/company/tracking',     icon: 'tracking', label: 'Tracking' },
+  { href: '/company/reports',      icon: 'reports', label: 'Reports' },
+  { href: '/company/team',         icon: 'users', label: 'Team' },
+  { href: '/company/disputes',     icon: 'disputes', label: 'Disputes' },
+];
+
+const STATUS_COLORS = {
+  AVAILABLE: 'text-green-400',
+  ASSIGNED: 'text-blue-400',
+  MAINTENANCE: 'text-yellow-400',
+  INACTIVE: 'text-neutral-500',
+};
+
+export default function CompanyVehiclesPage() {
+  const { user, loading, logout } = useAuth({ requiredRoles: ['COMPANY_ADMIN', 'COMPANY_MEMBER', 'FLEET_MANAGER'] });
+  const [vehicles, setVehicles]   = useState([]);
+  const [fetching, setFetching]   = useState(true);
+  const [selected, setSelected]   = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    vehiclesApi.list({ limit: 100 })
+      .then((r) => setVehicles(r.data?.data?.vehicles || []))
+      .catch(() => {})
+      .finally(() => setFetching(false));
+  }, [user]);
+
+  if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
+
+  return (
+    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Fleet">
+      <SectionHeader title="Fleet Vehicles" description="Vehicles managed under your company" />
+
+      {fetching ? (
+        <div className="text-neutral-500 text-sm py-8 text-center">Loading fleet…</div>
+      ) : vehicles.length === 0 ? (
+        <EmptyState icon="🚗" title="No vehicles" description="Vehicles managed by your company will appear here once assigned." />
+      ) : (
+        <div className="space-y-3">
+          {vehicles.map((v) => (
+            <div
+              key={v.id}
+              className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-4 cursor-pointer hover:border-neutral-600 transition-colors"
+              onClick={() => setSelected(selected?.id === v.id ? null : v)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-white">{v.registrationNumber}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">{v.make} {v.model} {v.year && `· ${v.year}`}</p>
+                </div>
+                <span className={`text-xs font-medium ${STATUS_COLORS[v.status] || 'text-neutral-500'}`}>{v.status}</span>
+              </div>
+
+              {selected?.id === v.id && (
+                <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-dark-border grid grid-cols-2 gap-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                  <VehiclePhotos vehicle={v} editable onPhotosChange={(upd) => { setVehicles((prev) => prev.map((x) => (x.id === upd.id ? { ...x, ...upd } : x))); setSelected((s) => (s?.id === upd.id ? { ...s, ...upd } : s)); }} />
+                  <div><p className="text-neutral-500">VIN</p><p className="text-neutral-900 dark:text-white mt-0.5">{v.vin || '—'}</p></div>
+                  <div><p className="text-neutral-500">Type</p><p className="text-neutral-900 dark:text-white mt-0.5">{v.type || '—'}</p></div>
+                  <div><p className="text-neutral-500">Colour</p><p className="text-neutral-900 dark:text-white mt-0.5">{v.color || '—'}</p></div>
+                  <div><p className="text-neutral-500">Verified</p><p className="text-neutral-900 dark:text-white mt-0.5">{v.verified ? 'Yes' : 'Pending'}</p></div>
+                  <VehicleDocuments vehicle={v} canManage={['COMPANY_ADMIN', 'FLEET_MANAGER'].includes(user?.primaryRole || '')} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </DashboardShell>
+  );
+}

@@ -1,0 +1,1478 @@
+// GH Motive — Prisma Schema
+// PostgreSQL + Prisma
+// Phase 1: Foundation — Users, Auth, Roles, Drivers, Owners, Companies, Vehicles
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENUMERATIONS
+// ─────────────────────────────────────────────────────────────
+
+enum UserRole {
+  DRIVER
+  OWNER
+  COMPANY_ADMIN
+  COMPANY_MEMBER
+  FLEET_MANAGER
+  SERVICE_PROVIDER
+  LEGAL_PROFESSIONAL
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum GenderType {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum IdentityDocumentType {
+  GHANA_CARD
+  PASSPORT
+  VOTERS_ID
+  DRIVERS_LICENSE
+}
+
+enum CompanyType {
+  TRANSPORT
+  FLEET_MANAGEMENT
+  VEHICLE_PLACEMENT
+  MAINTENANCE
+  LEGAL_DISPUTE_RESOLUTION
+}
+
+enum CompanyStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum DriverStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OwnerStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum VehicleStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  AVAILABLE
+  PENDING_ASSIGNMENT
+  ASSIGNED
+  ACTIVE
+  UNDER_MAINTENANCE
+  SUSPENDED
+  IN_DISPUTE
+  COMPLETED_WORK_AND_PAY
+  OWNERSHIP_TRANSFER_PENDING
+  TRANSFERRED
+  ARCHIVED
+}
+
+enum OperatingModel {
+  WORK_AND_PAY
+  RENTAL
+  DRIVING_ON
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+  LPG
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATIC
+}
+
+enum VehicleType {
+  SEDAN
+  SUV
+  PICKUP
+  MINIBUS
+  BUS
+  TRUCK
+  MOTORCYCLE
+  TRICYCLE
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum ContractType {
+  WORK_AND_PAY
+  RENTAL
+  DRIVING_ON
+  FLEET_MANAGEMENT
+  VEHICLE_PLACEMENT
+  MAINTENANCE_SERVICE
+  LEGAL_SERVICE
+}
+
+enum ContractStatus {
+  DRAFT
+  PENDING_SIGNATURES
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+  EXPIRED
+  COMPLETED
+  IN_DISPUTE
+}
+
+enum PaymentObligationType {
+  INSTALLMENT
+  DAILY_SALES
+  WEEKLY_SALES
+  MANAGEMENT_FEE
+  PLACEMENT_FEE
+  MAINTENANCE_FEE
+  SERVICE_FEE
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  PROCESSING
+  SUCCESSFUL
+  FAILED
+  REVERSED
+  REFUNDED
+  DISPUTED
+  SETTLED
+}
+
+enum TransactionType {
+  PAYMENT_IN
+  PAYMENT_OUT
+  FEE
+  REFUND
+  REVERSAL
+  ADJUSTMENT
+  SETTLEMENT
+}
+
+enum TransactionDirection {
+  DEBIT
+  CREDIT
+}
+
+enum SettlementStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum MaintenanceStatus {
+  REQUESTED
+  APPROVED
+  SCHEDULED
+  IN_PROGRESS
+  WAITING_FOR_PARTS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  EVIDENCE_REQUESTED
+  AWAITING_RESPONSE
+  MEDIATION
+  ESCALATED
+  RESOLVED
+  CLOSED
+  REOPENED
+}
+
+enum TrackingDeviceStatus {
+  ACTIVE
+  INACTIVE
+  OFFLINE
+  FAULT
+}
+
+enum IncidentType {
+  ACCIDENT
+  BREAKDOWN
+  THEFT
+  DAMAGE
+  TRAFFIC
+  OTHER
+}
+
+enum IncidentStatus {
+  REPORTED
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum ComplianceDocumentType {
+  INSURANCE
+  ROADWORTHINESS
+  VEHICLE_REGISTRATION
+  DRIVER_LICENSE
+  BUSINESS_LICENSE
+  OTHER
+}
+
+enum ComplianceStatus {
+  VALID
+  EXPIRING_SOON
+  EXPIRED
+  PENDING_RENEWAL
+}
+
+enum NotificationChannel {
+  IN_APP
+  SMS
+  EMAIL
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  REGISTER
+  VERIFY
+  APPROVE
+  REJECT
+  SUSPEND
+  ACTIVATE
+  ASSIGN
+  UNASSIGN
+  PAYMENT_CREATE
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  PAYMENT_REVERSED
+  PAYMENT_REFUNDED
+  CONTRACT_CREATE
+  CONTRACT_ACCEPT
+  CONTRACT_TERMINATE
+  OWNERSHIP_TRANSFER_REQUEST
+  OWNERSHIP_TRANSFER_COMPLETE
+  ROLE_CHANGE
+  PERMISSION_CHANGE
+  DOCUMENT_UPLOAD
+  DOCUMENT_VERIFY
+  DISPUTE_CREATE
+  DISPUTE_RESOLVE
+}
+
+// ─────────────────────────────────────────────────────────────
+// USERS & AUTHENTICATION
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id                  String     @id @default(cuid())
+  email               String?    @unique
+  phone               String?    @unique
+  passwordHash        String?
+  firstName           String
+  lastName            String
+  otherNames          String?
+  gender              GenderType?
+  dateOfBirth         DateTime?
+  profilePhotoUrl     String?
+  primaryRole         UserRole
+  status              UserStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt     DateTime?
+  phoneVerifiedAt     DateTime?
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int        @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  roles            UserRoleAssignment[]
+  driver           Driver?
+  owner            Owner?
+  companyMembers   CompanyMember[]
+  refreshTokens    RefreshToken[]
+  passwordResets   PasswordReset[]
+  verificationCodes VerificationCode[]
+  notifications    Notification[]
+  pushTokens       PushToken[]
+  auditLogs        AuditLog[]          @relation("AuditActor")
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("password_resets")
+}
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  type      String   // EMAIL_VERIFY, PHONE_VERIFY, PASSWORD_RESET
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("verification_codes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ROLES & PERMISSIONS
+// ─────────────────────────────────────────────────────────────
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+  userRoles       UserRoleAssignment[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique  // e.g. "vehicle:create", "contract:accept"
+  resource    String            // e.g. "vehicle", "contract"
+  action      String            // e.g. "create", "read", "update", "delete"
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRoleAssignment {
+  id        String    @id @default(cuid())
+  userId    String
+  roleId    String
+  companyId String?   // Role may be scoped to a company
+  grantedAt DateTime  @default(now())
+  grantedBy String?
+  revokedAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId, companyId])
+  @@index([userId])
+  @@map("user_role_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────
+// DRIVERS
+// ─────────────────────────────────────────────────────────────
+
+model Driver {
+  id                String       @id @default(cuid())
+  userId            String       @unique
+  licenseNumber     String?      @unique
+  licenseClass      String?
+  licenseExpiryDate DateTime?
+  identityDocType   IdentityDocumentType?
+  identityDocNumber String?
+  ghanaCardNumber   String?      @unique
+  address           String?
+  city              String?
+  region            String?
+  emergencyContact  Json?        // { name, phone, relationship }
+  status            DriverStatus @default(PENDING_VERIFICATION)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id])
+  documents        DriverDocument[]
+  assignments      DriverAssignment[]
+  contracts        ContractParty[]   @relation("DriverContractParties")
+  currentVehicles  Vehicle[]         // vehicles where this driver is the active operator
+
+  @@index([userId])
+  @@index([status])
+  @@map("drivers")
+}
+
+model DriverDocument {
+  id          String         @id @default(cuid())
+  driverId    String
+  type        String         // LICENSE, GHANA_CARD, PASSPORT, etc.
+  fileUrl     String
+  fileName    String
+  fileSize    Int?
+  mimeType    String?
+  status      DocumentStatus @default(PENDING)
+  expiryDate  DateTime?
+  verifiedAt  DateTime?
+  verifiedBy  String?
+  rejectedAt  DateTime?
+  rejectReason String?
+  uploadedAt  DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("driver_documents")
+}
+
+// ─────────────────────────────────────────────────────────────
+// OWNERS
+// ─────────────────────────────────────────────────────────────
+
+model Owner {
+  id              String      @id @default(cuid())
+  userId          String      @unique
+  ghanaCardNumber String?     @unique
+  address         String?
+  city            String?
+  region          String?
+  bankName        String?
+  bankAccountNumber String?
+  momoNumber      String?
+  momoProvider    String?
+  status          OwnerStatus @default(PENDING_VERIFICATION)
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  vehicles Vehicle[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("owners")
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPANIES
+// ─────────────────────────────────────────────────────────────
+
+model Company {
+  id                String        @id @default(cuid())
+  name              String
+  type              CompanyType
+  registrationNumber String?      @unique
+  tinNumber         String?       @unique
+  email             String?
+  phone             String?
+  address           String?
+  city              String?
+  region            String?
+  logoUrl           String?
+  bankName          String?
+  bankAccountNumber String?
+  momoNumber        String?
+  momoProvider      String?
+  status            CompanyStatus @default(PENDING_VERIFICATION)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  members  CompanyMember[]
+  invites  CompanyInvite[]
+  vehicles Vehicle[]       @relation("CompanyVehicles")
+
+  @@index([type])
+  @@index([status])
+  @@map("companies")
+}
+
+model CompanyMember {
+  id        String    @id @default(cuid())
+  companyId String
+  userId    String
+  role      UserRole  @default(COMPANY_MEMBER)
+  title     String?
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  isActive  Boolean   @default(true)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([companyId, userId])
+  @@index([companyId])
+  @@index([userId])
+  @@map("company_members")
+}
+
+enum CompanyInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+// Invitation for someone who may not have an account yet. The admin enters
+// an email or phone; the invitee opens /invite/<token>, sets up their
+// account, and is joined to the company with the preselected role.
+model CompanyInvite {
+  id             String              @id @default(cuid())
+  companyId      String
+  email          String?
+  phone          String?
+  role           UserRole
+  title          String?
+  tokenHash      String              @unique
+  status         CompanyInviteStatus @default(PENDING)
+  invitedBy      String
+  acceptedUserId String?
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@map("company_invites")
+}
+
+// ─────────────────────────────────────────────────────────────
+// VEHICLES
+// ─────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id                 String        @id @default(cuid())
+  registrationNumber String        @unique
+  vin                String?       @unique
+  make               String
+  model              String
+  year               Int
+  color              String?
+  type               VehicleType
+  fuelType           FuelType
+  transmission       TransmissionType
+  mileage            Int?
+  engineNumber       String?
+  chassisNumber      String?
+  location           String?
+  region             String?
+  estimatedValue     Decimal?      @db.Decimal(15, 2)
+  currency           String        @default("GHS")
+  status             VehicleStatus @default(DRAFT)
+  operatingModel     OperatingModel?
+  ownerId            String?
+  managingCompanyId  String?
+  currentDriverId    String?
+  imageUrls          String[]
+  notes              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  owner              Owner?       @relation(fields: [ownerId], references: [id])
+  managingCompany    Company?     @relation("CompanyVehicles", fields: [managingCompanyId], references: [id])
+  currentDriver      Driver?      @relation(fields: [currentDriverId], references: [id])
+  documents          VehicleDocument[]
+  assignments        DriverAssignment[]
+  contracts          Contract[]
+  trackingDevice     TrackingDevice?
+  ownershipTransfers OwnershipTransfer[]
+
+  @@index([status])
+  @@index([ownerId])
+  @@index([managingCompanyId])
+  @@index([registrationNumber])
+  @@map("vehicles")
+}
+
+model VehicleDocument {
+  id           String         @id @default(cuid())
+  vehicleId    String
+  type         String         // REGISTRATION, INSURANCE, ROADWORTHY, etc.
+  fileUrl      String
+  fileName     String
+  fileSize     Int?
+  mimeType     String?
+  status       DocumentStatus @default(PENDING)
+  expiryDate   DateTime?
+  verifiedAt   DateTime?
+  verifiedBy   String?
+  rejectedAt   DateTime?
+  rejectReason String?
+  uploadedAt   DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  uploadedBy   String?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_documents")
+}
+
+model DriverAssignment {
+  id          String    @id @default(cuid())
+  vehicleId   String
+  driverId    String
+  contractId  String?
+  assignedAt  DateTime  @default(now())
+  endedAt     DateTime?
+  isActive    Boolean   @default(true)
+  assignedBy  String?
+  notes       String?
+
+  vehicle  Vehicle   @relation(fields: [vehicleId], references: [id])
+  driver   Driver    @relation(fields: [driverId], references: [id])
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([isActive])
+  @@map("driver_assignments")
+}
+
+// ─────────────────────────────────────────────────────────────
+// CONTRACTS
+// ─────────────────────────────────────────────────────────────
+
+model Contract {
+  id               String         @id @default(cuid())
+  contractNumber   String         @unique
+  type             ContractType
+  status           ContractStatus @default(DRAFT)
+  vehicleId        String?
+  title            String?
+  description      String?
+  startDate        DateTime?
+  endDate          DateTime?
+  terms            Json?          // Contract-specific terms
+  responsibilityMatrix Json?      // Who pays for fuel, maintenance, insurance, etc.
+  notes            String?
+  version          Int            @default(1)
+  parentContractId String?        // For amendments
+  createdBy        String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  vehicle             Vehicle?        @relation(fields: [vehicleId], references: [id])
+  parentContract      Contract?       @relation("ContractAmendments", fields: [parentContractId], references: [id])
+  amendments          Contract[]      @relation("ContractAmendments")
+  parties             ContractParty[]
+  workAndPayTerms     WorkAndPayTerms?
+  rentalTerms         RentalTerms?
+  drivingOnTerms      DrivingOnTerms?
+  paymentObligations  PaymentObligation[]
+  paymentSchedules    PaymentSchedule[]
+  payments            Payment[]
+  ownershipTransfers  OwnershipTransfer[]
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([type])
+  @@map("contracts")
+}
+
+model ContractParty {
+  id         String   @id @default(cuid())
+  contractId String
+  userId     String?
+  driverId   String?
+  companyId  String?
+  role       String   // DRIVER, OWNER, FLEET_MANAGER, etc.
+  signedAt   DateTime?
+  signature  String?
+  createdAt  DateTime @default(now())
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  driver   Driver?  @relation("DriverContractParties", fields: [driverId], references: [id])
+
+  @@index([contractId])
+  @@map("contract_parties")
+}
+
+// Work & Pay specific terms
+model WorkAndPayTerms {
+  id                    String   @id @default(cuid())
+  contractId            String   @unique
+  vehicleValue          Decimal  @db.Decimal(15, 2)
+  depositAmount         Decimal  @db.Decimal(15, 2)
+  totalPayable          Decimal  @db.Decimal(15, 2)
+  installmentAmount     Decimal  @db.Decimal(15, 2)
+  installmentFrequency  String   // DAILY, WEEKLY, MONTHLY
+  totalInstallments     Int
+  paidInstallments      Int      @default(0)
+  totalPaid             Decimal  @db.Decimal(15, 2) @default(0)
+  remainingBalance      Decimal  @db.Decimal(15, 2)
+  latePenaltyRate       Decimal? @db.Decimal(5, 4)  // Percentage e.g. 0.02 = 2%
+  gracePeriodDays       Int      @default(3)
+  ownershipEligible     Boolean  @default(false)
+  currency              String   @default("GHS")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("work_and_pay_terms")
+}
+
+// Rental specific terms
+model RentalTerms {
+  id                  String   @id @default(cuid())
+  contractId          String   @unique
+  salaryAmount        Decimal? @db.Decimal(15, 2)
+  revenueSharePercent Decimal? @db.Decimal(5, 4)  // e.g. 0.30 = 30%
+  paymentFrequency    String   // WEEKLY, BIWEEKLY, MONTHLY
+  driverPaysInsurance Boolean  @default(false)
+  driverPaysMaintenance Boolean @default(false)
+  driverPaysFuel      Boolean  @default(true)
+  workingHoursPerDay  Decimal? @db.Decimal(4, 2)
+  workingDaysPerWeek  Int?
+  currency            String   @default("GHS")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("rental_terms")
+}
+
+// Driving On specific terms
+model DrivingOnTerms {
+  id               String   @id @default(cuid())
+  contractId       String   @unique
+  dailySalesAmount Decimal  @db.Decimal(15, 2)
+  paymentFrequency String   // DAILY, WEEKLY
+  driverPaysInsurance Boolean @default(false)
+  driverPaysMaintenance Boolean @default(false)
+  driverPaysFuel   Boolean  @default(true)
+  currency         String   @default("GHS")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("driving_on_terms")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PAYMENTS & FINANCIAL LEDGER
+// ─────────────────────────────────────────────────────────────
+
+model PaymentObligation {
+  id           String                @id @default(cuid())
+  contractId   String
+  type         PaymentObligationType
+  driverId     String?
+  ownerId      String?
+  companyId    String?
+  amount       Decimal               @db.Decimal(15, 2)
+  currency     String                @default("GHS")
+  dueDate      DateTime?
+  paidAt       DateTime?
+  status       String                @default("PENDING") // PENDING, PARTIALLY_PAID, PAID, OVERDUE, WAIVED
+  notes        String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  contract  Contract @relation(fields: [contractId], references: [id])
+  schedules PaymentSchedule[]
+  payments  Payment[]
+
+  @@index([contractId])
+  @@index([driverId])
+  @@index([dueDate])
+  @@map("payment_obligations")
+}
+
+model PaymentSchedule {
+  id                  String   @id @default(cuid())
+  contractId          String
+  paymentObligationId String
+  installmentNumber   Int
+  amount              Decimal  @db.Decimal(15, 2)
+  currency            String   @default("GHS")
+  dueDate             DateTime
+  paidAt              DateTime?
+  paidAmount          Decimal? @db.Decimal(15, 2)
+  status              String   @default("PENDING") // PENDING, PAID, OVERDUE, PARTIALLY_PAID, WAIVED
+  penaltyAmount       Decimal? @db.Decimal(15, 2)
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  contract    Contract          @relation(fields: [contractId], references: [id])
+  obligation  PaymentObligation @relation(fields: [paymentObligationId], references: [id])
+  payments    Payment[]
+
+  @@index([contractId])
+  @@index([dueDate])
+  @@map("payment_schedules")
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  paymentNumber       String        @unique
+  contractId          String?
+  paymentObligationId String?
+  paymentScheduleId   String?
+  driverId            String?
+  ownerId             String?
+  companyId           String?
+  vehicleId           String?
+  amount              Decimal       @db.Decimal(15, 2)
+  currency            String        @default("GHS")
+  payerPhone          String?
+  payerName           String?
+  paymentMethod       String?       // MOMO, BANK_TRANSFER, CASH, etc.
+  paymentProvider     String?       // MTN, VODAFONE, AIRTELTIGO, etc.
+  providerReference   String?
+  providerTransactionId String?
+  idempotencyKey      String        @unique // Prevent duplicates
+  status              PaymentStatus @default(INITIATED)
+  initiatedAt         DateTime      @default(now())
+  completedAt         DateTime?
+  failedAt            DateTime?
+  settlementStatus    SettlementStatus @default(PENDING)
+  settledAt           DateTime?
+  webhookReceivedAt   DateTime?
+  metadata            Json?
+  notes               String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  contract    Contract?          @relation(fields: [contractId], references: [id])
+  obligation  PaymentObligation? @relation(fields: [paymentObligationId], references: [id])
+  schedule    PaymentSchedule?   @relation(fields: [paymentScheduleId], references: [id])
+  transactions Transaction[]
+
+  @@index([contractId])
+  @@index([driverId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@index([providerReference])
+  @@map("payments")
+}
+
+// Financial ledger — every financial movement recorded here
+model Transaction {
+  id                    String               @id @default(cuid())
+  transactionNumber     String               @unique
+  paymentId             String?
+  contractId            String?
+  vehicleId             String?
+  driverId              String?
+  ownerId               String?
+  companyId             String?
+  amount                Decimal              @db.Decimal(15, 2)
+  currency              String               @default("GHS")
+  type                  TransactionType
+  direction             TransactionDirection
+  status                PaymentStatus
+  description           String?
+  reference             String?
+  providerReference     String?
+  settlementStatus      SettlementStatus     @default(PENDING)
+  settledAt             DateTime?
+  metadata              Json?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+  @@index([driverId])
+  @@index([ownerId])
+  @@index([contractId])
+  @@map("transactions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// MAINTENANCE
+// ─────────────────────────────────────────────────────────────
+
+model MaintenanceRequest {
+  id              String            @id @default(cuid())
+  vehicleId       String
+  requestedBy     String
+  type            String            // ROUTINE, BREAKDOWN, ACCIDENT, INSPECTION
+  description     String
+  urgency         String            @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
+  status          MaintenanceStatus @default(REQUESTED)
+  serviceProvider String?
+  scheduledDate   DateTime?
+  completedDate   DateTime?
+  estimatedCost   Decimal?          @db.Decimal(15, 2)
+  actualCost      Decimal?          @db.Decimal(15, 2)
+  currency        String            @default("GHS")
+  paidBy          String?           // OWNER, DRIVER, COMPANY
+  notes           String?
+  approvedAt      DateTime?
+  approvedBy      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([vehicleId])
+  @@index([status])
+  @@map("maintenance_requests")
+}
+
+// ─────────────────────────────────────────────────────────────
+// DISPUTES
+// ─────────────────────────────────────────────────────────────
+
+model Dispute {
+  id              String        @id @default(cuid())
+  disputeNumber   String        @unique
+  contractId      String?
+  vehicleId       String?
+  filedBy         String
+  type            String        // PAYMENT, CONTRACT, VEHICLE_DAMAGE, OTHER
+  subject         String
+  description     String
+  status          DisputeStatus @default(OPEN)
+  assignedTo      String?       // Legal professional user ID
+  priority        String        @default("NORMAL")
+  resolvedAt      DateTime?
+  resolution      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  parties  DisputeParty[]
+  messages DisputeMessage[]
+  evidence DisputeEvidence[]
+
+  @@index([contractId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("disputes")
+}
+
+model DisputeParty {
+  id         String   @id @default(cuid())
+  disputeId  String
+  userId     String
+  role       String   // COMPLAINANT, RESPONDENT, WITNESS, MEDIATOR
+  addedAt    DateTime @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+  @@map("dispute_parties")
+}
+
+model DisputeMessage {
+  id         String   @id @default(cuid())
+  disputeId  String
+  authorId   String
+  message    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+  @@map("dispute_messages")
+}
+
+model DisputeEvidence {
+  id          String   @id @default(cuid())
+  disputeId   String
+  uploadedBy  String
+  type        String
+  fileUrl     String
+  fileName    String
+  description String?
+  uploadedAt  DateTime @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+  @@map("dispute_evidence")
+}
+
+// ─────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  channel   NotificationChannel
+  type      String              // PAYMENT_SUCCESS, CONTRACT_ACCEPTED, etc.
+  subject   String?
+  body      String
+  data      Json?
+  status    NotificationStatus  @default(PENDING)
+  sentAt    DateTime?
+  readAt    DateTime?
+  failedAt  DateTime?
+  error     String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────────────────────
+// AUDIT LOGS
+// ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  actorId      String?     // User who performed the action
+  action       AuditAction
+  resource     String      // e.g. "vehicle", "contract", "payment"
+  resourceId   String?
+  previousData Json?
+  newData      Json?
+  ipAddress    String?
+  userAgent    String?
+  requestId    String?
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// SYSTEM
+// ─────────────────────────────────────────────────────────────
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string") // string, number, boolean, json
+  category  String?
+  isPublic  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("system_settings")
+}
+
+// ─────────────────────────────────────────────────────────────
+// VEHICLE TRACKING
+// ─────────────────────────────────────────────────────────────
+
+model TrackingDevice {
+  id             String               @id @default(cuid())
+  vehicleId      String               @unique
+  deviceSerial   String               @unique
+  deviceModel    String?
+  simNumber      String?
+  status         TrackingDeviceStatus @default(INACTIVE)
+  lastSeenAt     DateTime?
+  firmwareVersion String?
+  notes          String?
+  installedAt    DateTime?
+  installedBy    String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  vehicle         Vehicle          @relation(fields: [vehicleId], references: [id])
+  locationRecords LocationRecord[]
+  geofences       VehicleGeofence[]
+  commands        DeviceCommand[]
+
+  @@index([vehicleId])
+  @@index([status])
+  @@map("tracking_devices")
+}
+
+enum DeviceCommandType {
+  ENGINE_OFF
+  ENGINE_ON
+}
+
+enum DeviceCommandStatus {
+  PENDING
+  SENT
+  ACKNOWLEDGED
+  FAILED
+}
+
+// Remote tracker commands (e.g. engine immobilise/restore) queued for a
+// device. Devices poll for PENDING commands and acknowledge them.
+model DeviceCommand {
+  id             String            @id @default(cuid())
+  deviceId       String
+  vehicleId      String
+  type           DeviceCommandType
+  status         DeviceCommandStatus @default(PENDING)
+  reason         String?
+  issuedBy       String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deliveredAt    DateTime?
+  acknowledgedAt DateTime?
+
+  device TrackingDevice @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("device_commands")
+}
+
+model LocationRecord {
+  id         String   @id @default(cuid())
+  deviceId   String
+  vehicleId  String
+  latitude   Decimal  @db.Decimal(10, 7)
+  longitude  Decimal  @db.Decimal(10, 7)
+  altitude   Decimal? @db.Decimal(8, 2)
+  speed      Decimal? @db.Decimal(6, 2)  // km/h
+  heading    Decimal? @db.Decimal(5, 2)  // degrees
+  accuracy   Decimal? @db.Decimal(6, 2)  // meters
+  address    String?
+  isMoving   Boolean  @default(false)
+  source     String   @default("GPS")
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+
+  device  TrackingDevice @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId])
+  @@index([vehicleId])
+  @@index([recordedAt])
+  @@map("location_records")
+}
+
+model Geofence {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   @default("CIRCLE")  // CIRCLE, POLYGON
+  centerLat   Decimal? @db.Decimal(10, 7)
+  centerLng   Decimal? @db.Decimal(10, 7)
+  radiusMeters Decimal? @db.Decimal(10, 2)
+  polygon     Json?    // Array of {lat, lng} for polygon type
+  isActive    Boolean  @default(true)
+  ownerId     String?  // User who created the geofence
+  companyId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicles  VehicleGeofence[]
+  alerts    TrackingAlert[]
+
+  @@index([isActive])
+  @@map("geofences")
+}
+
+model VehicleGeofence {
+  id         String   @id @default(cuid())
+  deviceId   String
+  geofenceId String
+  alertOnEntry Boolean @default(true)
+  alertOnExit  Boolean @default(true)
+  createdAt  DateTime @default(now())
+
+  device   TrackingDevice @relation(fields: [deviceId], references: [id])
+  geofence Geofence       @relation(fields: [geofenceId], references: [id])
+
+  @@unique([deviceId, geofenceId])
+  @@map("vehicle_geofences")
+}
+
+model TrackingAlert {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  deviceId    String?
+  geofenceId  String?
+  type        String   // GEOFENCE_ENTRY, GEOFENCE_EXIT, SPEEDING, DEVICE_OFFLINE, UNAUTHORIZED_MOVEMENT
+  description String
+  latitude    Decimal? @db.Decimal(10, 7)
+  longitude   Decimal? @db.Decimal(10, 7)
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  readBy      String?
+  triggeredAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  geofence Geofence? @relation(fields: [geofenceId], references: [id])
+
+  @@index([vehicleId])
+  @@index([isRead])
+  @@index([triggeredAt])
+  @@map("tracking_alerts")
+}
+
+// ─────────────────────────────────────────────────────────────
+// LOCATION SHARE LINKS
+// ─────────────────────────────────────────────────────────────
+
+model LocationShare {
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())   // opaque share token in the URL
+  vehicleId   String
+  ownerId     String                               // the User.id who created the share
+  label       String?                              // optional note shown to recipient
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([token])
+  @@index([vehicleId])
+  @@index([ownerId])
+  @@map("location_shares")
+}
+
+// ─────────────────────────────────────────────────────────────
+// INCIDENTS
+// ─────────────────────────────────────────────────────────────
+
+model Incident {
+  id              String         @id @default(cuid())
+  incidentNumber  String         @unique
+  vehicleId       String?
+  driverId        String?
+  contractId      String?
+  reportedBy      String
+  type            IncidentType
+  status          IncidentStatus @default(REPORTED)
+  title           String
+  description     String
+  incidentDate    DateTime
+  location        String?
+  latitude        Decimal?       @db.Decimal(10, 7)
+  longitude       Decimal?       @db.Decimal(10, 7)
+  policeReference String?
+  insuranceClaim  String?
+  estimatedDamage Decimal?       @db.Decimal(15, 2)
+  currency        String         @default("GHS")
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  linkedDisputeId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  evidence IncidentEvidence[]
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([status])
+  @@index([incidentDate])
+  @@map("incidents")
+}
+
+model IncidentEvidence {
+  id          String   @id @default(cuid())
+  incidentId  String
+  uploadedBy  String
+  type        String   // PHOTO, VIDEO, DOCUMENT, POLICE_REPORT
+  fileUrl     String
+  fileName    String
+  fileSize    Int?
+  mimeType    String?
+  description String?
+  uploadedAt  DateTime @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@map("incident_evidence")
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPLIANCE
+// ─────────────────────────────────────────────────────────────
+
+model ComplianceRecord {
+  id              String                 @id @default(cuid())
+  vehicleId       String?
+  driverId        String?
+  documentType    ComplianceDocumentType
+  status          ComplianceStatus       @default(VALID)
+  documentNumber  String?
+  issuer          String?
+  issueDate       DateTime?
+  expiryDate      DateTime?
+  fileUrl         String?
+  fileName        String?
+  notes           String?
+  lastCheckedAt   DateTime?
+  reminderSentAt  DateTime?
+  createdBy       String
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([documentType])
+  @@index([status])
+  @@index([expiryDate])
+  @@map("compliance_records")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PUSH TOKENS
+// ─────────────────────────────────────────────────────────────
+
+model PushToken {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique  // Expo push token (ExponentPushToken[...])
+  platform   String            // ios | android
+  deviceId   String?           // Optional device fingerprint for dedup
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("push_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────
+// OWNERSHIP TRANSFERS
+// ─────────────────────────────────────────────────────────────
+
+enum OwnershipTransferStatus {
+  PENDING_ELIGIBILITY
+  ELIGIBLE
+  REQUESTED
+  DOCUMENTS_REQUIRED
+  UNDER_REVIEW
+  APPROVED
+  TRANSFERRED
+  REJECTED
+  CANCELLED
+}
+
+model OwnershipTransfer {
+  id                String                   @id @default(cuid())
+  transferNumber    String                   @unique
+  vehicleId         String
+  contractId        String
+  fromOwnerId       String                   // Current owner (Owner record id)
+  toUserId          String                   // Driver who earns ownership (User id)
+  requestedBy       String                   // User id who initiated the request
+  status            OwnershipTransferStatus  @default(PENDING_ELIGIBILITY)
+  eligibilityNotes  String?
+  reviewNotes       String?
+  rejectionReason   String?
+  approvedBy        String?                  // Admin user id
+  approvedAt        DateTime?
+  transferredAt     DateTime?
+  requestedAt       DateTime?
+  documentsRequired String[]                 // List of document types required
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  vehicle  Vehicle @relation(fields: [vehicleId], references: [id])
+  contract Contract @relation(fields: [contractId], references: [id])
+
+  @@index([vehicleId])
+  @@index([contractId])
+  @@index([fromOwnerId])
+  @@index([toUserId])
+  @@index([status])
+  @@map("ownership_transfers")
+}

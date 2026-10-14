@@ -1,0 +1,9 @@
+{
+  "name": "@gh-motive/api-client",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.js",
+  "dependencies": {
+    "axios": "^1.6.5"
+  }
+}
