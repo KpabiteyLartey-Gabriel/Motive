@@ -7,10 +7,7 @@ import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
 import { disputesApi } from '@/lib/api';
 
-const LEGAL_NAV = [
-  { href: '/legal/dashboard', icon: 'legal', label: 'Dashboard' },
-  { href: '/legal/cases',     icon: 'cases', label: 'Cases' },
-];
+import { LEGAL_NAV, LEGAL_ROLES } from '@/lib/legalNav';
 
 const TRANSITION_STATUSES = [
   'OPEN', 'AWAITING_RESPONSE', 'UNDER_REVIEW', 'MEDIATION',
@@ -84,7 +81,7 @@ function TimelineEntry({ entry }) {
 
 export default function LegalCaseDetailPage() {
   const { id } = useParams();
-  const { user, loading, logout } = useAuth({ requiredRoles: ['LEGAL_OFFICER', 'ADMIN', 'SUPER_ADMIN'] });
+  const { user, loading, logout } = useAuth({ requiredRoles: LEGAL_ROLES });
   const [dispute, setDispute]       = useState(null);
   const [fetching, setFetching]     = useState(true);
   const [notFound, setNotFound]     = useState(false);

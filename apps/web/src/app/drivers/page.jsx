@@ -62,21 +62,22 @@ export default function ForDriversPage() {
       <main className="pt-24">
 
         {/* Hero */}
-        <section className="py-20 bg-white dark:bg-dark-bg">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">For Drivers</p>
-            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-5">
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="anim-fade-up mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+            <p className="section-label">For Drivers</p>
+            <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl dark:text-white">
               Drive with full transparency
             </h1>
-            <p className="text-lg text-neutral-400 leading-relaxed">
+            <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
               GH Motive gives drivers clear contracts, real-time payment tracking and a complete
-              record of every transaction — so you always know exactly where you stand.
+              record of every transaction — so you always know exactly where you stand. Sign up with a
+              valid driving licence: it is verified at onboarding and monitored, with alerts before it expires.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/register?role=driver" className="inline-flex items-center justify-center px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-100 transition-colors text-sm">
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/register?role=driver" className="btn-primary px-6 text-[15px]">
                 Join as Driver
               </Link>
-              <Link href="/how-it-works" className="inline-flex items-center justify-center px-6 py-3 border border-neutral-200 dark:border-dark-border text-neutral-300 font-medium rounded-xl hover:bg-chalk dark:hover:bg-dark-elevated transition-colors text-sm">
+              <Link href="/how-it-works" className="btn-ghost px-6 text-[15px]">
                 How It Works →
               </Link>
             </div>
@@ -84,42 +85,43 @@ export default function ForDriversPage() {
         </section>
 
         {/* Benefits */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-14">
-              <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">What you get</p>
-              <h2 className="text-3xl font-bold text-white">Built to protect drivers</h2>
+        <section className="bg-[#F6F8F7] py-16 lg:py-24 dark:bg-dark-surface">
+          <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="section-label">What you get</p>
+              <h2 className="section-title mt-2">Built to protect drivers</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-dark-border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {benefits.map((benefit, i) => (
-                <div key={i} className="bg-chalk dark:bg-dark-surface p-8 hover:bg-dark-card transition-colors">
-                  <h3 className="text-base font-semibold text-white mb-2">{benefit.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{benefit.description}</p>
-                </div>
+                <article key={i} data-reveal style={{ '--reveal-delay': `${(i % 3) * 90}ms` }} className="rounded-card border border-line bg-white p-6 shadow-card transition hover:border-brand-200 hover:shadow-lift dark:border-dark-border dark:bg-dark-card">
+                  <h3 className="text-base font-semibold text-ink dark:text-white">{benefit.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-steel dark:text-neutral-400">{benefit.description}</p>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
         {/* Contract types */}
-        <section className="py-20 bg-white dark:bg-dark-bg border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-14">
-              <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Contract Options</p>
-              <h2 className="text-3xl font-bold text-white">Choose the arrangement that suits you</h2>
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="section-label">Contract Options</p>
+              <h2 className="section-title mt-2">Choose the arrangement that suits you</h2>
+              <p className="section-subtitle mt-3">Work &amp; Pay and DriveOn come from owners or companies; Rental is offered through transport companies.</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {contractTypes.map((type) => (
-                <div key={type.name} className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-6 flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-semibold text-white">{type.name}</h3>
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-chalk dark:bg-dark-elevated border border-neutral-200 dark:border-dark-border text-neutral-400">{type.tag}</span>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {contractTypes.map((type, i) => (
+                <div key={type.name} data-reveal style={{ '--reveal-delay': `${i * 90}ms` }} className="flex flex-col rounded-card border border-line bg-white p-6 shadow-card transition hover:border-brand-200 hover:shadow-lift dark:border-dark-border dark:bg-dark-card">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold text-ink dark:text-white">{type.name}</h3>
+                    <span className="badge bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-300">{type.tag}</span>
                   </div>
-                  <p className="text-sm text-neutral-500 leading-relaxed mb-5">{type.description}</p>
-                  <ul className="mt-auto space-y-2">
+                  <p className="text-sm leading-relaxed text-steel dark:text-neutral-400">{type.description}</p>
+                  <ul className="mt-5 space-y-2">
                     {type.highlights.map((h, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-neutral-400">
-                        <svg className="w-3.5 h-3.5 text-neutral-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <li key={i} className="flex items-center gap-2 text-sm text-ink-soft dark:text-neutral-200">
+                        <svg className="h-3.5 w-3.5 shrink-0 text-brand-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                         {h}
@@ -133,13 +135,15 @@ export default function ForDriversPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Ready to drive with GH Motive?</h2>
-            <p className="text-neutral-400 mb-8">Create your free driver account and get matched with verified vehicles and contracts.</p>
-            <Link href="/register?role=driver" className="inline-flex items-center justify-center px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-100 transition-colors text-sm">
-              Create Driver Account
-            </Link>
+        <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
+          <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
+            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Ready to drive with GH Motive?</h2>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Create your free driver account and get matched with verified vehicles and contracts.</p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/register?role=driver" className="btn-primary px-6 text-[15px]">
+                Create Driver Account
+              </Link>
+            </div>
           </div>
         </section>
 

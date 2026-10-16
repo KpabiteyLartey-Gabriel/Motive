@@ -3,40 +3,40 @@ import { Icon } from '@/components/ui/Icon';
 
 export default function HeroSection() {
   return (
-    <section className="overflow-hidden bg-white dark:bg-dark-bg">
-      <div className="mx-auto grid max-w-page items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-24 lg:pt-20">
+    <section className="relative overflow-hidden">
+      <div className="relative mx-auto grid max-w-page items-center gap-12 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-28 lg:pt-24">
         <div>
-          <p className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-[13px] font-semibold text-brand-800 dark:bg-brand-950 dark:text-brand-300">
-            <span className="h-2 w-2 rounded-full bg-brand-500" aria-hidden="true" />
-            Built for Ghana&apos;s transport sector
+          <p className="anim-fade-up inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-[13px] font-semibold text-brand-100">
+            <span className="anim-dot h-2 w-2 rounded-full bg-brand-400" aria-hidden="true" />
+            +Motive · Built for Ghana&apos;s transport sector
           </p>
-          <h1 className="mt-6 max-w-xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl sm:leading-[1.05] text-ink sm:text-6xl dark:text-white">
-            Vehicle work, payments and contracts — clear at a glance.
+          <h1 className="anim-fade-up mt-6 max-w-xl text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-6xl sm:leading-[1.05]" style={{ '--anim-delay': '90ms' }}>
+            Run vehicle work without the <span className="text-brand-400">guesswork.</span>
           </h1>
-          <p className="mt-5 max-w-lg text-lg leading-relaxed text-steel dark:text-neutral-400">
-            GH Motive connects owners, drivers and companies with transparent contracts, secure MoMo payments and a complete audit trail.
+          <p className="anim-fade-up mt-5 max-w-lg text-lg leading-relaxed text-brand-50/85" style={{ '--anim-delay': '180ms' }}>
+            +Motive turns parked cars into jobs and income: drivers, vehicle owners, transport companies, fleet managers, maintenance providers and legal professionals working from one transparent record — contracts, MoMo payments and a complete audit trail.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="anim-fade-up mt-8 flex flex-col gap-3 sm:flex-row" style={{ '--anim-delay': '270ms' }}>
             <Link href="/register" className="btn-primary px-6 text-[15px]">Create free account</Link>
-            <Link href="/how-it-works" className="btn-ghost px-6 text-[15px]">See how it works</Link>
+            <Link href="/how-it-works" className="btn-ghost-light px-6 text-[15px]">See how it works</Link>
           </div>
-          <dl className="mt-10 grid max-w-lg grid-cols-3 gap-4">
+          <dl className="anim-fade-up mt-10 grid max-w-lg grid-cols-3 gap-4" style={{ '--anim-delay': '360ms' }}>
             {[
-              ['3', 'Contract models'],
-              ['MoMo', 'Secure payments'],
+              ['6', 'Participant types'],
+              ['3', 'Earning models'],
               ['100%', 'Audit trail'],
             ].map(([value, label]) => (
-              <div key={label} className="border-l-2 border-brand-500 pl-3">
+              <div key={label} className="border-l-2 border-brand-400 pl-3">
                 <dt className="sr-only">{label}</dt>
-                <dd className="text-xl font-semibold text-ink dark:text-white">{value}</dd>
-                <dd className="mt-0.5 text-xs leading-snug text-steel dark:text-neutral-400">{label}</dd>
+                <dd className="text-xl font-semibold text-white">{value}</dd>
+                <dd className="mt-0.5 text-xs leading-snug text-brand-100/70">{label}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        <div className="relative mx-auto w-full max-w-lg lg:max-w-none" aria-label="Preview of the GH Motive dashboard">
-          <div className="rounded-[20px] border border-line bg-[#F6F8F7] p-4 shadow-lift sm:p-5 dark:border-dark-border dark:bg-dark-surface">
+        <div className="anim-fade-up relative mx-auto w-full max-w-lg lg:max-w-none" style={{ '--anim-delay': '220ms' }} aria-label="Preview of the GH Motive dashboard">
+          <div className="anim-float rounded-[20px] border border-white/40 bg-white/90 p-4 shadow-lift sm:p-5 dark:border-dark-border dark:bg-dark-surface/95">
             <div className="rounded-card border border-line bg-white p-5 dark:border-dark-border dark:bg-dark-card">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -47,7 +47,7 @@ export default function HeroSection() {
               </div>
               <p className="money mt-6 text-3xl font-semibold text-ink dark:text-white">GHS 18,400 <span className="text-sm font-medium text-steel">paid</span></p>
               <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-mist-deep dark:bg-dark-elevated">
-                <div className="h-full w-[68%] rounded-full bg-brand-500" />
+                <div className="anim-bar h-full w-[68%] rounded-full bg-brand-500" />
               </div>
               <div className="mt-2 flex justify-between text-xs text-steel dark:text-neutral-400"><span>68% complete</span><span>GHS 8,600 left</span></div>
               <div className="mt-6 space-y-3">

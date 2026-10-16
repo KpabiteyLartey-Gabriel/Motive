@@ -4,12 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatCard, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
-import { disputesApi } from '@/lib/api';
+import { disputesApi, contractsApi, complianceApi, vehiclesApi } from '@/lib/api';
 
-const LEGAL_NAV = [
-  { href: '/legal/dashboard', icon: 'legal', label: 'Dashboard' },
-  { href: '/legal/cases',     icon: 'cases', label: 'Cases' },
-];
+import { LEGAL_NAV, LEGAL_ROLES } from '@/lib/legalNav';
 
 function fmt(d) {
   if (!d) return '—';
@@ -17,16 +14,26 @@ function fmt(d) {
 }
 
 export default function LegalDashboardPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['LEGAL_OFFICER', 'ADMIN', 'SUPER_ADMIN'] });
+  const { user, loading, logout } = useAuth({ requiredRoles: LEGAL_ROLES });
   const [disputes, setDisputes] = useState([]);
+  const [contracts, setContracts] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
   const [fetching, setFetching] = useState(true);
 
   const load = useCallback(() => {
     if (!user) return;
-    disputesApi.list({ limit: 100 })
-      .then((r) => setDisputes(r.data?.data?.disputes || []))
-      .catch(() => {})
-      .finally(() => setFetching(false));
+    Promise.all([
+      disputesApi.list({ limit: 100 }).catch(() => null),
+      contractsApi.list({ limit: 100 }).catch(() => null),
+      complianceApi.list({ limit: 100 }).catch(() => null),
+      vehiclesApi.list({ limit: 100 }).catch(() => null),
+    ]).then(([d, c, docs, v]) => {
+      setDisputes(d?.data?.data?.disputes || []);
+      setContracts(c?.data?.data?.contracts || []);
+      setDocuments(docs?.data?.data?.records || []);
+      setVehicles(v?.data?.data?.vehicles || []);
+    }).finally(() => setFetching(false));
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
@@ -46,11 +53,24 @@ export default function LegalDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Open Cases"      value={open.length}      sub="Pending resolution" />
         <StatCard label="In Mediation"    value={mediation.length} sub="Active mediation" />
         <StatCard label="Escalated"       value={escalated.length} sub="Requires attention" accent />
         <StatCard label="Resolved"        value={resolved.length}  sub="Closed successfully" />
+      </div>
+
+      {/* Contracts & paperwork oversight */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <StatCard label="Vehicles Monitored" value={vehicles.length} sub="All registered vehicles" />
+        <StatCard label="Active Contracts" value={contracts.filter((c) => c.status === 'ACTIVE').length} sub="Across all vehicles" />
+        <StatCard label="Pending Signatures" value={contracts.filter((c) => ['DRAFT', 'PENDING_SIGNATURES'].includes(c.status)).length} sub="Awaiting parties" />
+        <StatCard label="Documents Needing Attention" value={documents.filter((d) => ['EXPIRED', 'EXPIRING_SOON', 'PENDING_RENEWAL'].includes(d.status)).length} sub="Expired / expiring paperwork" accent />
+      </div>
+      <div className="flex flex-wrap gap-2 mb-8">
+        <a href="/legal/contracts" className="text-xs font-medium px-3 py-2 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900">Manage contracts</a>
+        <a href="/legal/vehicles" className="text-xs font-medium px-3 py-2 rounded-lg border border-neutral-300 dark:border-dark-border">Contracts & paperwork per vehicle</a>
+        <a href="/legal/documents" className="text-xs font-medium px-3 py-2 rounded-lg border border-neutral-300 dark:border-dark-border">All vehicle paperwork</a>
       </div>
 
       {unassigned.length > 0 && (

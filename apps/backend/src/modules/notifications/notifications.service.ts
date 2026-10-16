@@ -4,6 +4,7 @@ import { NotificationChannel, NotificationStatus } from '@prisma/client';
 import { ISmsProvider } from '../../integrations/sms/interfaces/sms-provider.interface';
 import { SMS_PROVIDER } from '../../integrations/sms/sms-integration.module';
 import { NotificationQueueService } from '../../queue/notification-queue.service';
+import { MessagingService } from '../messaging/messaging.service';
 import Expo from 'expo-server-sdk';
 
 export interface SendNotificationParams {
@@ -23,6 +24,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     @Inject(SMS_PROVIDER) private readonly smsProvider: ISmsProvider,
     private readonly queueService: NotificationQueueService,
+    private readonly messaging: MessagingService,
   ) {}
 
   // ── Send ───────────────────────────────────────────────────
@@ -44,6 +46,8 @@ export class NotificationsService {
     try {
       if (params.channel === NotificationChannel.SMS) {
         delivered = await this.sendSms(params.userId, params.body);
+      } else if (params.channel === NotificationChannel.EMAIL) {
+        delivered = await this.sendEmail(params.userId, params.subject || '+Motive', params.body, params.data);
       } else if (params.channel === NotificationChannel.PUSH) {
         // Enqueue async push delivery via BullMQ
         await this.queueService.enqueuePush({
@@ -82,7 +86,7 @@ export class NotificationsService {
     }
   }
 
-  // ── SMS delivery ───────────────────────────────────────────
+  // ── SMS delivery (MessagingService: Arkesel template URL / v2 / mock) ──
   private async sendSms(userId: string, message: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -94,13 +98,28 @@ export class NotificationsService {
       return false;
     }
 
-    const result = await this.smsProvider.send({ to: user.phone, message });
-
-    if (!result.success) {
-      this.logger.warn(`[SMS] Delivery failed for user ${userId}: ${JSON.stringify(result.raw)}`);
+    const result = await this.messaging.sendSms(user.phone, message);
+    if (!result.delivered) {
+      const fallback = await this.smsProvider.send({ to: user.phone, message }).catch(() => null);
+      if (fallback?.success) return true;
+      this.logger.warn(`[SMS] Delivery failed for user ${userId}: ${result.detail || ''}`);
     }
+    return result.delivered;
+  }
 
-    return result.success;
+  // ── Email delivery (MessagingService: SMTP / mock) ───────────
+
+  private async sendEmail(userId: string, subject: string, body: string, data?: Record<string, any>): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true },
+    });
+    if (!user?.email) {
+      this.logger.warn(`[Email] User ${userId} has no email — skipping email delivery`);
+      return false;
+    }
+    const result = await this.messaging.sendEmail(user.email, subject, body, data?.html);
+    return result.delivered;
   }
 
   // ── Convenience helpers used by other modules ──────────────

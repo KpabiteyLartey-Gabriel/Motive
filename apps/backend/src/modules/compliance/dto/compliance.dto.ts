@@ -16,7 +16,7 @@ export class CreateComplianceRecordDto {
 }
 
 export class UpdateComplianceStatusDto {
-  @ApiProperty({ enum: ComplianceStatus }) @IsEnum(ComplianceStatus) status: ComplianceStatus;
+  @ApiPropertyOptional({ enum: ComplianceStatus }) @IsOptional() @IsEnum(ComplianceStatus) status?: ComplianceStatus;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() expiryDate?: string;
 }

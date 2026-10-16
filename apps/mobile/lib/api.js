@@ -57,6 +57,8 @@ export const authApi = {
   refresh:  (token) => apiClient.post('/auth/refresh', { refreshToken: token }),
   logout:   () => apiClient.post('/auth/logout'),
   me:       () => apiClient.get('/auth/me'),
+  forgotPassword: (identifier) => apiClient.post('/auth/forgot-password', { identifier }),
+  resetPassword:  (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword }),
 };
 
 // ── Drivers ──────────────────────────────────────────────────

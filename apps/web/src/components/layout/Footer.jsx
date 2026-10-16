@@ -9,6 +9,7 @@ const footerSections = [
       { label: 'For Drivers', href: '/drivers' },
       { label: 'For Owners', href: '/owners' },
       { label: 'For Companies', href: '/companies' },
+      { label: 'Fleet Managers, Maintenance & Legal', href: '/how-it-works#participants' },
     ],
   },
   {
@@ -35,7 +36,7 @@ export default function Footer() {
           <div className="col-span-2">
             <BrandMark />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-steel dark:text-neutral-400">
-              Vehicle operations, contracts, MoMo payments and fleet management for Ghana — in one clear, auditable platform.
+              +Motive — vehicle operations, contracts, MoMo payments and fleet management for Ghana, connecting drivers, owners, companies, fleet managers, maintenance and legal professionals in one clear, auditable platform.
             </p>
             <p className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 dark:bg-brand-950 dark:text-brand-300">
               <span className="h-2 w-2 rounded-full bg-brand-500" aria-hidden="true" />
@@ -47,7 +48,7 @@ export default function Footer() {
               <h3 className="text-sm font-semibold text-ink dark:text-white">{section.title}</h3>
               <ul className="mt-4 space-y-1">
                 {section.links.map((link) => (
-                  <li key={link.href}>
+                  <li key={link.href + link.label}>
                     <Link href={link.href} className="inline-flex min-h-[36px] items-center text-sm text-steel transition hover:text-brand-700 dark:text-neutral-400 dark:hover:text-brand-300">
                       {link.label}
                     </Link>
@@ -57,7 +58,20 @@ export default function Footer() {
             </nav>
           ))}
         </div>
-        <div className="mt-10 flex flex-col gap-3 border-t border-line pt-6 text-[13px] text-steel sm:flex-row sm:items-center sm:justify-between dark:border-dark-border dark:text-neutral-500">
+      </div>
+
+      {/* Bottom strip below the thin line — small, vivid vehicles band */}
+      <div className="relative overflow-hidden border-t border-line bg-[#04231b] dark:border-dark-border">
+        <div className="absolute inset-0" aria-hidden="true">
+          <img
+            src="/images/hero-vehicles.jpg"
+            alt=""
+            className="absolute right-0 top-0 h-full w-[min(430px,58%)] object-cover object-[50%_70%] saturate-[1.25] contrast-[1.08]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#03130c] via-[#03130c]/78 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#03130c]/55 via-transparent to-transparent" />
+        </div>
+        <div className="relative mx-auto flex min-h-[104px] max-w-page flex-col justify-center gap-2 px-4 py-6 text-[13px] text-brand-50/90 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} GH Motive. All rights reserved.</p>
           <p className="max-w-xl leading-relaxed">
             Payment services are provided through licensed payment infrastructure. GH Motive does not provide legal advice.

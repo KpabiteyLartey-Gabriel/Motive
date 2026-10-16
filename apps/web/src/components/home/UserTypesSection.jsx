@@ -2,19 +2,34 @@ import Link from 'next/link';
 
 const userTypes = [
   {
-    role: 'Driver', description: 'Drive under Work & Pay, Rental or Driving On — and always know what you owe and what you have paid.',
-    features: ['View and accept contracts', 'Pay easily with MTN MoMo', 'Track earnings and balance', 'Report maintenance or incidents'],
-    cta: 'Join as a Driver', href: '/register?role=driver', featured: false,
+    role: 'Driver', description: 'Drive under Work & Pay, DriveOn or a company rental — and always know what you owe and what you have paid.',
+    features: ['Licence verified, expiry monitored', 'View and accept contracts', 'Pay easily with MTN MoMo', 'Build a record that follows you'],
+    cta: 'Join as a Driver', href: '/drivers', featured: false,
   },
   {
-    role: 'Vehicle Owner', description: 'Put your vehicle to work with clear contracts, on-time payments and full visibility.',
-    features: ['Register and verify vehicles', 'Create contracts in minutes', 'Watch payments arrive', 'Track your driver and vehicle'],
-    cta: 'Join as an Owner', href: '/register?role=owner', featured: true,
+    role: 'Vehicle Owner', description: 'Put your parked car to work with clear contracts, on-time payments and full visibility — yourself, or through a company.',
+    features: ['Register and verify vehicles', 'DriveOn or Work & Pay listings', 'Watch every payment arrive', 'Track, lock or switch off remotely'],
+    cta: 'Join as an Owner', href: '/owners', featured: true,
   },
   {
-    role: 'Transport Company', description: 'Run a whole fleet — vehicles, drivers, money and maintenance — from one dashboard.',
-    features: ['Multi-vehicle fleet control', 'Assign drivers in seconds', 'Automated payment tracking', 'Revenue and cost reports'],
-    cta: 'Register a Company', href: '/register?role=company', featured: false,
+    role: 'Transport Company', description: 'Run a whole fleet — your vehicles and owner-supplied cars — drivers, money and maintenance from one dashboard.',
+    features: ['Invite staff into their roles', 'Assign drivers in seconds', 'Automatic splits per owner', 'Revenue and cost reports'],
+    cta: 'Register a Company', href: '/companies', featured: false,
+  },
+  {
+    role: 'Fleet Manager', description: 'Run the day-to-day fleet for your company: listings, documents, tracking and emergency help.',
+    features: ['Invited by your company admin', 'Vehicles, drivers and paperwork', 'Tracking and remote control', 'Dispatch maintenance to a location'],
+    cta: 'See Fleet Managers', href: '/how-it-works#fleet-managers', featured: false,
+  },
+  {
+    role: 'Maintenance Provider', description: 'Garages, mobile mechanics, detailers and wash services — get jobs with the vehicle\u2019s live location.',
+    features: ['List services and coverage', 'Per-service or subscription work', 'Jobs recorded per vehicle', 'Payments on record'],
+    cta: 'See Maintenance Providers', href: '/how-it-works#maintenance-providers', featured: false,
+  },
+  {
+    role: 'Legal Professional', description: 'Witness and facilitate contracts on recorded calls, sign digitally, and keep copies for every party.',
+    features: ['Invited per deal or retained', 'Contracts per vehicle monitored', 'Insurance & paperwork oversight', 'Paid per service'],
+    cta: 'See Legal Professionals', href: '/how-it-works#legal-professionals', featured: false,
   },
 ];
 
@@ -30,14 +45,14 @@ export default function UserTypesSection() {
   return (
     <section className="bg-[#F6F8F7] py-16 lg:py-24 dark:bg-dark-surface">
       <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl">
+        <div className="max-w-2xl" data-reveal>
           <p className="section-label">Who it is for</p>
           <h2 className="section-title mt-2">Made for everyone on the road</h2>
-          <p className="section-subtitle mt-3">Drivers, owners and companies each get a workspace shaped around their day.</p>
+          <p className="section-subtitle mt-3">All six participants get a workspace shaped around their day — connected to the same vehicles, contracts and money.</p>
         </div>
         <div className="mt-10 grid gap-4 lg:grid-cols-3">
-          {userTypes.map((type) => (
-            <article key={type.role} className={`flex flex-col rounded-[20px] border p-6 sm:p-7 ${type.featured ? 'border-brand-800 bg-ink text-white shadow-lift' : 'border-line bg-white shadow-card dark:border-dark-border dark:bg-dark-card'}`}>
+          {userTypes.map((type, i) => (
+            <article key={type.role} data-reveal style={{ '--reveal-delay': `${(i % 3) * 90}ms` }} className={`flex flex-col rounded-[20px] border p-6 sm:p-7 ${type.featured ? 'border-brand-800 bg-ink text-white shadow-lift' : 'border-line bg-white shadow-card dark:border-dark-border dark:bg-dark-card'}`}>
               {type.featured && <span className="mb-4 self-start rounded-full bg-brand-600 px-3 py-1 text-xs font-bold text-white">Most popular</span>}
               <h3 className={`text-lg font-semibold ${type.featured ? 'text-white' : 'text-ink dark:text-white'}`}>{type.role}</h3>
               <p className={`mt-2 text-sm leading-relaxed ${type.featured ? 'text-brand-100/80' : 'text-steel dark:text-neutral-400'}`}>{type.description}</p>
@@ -51,8 +66,8 @@ export default function UserTypesSection() {
           ))}
         </div>
         <p className="mt-8 text-sm text-steel dark:text-neutral-400">
-          Also for fleet managers, maintenance providers and legal professionals.{' '}
-          <Link href="/companies" className="font-semibold text-brand-700 underline-offset-4 hover:underline dark:text-brand-300">Learn more</Link>
+          See how all six participants work together in the +Motive pitch.{' '}
+          <Link href="/how-it-works#participants" className="font-semibold text-brand-700 underline-offset-4 hover:underline dark:text-brand-300">Meet every participant</Link>
         </p>
       </div>
     </section>

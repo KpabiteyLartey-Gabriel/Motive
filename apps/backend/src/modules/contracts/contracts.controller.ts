@@ -65,6 +65,13 @@ export class ContractsController {
     return this.contractsService.acceptContract(id, user.id);
   }
 
+  @Patch(':id/status')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change contract status (legal / platform admin oversight)' })
+  async updateStatus(@Param('id') id: string, @Body() dto: UpdateContractStatusDto, @CurrentUser() user: any) {
+    return this.contractsService.updateStatus(id, user.id, user.primaryRole, dto.status);
+  }
+
   @Patch(':id/terminate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Terminate a contract' })

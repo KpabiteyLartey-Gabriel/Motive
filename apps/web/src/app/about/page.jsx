@@ -60,14 +60,14 @@ export default function AboutPage() {
       <main className="pt-24">
 
         {/* Hero */}
-        <section className="py-20 bg-white dark:bg-dark-bg">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">About</p>
-            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-5">
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="anim-fade-up mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+            <p className="section-label">About</p>
+            <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl dark:text-white">
               Bringing order to Ghana&apos;s transport sector
             </h1>
-            <p className="text-lg text-neutral-400 leading-relaxed">
-              GH Motive is a vehicle operations, mobility, fleet, contract and payment platform
+            <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
+              GH Motive — the company behind +Motive — is a vehicle operations, mobility, fleet, contract and payment platform
               built specifically for Ghana. It replaces informal arrangements, verbal agreements
               and missing payment records with a transparent, auditable digital system.
             </p>
@@ -75,18 +75,18 @@ export default function AboutPage() {
         </section>
 
         {/* Mission */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-14">
-              <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Mission</p>
-              <h2 className="text-3xl font-bold text-white mb-6">Why GH Motive exists</h2>
-              <p className="text-base text-neutral-400 leading-relaxed max-w-2xl mx-auto">
+        <section className="bg-[#F6F8F7] py-16 lg:py-24 dark:bg-dark-surface">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="section-label">Mission</p>
+              <h2 className="section-title mt-2">Why GH Motive exists</h2>
+              <p className="section-subtitle mt-4">
                 Ghana&apos;s transport sector runs largely on informal arrangements. Drivers
                 operate under verbal agreements. Owners have no reliable way to track payments.
                 Disputes arise with no written record to refer to. Ownership transfers happen
                 without formal processes.
               </p>
-              <p className="text-base text-neutral-400 leading-relaxed max-w-2xl mx-auto mt-4">
+              <p className="mt-4 text-base leading-relaxed text-steel dark:text-neutral-400">
                 GH Motive replaces all of that with a platform that every participant in the
                 transport chain — drivers, owners, companies, fleet managers and maintenance
                 providers — can rely on.
@@ -94,13 +94,13 @@ export default function AboutPage() {
             </div>
 
             {/* Problem → Solution */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {problemStatements.map((item, i) => (
-                <div key={i} className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-6">
-                  <p className="text-xs font-medium text-neutral-600 uppercase tracking-widest mb-1">Problem</p>
-                  <p className="text-sm font-semibold text-neutral-300 mb-3">{item.problem}</p>
-                  <p className="text-xs font-medium text-neutral-600 uppercase tracking-widest mb-1">GH Motive Solution</p>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{item.solution}</p>
+                <div key={i} data-reveal style={{ '--reveal-delay': `${(i % 2) * 90}ms` }} className="rounded-card border border-line bg-white p-6 shadow-card dark:border-dark-border dark:bg-dark-card">
+                  <p className="section-label text-[13px]">Problem</p>
+                  <p className="mt-1 text-[15px] font-semibold text-ink dark:text-white">{item.problem}</p>
+                  <p className="section-label mt-4 text-[13px]">GH Motive Solution</p>
+                  <p className="mt-1 text-sm leading-relaxed text-steel dark:text-neutral-400">{item.solution}</p>
                 </div>
               ))}
             </div>
@@ -108,33 +108,33 @@ export default function AboutPage() {
         </section>
 
         {/* Values */}
-        <section className="py-20 bg-white dark:bg-dark-bg border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-14">
-              <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Values</p>
-              <h2 className="text-3xl font-bold text-white">What guides every decision</h2>
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="section-label">Values</p>
+              <h2 className="section-title mt-2">What guides every decision</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-dark-border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {values.map((value, i) => (
-                <div key={i} className="bg-dark-bg p-8 hover:bg-dark-card transition-colors">
-                  <h3 className="text-base font-semibold text-white mb-2">{value.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{value.description}</p>
-                </div>
+                <article key={i} data-reveal style={{ '--reveal-delay': `${(i % 3) * 90}ms` }} className="rounded-card border border-line bg-white p-6 shadow-card transition hover:border-brand-200 hover:shadow-lift dark:border-dark-border dark:bg-dark-card">
+                  <h3 className="text-base font-semibold text-ink dark:text-white">{value.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-steel dark:text-neutral-400">{value.description}</p>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
         {/* Platform overview */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Platform</p>
-            <h2 className="text-3xl font-bold text-white mb-6">One platform for the entire chain</h2>
-            <p className="text-base text-neutral-400 leading-relaxed mb-12">
+        <section className="bg-[#F6F8F7] py-16 lg:py-24 dark:bg-dark-surface">
+          <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+            <p className="section-label">Platform</p>
+            <h2 className="section-title mt-2">One platform for the entire chain</h2>
+            <p className="section-subtitle mx-auto mt-4 max-w-2xl">
               GH Motive serves every participant in Ghana&apos;s commercial transport sector
               from a single, connected platform — web and mobile.
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-left">
+            <div className="mt-10 grid grid-cols-2 gap-4 text-left md:grid-cols-3">
               {[
                 'Drivers',
                 'Vehicle Owners',
@@ -143,8 +143,8 @@ export default function AboutPage() {
                 'Maintenance Providers',
                 'Legal Professionals',
               ].map((role) => (
-                <div key={role} className="flex items-center gap-2.5 text-sm text-neutral-400 bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-xl px-4 py-3">
-                  <svg className="w-3.5 h-3.5 text-neutral-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <div key={role} className="flex items-center gap-2.5 rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium text-ink-soft shadow-card dark:border-dark-border dark:bg-dark-card dark:text-neutral-200">
+                  <svg className="h-3.5 w-3.5 shrink-0 text-brand-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                   {role}
@@ -155,15 +155,15 @@ export default function AboutPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 bg-white dark:bg-dark-bg border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Join GH Motive</h2>
-            <p className="text-neutral-400 mb-8">Whether you drive, own vehicles or run a transport company — there is a place for you on GH Motive.</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/register" className="inline-flex items-center justify-center px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-100 transition-colors text-sm">
+        <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
+          <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
+            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Join GH Motive</h2>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Whether you drive, own vehicles or run a transport company — there is a place for you on GH Motive.</p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/register" className="btn-primary px-6 text-[15px]">
                 Create Account
               </Link>
-              <Link href="/how-it-works" className="inline-flex items-center justify-center px-6 py-3 border border-neutral-200 dark:border-dark-border text-neutral-300 font-medium rounded-xl hover:bg-chalk dark:hover:bg-dark-elevated transition-colors text-sm">
+              <Link href="/how-it-works" className="btn-ghost-light px-6 text-[15px]">
                 How It Works →
               </Link>
             </div>

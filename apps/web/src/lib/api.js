@@ -65,6 +65,8 @@ export const authApi = {
   refresh: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken }),
   logout: (refreshToken) => apiClient.post('/auth/logout', { refreshToken }),
   me: () => apiClient.get('/auth/me'),
+  forgotPassword: (identifier) => apiClient.post('/auth/forgot-password', { identifier }),
+  resetPassword: (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword }),
 };
 
 // ── Users ────────────────────────────────────────────────────
@@ -143,7 +145,10 @@ export const contractsApi = {
   list:    (params) => apiClient.get('/contracts', { params }),
   getById: (id)     => apiClient.get(`/contracts/${id}`),
   create:  (data)   => apiClient.post('/contracts', data),
-  accept:  (id)     => apiClient.patch(`/contracts/${id}/accept`),
+  accept:  (id)     => apiClient.post(`/contracts/${id}/accept`),
+  updateStatus: (id, status) => apiClient.patch(`/contracts/${id}/status`, { status }),
+  terminate: (id, reason) => apiClient.patch(`/contracts/${id}/terminate`, { reason }),
+  getSchedule: (id) => apiClient.get(`/contracts/${id}/schedule`),
 };
 
 // ── Payments ─────────────────────────────────────────────────

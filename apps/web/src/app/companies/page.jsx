@@ -10,7 +10,7 @@ export const metadata = {
 const features = [
   {
     title: 'Multi-Vehicle Fleet Management',
-    description: 'Register and manage your entire fleet from one dashboard. View vehicle status, assigned drivers, active contracts and service history at a glance.',
+    description: 'Register and manage your entire fleet from one dashboard — company-owned vehicles and owner-supplied cars, each owner\u2019s earnings and statements kept separate. View status, assigned drivers, active contracts and service history at a glance.',
   },
   {
     title: 'Driver Assignment & Monitoring',
@@ -68,21 +68,21 @@ export default function ForCompaniesPage() {
       <main className="pt-24">
 
         {/* Hero */}
-        <section className="py-20 bg-white dark:bg-dark-bg">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">For Companies</p>
-            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-5">
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="anim-fade-up mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+            <p className="section-label">For Companies</p>
+            <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl dark:text-white">
               Run your commercial fleet from one platform
             </h1>
-            <p className="text-lg text-neutral-400 leading-relaxed">
+            <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
               GH Motive gives transport companies the infrastructure to manage fleets,
               drivers, contracts, payments and maintenance — with full audit trails at every step.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/register?role=company" className="inline-flex items-center justify-center px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-100 transition-colors text-sm">
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/register?role=company" className="btn-primary px-6 text-[15px]">
                 Register Company
               </Link>
-              <Link href="/how-it-works" className="inline-flex items-center justify-center px-6 py-3 border border-neutral-200 dark:border-dark-border text-neutral-300 font-medium rounded-xl hover:bg-chalk dark:hover:bg-dark-elevated transition-colors text-sm">
+              <Link href="/how-it-works" className="btn-ghost px-6 text-[15px]">
                 How It Works →
               </Link>
             </div>
@@ -90,35 +90,35 @@ export default function ForCompaniesPage() {
         </section>
 
         {/* Features */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-14">
-              <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Platform Features</p>
-              <h2 className="text-3xl font-bold text-white">Everything a fleet operator needs</h2>
+        <section className="bg-[#F6F8F7] py-16 lg:py-24 dark:bg-dark-surface">
+          <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="section-label">Platform Features</p>
+              <h2 className="section-title mt-2">Everything a fleet operator needs</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-dark-border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, i) => (
-                <div key={i} className="bg-chalk dark:bg-dark-surface p-8 hover:bg-dark-card transition-colors">
-                  <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{feature.description}</p>
-                </div>
+                <article key={i} data-reveal style={{ '--reveal-delay': `${(i % 3) * 90}ms` }} className="rounded-card border border-line bg-white p-6 shadow-card transition hover:border-brand-200 hover:shadow-lift dark:border-dark-border dark:bg-dark-card">
+                  <h3 className="text-base font-semibold text-ink dark:text-white">{feature.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-steel dark:text-neutral-400">{feature.description}</p>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
         {/* Company types */}
-        <section className="py-20 bg-white dark:bg-dark-bg border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-14">
-              <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Who it serves</p>
-              <h2 className="text-3xl font-bold text-white">Built for the whole transport ecosystem</h2>
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="section-label">Who it serves</p>
+              <h2 className="section-title mt-2">Built for the whole transport ecosystem</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {companyTypes.map((type) => (
-                <div key={type.name} className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-6">
-                  <h3 className="text-base font-semibold text-white mb-3">{type.name}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{type.description}</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {companyTypes.map((type, i) => (
+                <div key={type.name} data-reveal style={{ '--reveal-delay': `${i * 90}ms` }} className="rounded-card border border-line bg-white p-6 shadow-card transition hover:border-brand-200 hover:shadow-lift dark:border-dark-border dark:bg-dark-card">
+                  <h3 className="text-base font-semibold text-ink dark:text-white">{type.name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-steel dark:text-neutral-400">{type.description}</p>
                 </div>
               ))}
             </div>
@@ -126,13 +126,15 @@ export default function ForCompaniesPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Bring your fleet to GH Motive</h2>
-            <p className="text-neutral-400 mb-8">Register your company and start managing your vehicles and drivers with full operational transparency.</p>
-            <Link href="/register?role=company" className="inline-flex items-center justify-center px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-100 transition-colors text-sm">
-              Register Your Company
-            </Link>
+        <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
+          <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
+            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Bring your fleet to GH Motive</h2>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Register your company and start managing your vehicles and drivers with full operational transparency.</p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/register?role=company" className="btn-primary px-6 text-[15px]">
+                Register Your Company
+              </Link>
+            </div>
           </div>
         </section>
 

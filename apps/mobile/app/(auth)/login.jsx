@@ -83,6 +83,9 @@ export default function LoginScreen() {
                 onChangeText={(v) => { setForm((p) => ({ ...p, password: v })); setError(''); }}
               />
             </View>
+            <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} hitSlop={8} style={{ alignSelf: 'flex-end' }} accessibilityRole="button">
+              <Text style={{ color: colors.brand, fontWeight: '700', fontSize: 13.5 }}>Forgot password?</Text>
+            </TouchableOpacity>
             <PrimaryButton title="Sign in" onPress={handleSubmit} loading={loading} />
             <Text style={[s.secure, { color: colors.textMuted }]}>Protected sign-in — never share your password.</Text>
           </View>

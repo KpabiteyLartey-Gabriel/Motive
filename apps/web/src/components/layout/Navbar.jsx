@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,6 +9,7 @@ const navLinks = [
   { label: 'For Drivers', href: '/drivers' },
   { label: 'For Owners', href: '/owners' },
   { label: 'For Companies', href: '/companies' },
+  { label: 'All Participants', href: '/how-it-works#participants' },
   { label: 'About', href: '/about' },
 ];
 
@@ -28,6 +29,30 @@ export function BrandMark({ dark = false }) {
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+
+  // Scroll-reveal: fade landing sections up as they enter the viewport.
+  useEffect(() => {
+    const els = [...document.querySelectorAll('[data-reveal]:not(.is-visible)')];
+    if (!els.length) return undefined;
+    if (!('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('is-visible'));
+      return undefined;
+    }
+    document.documentElement.classList.add('reveal-ready');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' },
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-white/95 backdrop-blur dark:border-dark-border dark:bg-dark-surface/95">

@@ -6,10 +6,7 @@ import DashboardShell from '@/components/dashboard/DashboardShell';
 import { EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { disputesApi } from '@/lib/api';
 
-const LEGAL_NAV = [
-  { href: '/legal/dashboard', icon: 'legal', label: 'Dashboard' },
-  { href: '/legal/cases',     icon: 'cases', label: 'Cases' },
-];
+import { LEGAL_NAV, LEGAL_ROLES } from '@/lib/legalNav';
 
 const DISPUTE_STATUSES = ['OPEN', 'AWAITING_RESPONSE', 'UNDER_REVIEW', 'MEDIATION', 'DECISION_PENDING', 'RESOLVED', 'REJECTED', 'ESCALATED', 'CLOSED', 'APPEALED'];
 const DISPUTE_TYPES    = ['PAYMENT_DISPUTE', 'CONTRACT_DISPUTE', 'VEHICLE_DAMAGE', 'VEHICLE_CONDITION', 'MAINTENANCE', 'REVENUE_DISAGREEMENT', 'VEHICLE_RETURN', 'OWNERSHIP_TRANSFER', 'OTHER'];
@@ -20,7 +17,7 @@ function fmt(d) {
 }
 
 export default function LegalCasesPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['LEGAL_OFFICER', 'ADMIN', 'SUPER_ADMIN'] });
+  const { user, loading, logout } = useAuth({ requiredRoles: LEGAL_ROLES });
   const [disputes, setDisputes]     = useState([]);
   const [pagination, setPagination] = useState(null);
   const [fetching, setFetching]     = useState(false);

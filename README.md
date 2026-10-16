@@ -124,6 +124,7 @@ cd apps/mobile && npm start
 
 | Document | Description |
 |----------|-------------|
+| [Requirements](docs/requirements.md) | +Motive product idea, participants and requirements |
 | [Architecture](docs/architecture.md) | System architecture overview |
 | [Database](docs/database.md) | Database schema and design |
 | [API](docs/api.md) | API endpoints reference |

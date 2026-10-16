@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import PitchStory from '@/components/pitch/PitchStory';
+import PitchInfographic from '@/components/pitch/PitchInfographic';
 
 export const metadata = {
   title: 'How It Works — GH Motive',
@@ -47,7 +49,7 @@ const contractTypes = [
   },
   {
     name: 'Rental',
-    description: 'The driver earns a salary or revenue share. The owner retains ownership. Terms, responsibilities and deductions are defined in the contract.',
+    description: 'Offered through transport companies: the driver earns a salary or revenue share and the owner retains ownership. Terms, responsibilities and deductions are defined in the contract.',
   },
   {
     name: 'Driving On',
@@ -62,31 +64,35 @@ export default function HowItWorksPage() {
       <main className="pt-24">
 
         {/* Hero */}
-        <section className="py-20 bg-white dark:bg-dark-bg">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Process</p>
-            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-5">
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="anim-fade-up mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+            <p className="section-label">Process</p>
+            <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl dark:text-white">
               How GH Motive Works
             </h1>
-            <p className="text-lg text-neutral-400 leading-relaxed">
+            <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
               A transparent, auditable process from account registration through contract creation,
               payment completion and ownership transfer.
             </p>
           </div>
         </section>
 
+        {/* Pitch: videographic storyboard + infographic */}
+        <PitchStory />
+        <PitchInfographic />
+
         {/* Steps */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {steps.map((step) => (
-                <div key={step.number} className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border flex items-center justify-center">
-                    <span className="text-neutral-500 font-mono text-xs font-bold">{step.number}</span>
+        <section className="bg-[#F6F8F7] py-16 lg:py-24 dark:bg-dark-surface">
+          <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 gap-x-10 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
+              {steps.map((step, i) => (
+                <div key={step.number} data-reveal style={{ '--reveal-delay': `${(i % 3) * 90}ms` }} className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 shadow-sm">
+                    <span className="font-mono text-xs font-bold text-white">{step.number}</span>
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-white mb-1.5">{step.title}</h3>
-                    <p className="text-sm text-neutral-500 leading-relaxed">{step.description}</p>
+                    <h3 className="text-[15px] font-semibold text-ink dark:text-white">{step.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-steel dark:text-neutral-400">{step.description}</p>
                   </div>
                 </div>
               ))}
@@ -95,17 +101,17 @@ export default function HowItWorksPage() {
         </section>
 
         {/* Contract types */}
-        <section className="py-20 bg-white dark:bg-dark-bg border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-14">
-              <p className="text-sm font-medium text-neutral-500 uppercase tracking-widest mb-3">Contract Types</p>
-              <h2 className="text-3xl font-bold text-white">Three arrangements, one platform</h2>
+        <section className="bg-white py-16 lg:py-24 dark:bg-dark-bg">
+          <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="section-label">Contract Types</p>
+              <h2 className="section-title mt-2">Three arrangements, one platform</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {contractTypes.map((type) => (
-                <div key={type.name} className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-6">
-                  <h3 className="text-base font-semibold text-white mb-3">{type.name}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{type.description}</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {contractTypes.map((type, i) => (
+                <div key={type.name} data-reveal style={{ '--reveal-delay': `${i * 90}ms` }} className="rounded-card border border-line bg-white p-6 shadow-card transition hover:border-brand-200 hover:shadow-lift dark:border-dark-border dark:bg-dark-card">
+                  <h3 className="text-base font-semibold text-ink dark:text-white">{type.name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-steel dark:text-neutral-400">{type.description}</p>
                 </div>
               ))}
             </div>
@@ -113,15 +119,15 @@ export default function HowItWorksPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 bg-chalk dark:bg-dark-surface border-t border-neutral-200 dark:border-dark-border">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Ready to get started?</h2>
-            <p className="text-neutral-400 mb-8">Join GH Motive and manage your vehicle operations with full transparency.</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/register" className="inline-flex items-center justify-center px-6 py-3 bg-white text-black font-semibold rounded-xl hover:bg-neutral-100 transition-colors text-sm">
+        <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
+          <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
+            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Ready to get started?</h2>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Join GH Motive and manage your vehicle operations with full transparency.</p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/register" className="btn-primary px-6 text-[15px]">
                 Create Account
               </Link>
-              <Link href="/drivers" className="inline-flex items-center justify-center px-6 py-3 border border-neutral-200 dark:border-dark-border text-neutral-300 font-medium rounded-xl hover:bg-chalk dark:hover:bg-dark-elevated transition-colors text-sm">
+              <Link href="/drivers" className="btn-ghost-light px-6 text-[15px]">
                 For Drivers →
               </Link>
             </div>

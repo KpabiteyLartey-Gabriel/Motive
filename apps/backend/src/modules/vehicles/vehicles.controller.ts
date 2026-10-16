@@ -5,10 +5,9 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { VehicleStatus } from '@prisma/client';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { mkdirSync } from 'fs';
+import { join } from 'path';
 import { VehiclesService } from './vehicles.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehiclePhotosDto } from './dto/update-vehicle-photos.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,7 +21,10 @@ const IMAGE_MIME = /^image\/(jpeg|png|webp|gif|avif)$/;
 @UseGuards(JwtAuthGuard)
 @Controller('vehicles')
 export class VehiclesController {
-  constructor(private readonly vehiclesService: VehiclesService) {}
+  constructor(
+    private readonly vehiclesService: VehiclesService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -64,16 +66,16 @@ export class VehiclesController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { files: { type: 'array', items: { type: 'string', format: 'binary' } } } } })
   @UseInterceptors(FilesInterceptor('files', 10, {
-    storage: diskStorage({
-      destination: (_req: any, _file: any, cb: any) => { mkdirSync(VEHICLE_PHOTO_DIR, { recursive: true }); cb(null, VEHICLE_PHOTO_DIR); },
-      filename: (_req: any, file: any, cb: any) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname || '.jpg').toLowerCase()}`),
-    }),
     limits: { fileSize: 5 * 1024 * 1024, files: 10 },
     fileFilter: (_req: any, file: any, cb: any) => cb(null, IMAGE_MIME.test(file.mimetype || '')),
   }))
   async uploadPhotos(@Param('id') id: string, @CurrentUser() user: any, @UploadedFiles() files: any[]) {
     if (!files?.length) throw new BadRequestException('No image files received (field "files", image files only, max 5MB each)');
-    const urls = files.map((f) => `/uploads/vehicles/${f.filename}`);
+    const urls: string[] = [];
+    for (const file of files) {
+      const stored = await this.storage.uploadFile(file, `vehicles/${id}`);
+      urls.push(stored.url);
+    }
     return this.vehiclesService.addPhotoUrls(id, urls, user.id, user.primaryRole);
   }
 }

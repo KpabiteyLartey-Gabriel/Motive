@@ -33,7 +33,7 @@ export class ComplianceService {
     userId: string,
     userRole: string,
   ) {
-    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER];
+    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER, UserRole.LEGAL_PROFESSIONAL];
     if (adminRoles.includes(userRole as UserRole)) return;
 
     if (vehicleId) {
@@ -100,7 +100,7 @@ export class ComplianceService {
     const driver = await this.prisma.driver.findUnique({ where: { id: driverId }, select: { userId: true } });
     if (!driver) throw new NotFoundException('Driver not found');
 
-    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER];
+    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.LEGAL_PROFESSIONAL];
     if (!adminRoles.includes(userRole as UserRole) && driver.userId !== userId) {
       throw new ForbiddenException('Access denied');
     }
@@ -121,7 +121,7 @@ export class ComplianceService {
 
   // ── Update status ───────────────────────────────────────────
   async updateStatus(recordId: string, userId: string, dto: UpdateComplianceStatusDto, userRole: string) {
-    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER];
+    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER, UserRole.LEGAL_PROFESSIONAL];
     if (!adminRoles.includes(userRole as UserRole)) {
       throw new ForbiddenException('Only admin/fleet users can update compliance status');
     }
@@ -145,6 +145,32 @@ export class ComplianceService {
     });
 
     await this.audit.log({ actorId: userId, action: AuditAction.UPDATE, resource: 'compliance', resourceId: recordId, newData: { status: computedStatus } });
+    return updated;
+  }
+
+  // ── Attach an uploaded document file (Cloudinary or local) ──
+  async attachFile(
+    recordId: string,
+    userId: string,
+    userRole: string,
+    file: { url: string; fileName: string; fileSize?: number; mimeType?: string },
+  ) {
+    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER, UserRole.LEGAL_PROFESSIONAL];
+    if (!adminRoles.includes(userRole as UserRole)) {
+      throw new ForbiddenException('Only admin/fleet/legal users can attach document files');
+    }
+    const record = await this.prisma.complianceRecord.findUnique({ where: { id: recordId } });
+    if (!record) throw new NotFoundException('Compliance record not found');
+
+    const updated = await this.prisma.complianceRecord.update({
+      where: { id: recordId },
+      data: {
+        fileUrl: file.url,
+        fileName: file.fileName,
+        lastCheckedAt: new Date(),
+      },
+    });
+    await this.audit.log({ actorId: userId, action: AuditAction.UPDATE, resource: 'compliance', resourceId: recordId, newData: { fileUrl: file.url, fileName: file.fileName } });
     return updated;
   }
 

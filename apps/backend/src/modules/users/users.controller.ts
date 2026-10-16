@@ -17,11 +17,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '@prisma/client';
 import { IsEnum } from 'class-validator';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { mkdirSync } from 'fs';
+import { join } from 'path';
 
 import { UsersService } from './users.service';
+import { StorageService } from '../storage/storage.service';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/account-settings.dto';
 
 export const PROFILE_PHOTO_DIR = join(process.cwd(), 'uploads', 'profiles');
@@ -46,7 +45,10 @@ class UpdateRoleDto {
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get()
   @UseGuards(RolesGuard)
@@ -90,16 +92,13 @@ export class UsersController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
   @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: (_req: any, _file: any, cb: any) => { mkdirSync(PROFILE_PHOTO_DIR, { recursive: true }); cb(null, PROFILE_PHOTO_DIR); },
-      filename: (req: any, file: any, cb: any) => cb(null, `${req.user?.id || 'user'}-${Date.now()}${extname(file.originalname || '.jpg').toLowerCase()}`),
-    }),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (_req: any, file: any, cb: any) => cb(null, IMAGE_MIME.test(file.mimetype || '')),
   }))
   async uploadProfilePhoto(@CurrentUser() user: any, @UploadedFile() file: any) {
     if (!file) throw new BadRequestException('No image file received (field "file", image files only, max 5MB)');
-    return this.usersService.setProfilePhoto(user.id, `/uploads/profiles/${file.filename}`);
+    const stored = await this.storage.uploadFile(file, `profiles/${user.id}`);
+    return this.usersService.setProfilePhoto(user.id, stored.url);
   }
 
   @Patch('me/deactivate')

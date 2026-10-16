@@ -3,9 +3,9 @@ import { ContractsService } from './contracts.service';
 describe('ContractsService legal oversight', () => {
   const contract: any = { id: 'c-1', status: 'DRAFT', vehicleId: 'v-1', parties: [{ userId: 'someone-else' }] };
   const findMany = jest.fn().mockResolvedValue([]);
-  const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...contract, ...data }));
+  const update = jest.fn().mockImplementation(({ data }: any) => { Object.assign(contract, data); return Promise.resolve(contract); });
   const prisma: any = {
-    contract: { findMany, count: jest.fn().mockResolvedValue(0), findUnique: jest.fn().mockResolvedValue(contract), update },
+    contract: { findMany, count: jest.fn().mockResolvedValue(0), findUnique: jest.fn().mockImplementation(() => Promise.resolve(contract)), update },
     user: { findUnique: jest.fn().mockResolvedValue({ primaryRole: 'LEGAL_PROFESSIONAL' }) },
     $transaction: jest.fn((ops: any[]) => Promise.all(ops)),
   };
