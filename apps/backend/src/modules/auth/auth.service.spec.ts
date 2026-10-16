@@ -3,7 +3,7 @@ jest.mock('../notifications/notifications.service', () => ({
 }));
 
 import { AuthService } from './auth.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
 
 describe('AuthService password reset', () => {

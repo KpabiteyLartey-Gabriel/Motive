@@ -3,7 +3,7 @@ import {
   Inject, Optional, Logger,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CompanyType, UserRole } from '@prisma/client';
 import { COMPANY_MEMBER_ROLES } from './dto/company-members.dto';
