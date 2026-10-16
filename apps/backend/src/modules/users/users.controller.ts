@@ -101,6 +101,34 @@ export class UsersController {
     return this.usersService.setProfilePhoto(user.id, stored.url);
   }
 
+  @Post('me/verification/email/send')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a 6-digit verification code to my email' })
+  async sendEmailCode(@CurrentUser() user: any) {
+    return this.usersService.sendVerificationCode(user.id, 'email');
+  }
+
+  @Post('me/verification/email/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirm my email with the 6-digit code' })
+  async confirmEmailCode(@CurrentUser() user: any, @Body() dto: { code: string }) {
+    return this.usersService.confirmVerificationCode(user.id, 'email', dto?.code);
+  }
+
+  @Post('me/verification/phone/send')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a 6-digit verification code to my phone by SMS' })
+  async sendPhoneCode(@CurrentUser() user: any) {
+    return this.usersService.sendVerificationCode(user.id, 'phone');
+  }
+
+  @Post('me/verification/phone/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirm my phone with the 6-digit code' })
+  async confirmPhoneCode(@CurrentUser() user: any, @Body() dto: { code: string }) {
+    return this.usersService.confirmVerificationCode(user.id, 'phone', dto?.code);
+  }
+
   @Patch('me/deactivate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Deactivate own account (signs out everywhere; an admin can reactivate)' })

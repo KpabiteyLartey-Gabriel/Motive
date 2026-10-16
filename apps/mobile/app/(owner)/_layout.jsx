@@ -1,9 +1,13 @@
 ﻿import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
 import { useTheme } from '../../lib/theme';
 import { TabIcon } from '../../components/TabIcon';
+import { registerPushToken } from '../../lib/push';
 
 export default function OwnerLayout() {
   const { colors } = useTheme();
+
+  useEffect(() => { registerPushToken(); }, []);
 
   const screenOpts = {
     tabBarActiveTintColor: colors.tabActive,
@@ -51,25 +55,25 @@ export default function OwnerLayout() {
         }}
       />
       <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Notifications',
+          tabBarLabel: 'Alerts',
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="notifications" color={color} size={size} focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="profile" color={color} size={size} focused={focused} />,
+          title: 'Settings',
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="settings" color={color} size={size} focused={focused} />,
         }}
       />
-      {/* Hidden screens â€” accessible via push, not shown in tab bar */}
-      <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
+      {/* Hidden screens — reachable from other tabs, not shown in tab bar */}
       <Tabs.Screen name="maintenance"   options={{ href: null, title: 'Maintenance' }} />
       <Tabs.Screen name="disputes"      options={{ href: null, title: 'Disputes' }} />
-      <Tabs.Screen
-        name="tracking"
-        options={{
-          title: 'Tracking',
-          tabBarLabel: 'Tracking',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="tracking" color={color} size={size} focused={focused} />,
-        }}
-      />
+      <Tabs.Screen name="tracking"      options={{ href: null, title: 'Tracking' }} />
     </Tabs>
   );
 }

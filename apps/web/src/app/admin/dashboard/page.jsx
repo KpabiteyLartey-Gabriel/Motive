@@ -28,6 +28,48 @@ function RoleBadge({ role }) {
   );
 }
 
+function AnnouncementCard() {
+  const [form, setForm] = useState({ subject: '', body: '', role: '' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+
+  const send = async (e) => {
+    e.preventDefault();
+    setBusy(true); setMsg(''); setError('');
+    try {
+      const res = await adminApi.announce({ subject: form.subject, body: form.body, role: form.role || undefined });
+      setMsg(res.data?.data?.message || 'Announcement sent.');
+      setForm({ subject: '', body: '', role: '' });
+    } catch (err) {
+      setError(Array.isArray(err.response?.data?.message) ? err.response.data.message.join(', ') : err.response?.data?.message || 'Could not send announcement.');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <form onSubmit={send} className="mb-8 bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-5">
+      <p className="text-sm font-semibold text-neutral-900 dark:text-white">Send announcement</p>
+      <p className="text-xs text-neutral-500 mt-0.5 mb-4">Goes out as a push notification and in-app message. Choose one audience or everyone.</p>
+      {msg && <div className="bg-green-500/10 border border-green-500/30 text-green-600 text-sm px-4 py-3 rounded-lg mb-4">{msg}</div>}
+      {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-lg mb-4">{error}</div>}
+      <div className="grid sm:grid-cols-[1fr_200px] gap-3">
+        <input required className="input" placeholder="Title e.g. Scheduled maintenance on Sunday" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
+        <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+          <option value="">Everyone</option>
+          <option value="OWNER">Vehicle owners</option>
+          <option value="DRIVER">Drivers</option>
+          <option value="COMPANY_ADMIN">Company admins</option>
+          <option value="FLEET_MANAGER">Fleet managers</option>
+          <option value="LEGAL_PROFESSIONAL">Legal professionals</option>
+          <option value="SERVICE_PROVIDER">Maintenance providers</option>
+        </select>
+      </div>
+      <textarea required rows={3} className="input mt-3" placeholder="Message…" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+      <button disabled={busy} className="mt-3 text-xs font-medium px-4 py-2 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 disabled:opacity-40">{busy ? 'Sending…' : 'Send announcement'}</button>
+    </form>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { user, loading, logout } = useAuth({ requiredRoles: ['ADMIN', 'SUPER_ADMIN'] });
   const [stats, setStats]               = useState(null);
@@ -118,6 +160,9 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Announcement composer */}
+      <AnnouncementCard />
 
       {/* Users table */}
       <SectionHeader title="All Users" description="Every registered account on the platform" />

@@ -14,6 +14,9 @@ import {
 } from '@prisma/client';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { PaymentProviderFactory } from '../../integrations/payments/payment-provider.factory';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationChannel } from '@prisma/client';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class PaymentsService {
@@ -23,6 +26,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly providerFactory: PaymentProviderFactory,
+    @Optional() private readonly notifications?: NotificationsService,
   ) {}
 
   private generatePaymentNumber(): string {
@@ -303,6 +307,52 @@ export class PaymentsService {
       resourceId: payment.id,
       newData: { providerReference, isDirectPay },
     });
+
+    await this.notifyPaymentReceived(payment).catch((err) =>
+      this.logger.warn(`Payment notification failed for ${payment.id}: ${err?.message}`),
+    );
+  }
+
+  // Notify the vehicle owner (and the paying driver) that money arrived
+  private async notifyPaymentReceived(payment: any) {
+    if (!this.notifications) return;
+    const amount = `GHS ${Number(payment.amount).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
+
+    let vehicleLabel = 'your vehicle';
+    if (payment.vehicleId) {
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: payment.vehicleId },
+        select: { registrationNumber: true, make: true, model: true },
+      }).catch(() => null);
+      if (vehicle) vehicleLabel = `${vehicle.make} ${vehicle.model} (${vehicle.registrationNumber})`;
+    }
+
+    if (payment.ownerId) {
+      const owner = await this.prisma.owner.findUnique({
+        where: { id: payment.ownerId },
+        select: { userId: true, user: { select: { firstName: true } } },
+      }).catch(() => null);
+      if (owner?.userId) {
+        const subject = 'Payment received';
+        const body = `Hello ${owner.user.firstName}, a payment of ${amount} for ${vehicleLabel} was received on +Motive. Open Payments in your owner portal to see the full record.`;
+        for (const channel of [NotificationChannel.PUSH, NotificationChannel.IN_APP, NotificationChannel.EMAIL]) {
+          await this.notifications.send({ userId: owner.userId, channel, type: 'PAYMENT_RECEIVED', subject, body, data: { paymentId: payment.id, contractId: payment.contractId } }).catch(() => null);
+        }
+      }
+    }
+
+    if (payment.driverId) {
+      const driver = await this.prisma.driver.findUnique({
+        where: { id: payment.driverId },
+        select: { userId: true, user: { select: { firstName: true } } },
+      }).catch(() => null);
+      if (driver?.userId) {
+        const body = `Hello ${driver.user.firstName}, your payment of ${amount} for ${vehicleLabel} was confirmed on +Motive. Keep this as your receipt record.`;
+        for (const channel of [NotificationChannel.PUSH, NotificationChannel.IN_APP]) {
+          await this.notifications.send({ userId: driver.userId, channel, type: 'PAYMENT_CONFIRMED', subject: 'Payment confirmed', body, data: { paymentId: payment.id, contractId: payment.contractId } }).catch(() => null);
+        }
+      }
+    }
   }
 
   // ── Disbursement (MTN only — after collection confirmed) ───

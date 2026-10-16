@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/useAuth';
 import DashboardShell from '@/components/dashboard/DashboardShell';
+import { OWNER_NAV } from '@/lib/ownerNav';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { vehiclesApi, trackingApi, locationShareApi } from '@/lib/api';
 
@@ -12,16 +13,7 @@ const VehicleTrackingMap = dynamic(
   { ssr: false, loading: () => <div className="flex items-center justify-center h-80 text-neutral-500 text-sm">Loading map…</div> },
 );
 
-const NAV = [
-  { href: '/owner/dashboard',   icon: 'dashboard',    label: 'Dashboard' },
-  { href: '/owner/vehicles',    icon: 'vehicle',      label: 'Vehicles' },
-  { href: '/owner/drivers',     icon: 'drivers',      label: 'Drivers' },
-  { href: '/owner/contracts',   icon: 'contract',     label: 'Contracts' },
-  { href: '/owner/payments',    icon: 'payments',     label: 'Payments' },
-  { href: '/owner/maintenance', icon: 'maintenance',  label: 'Maintenance' },
-  { href: '/owner/disputes',    icon: 'disputes',     label: 'Disputes' },
-  { href: '/owner/tracking',    icon: 'tracking',     label: 'Tracking' },
-];
+const NAV = OWNER_NAV;
 
 const DURATION_OPTIONS = [
   { label: '1 hour',   value: 1 },

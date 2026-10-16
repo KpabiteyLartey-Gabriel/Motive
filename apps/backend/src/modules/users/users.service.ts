@@ -1,12 +1,19 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Optional, Logger, NotFoundException, ForbiddenException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { createHash, randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserRole, UserStatus } from '@prisma/client';
 import { UpdateProfileDto } from './dto/account-settings.dto';
+import { MessagingService } from '../messaging/messaging.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(UsersService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly messaging?: MessagingService,
+  ) {}
 
   async findById(id: string) {
     const user = await this.prisma.user.findUnique({
@@ -191,6 +198,71 @@ export class UsersService {
     await this.prisma.user.update({ where: { id }, data: { passwordHash } });
     await this.revokeRefreshTokens(id);
     return { success: true, message: 'Password updated. Other sessions have been signed out.' };
+  }
+
+  // ── Email / phone verification (6-digit codes) ───────────────
+
+  private hashCode(code: string): string {
+    return createHash('sha256').update(code).digest('hex');
+  }
+
+  async sendVerificationCode(userId: string, channel: 'email' | 'phone') {
+    const user: any = await this.getUserOrThrow(userId);
+    const isEmail = channel === 'email';
+    const type = isEmail ? 'EMAIL_VERIFY' : 'PHONE_VERIFY';
+    const target = isEmail ? user.email : user.phone;
+    const alreadyVerified = isEmail ? !!user.emailVerifiedAt : !!user.phoneVerifiedAt;
+
+    if (alreadyVerified) return { success: true, alreadyVerified: true, message: `Your ${channel} is already verified.` };
+    if (!target) throw new BadRequestException(`No ${channel} address on this account to verify.`);
+
+    // One live code per user + channel
+    await this.prisma.verificationCode.updateMany({
+      where: { userId, type, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    const code = String(randomInt(100000, 1000000));
+    await this.prisma.verificationCode.create({
+      data: { userId, type, code: this.hashCode(code), expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+    });
+
+    const text = `Your +Motive verification code is ${code}. It expires in 10 minutes. Do not share it with anyone.`;
+    if (this.messaging) {
+      if (isEmail) {
+        await this.messaging.sendEmail(target, 'Verify your +Motive email', text).catch((e) => this.logger.warn(`Verify email failed: ${e?.message}`));
+      } else {
+        await this.messaging.sendSms(target, text).catch((e) => this.logger.warn(`Verify SMS failed: ${e?.message}`));
+      }
+    } else {
+      this.logger.warn(`Messaging unavailable — verification code for user ${userId} not sent`);
+    }
+
+    return { success: true, alreadyVerified: false, message: `We sent a 6-digit code to your ${channel}. It expires in 10 minutes.` };
+  }
+
+  async confirmVerificationCode(userId: string, channel: 'email' | 'phone', code: string) {
+    const type = channel === 'email' ? 'EMAIL_VERIFY' : 'PHONE_VERIFY';
+    const clean = (code || '').trim();
+    if (!/^\d{6}$/.test(clean)) throw new BadRequestException('Enter the 6-digit code we sent you.');
+
+    const record = await this.prisma.verificationCode.findFirst({
+      where: { userId, type, usedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record || record.expiresAt < new Date() || record.code !== this.hashCode(clean)) {
+      throw new BadRequestException('That code is incorrect or has expired. Request a new one.');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.verificationCode.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: channel === 'email' ? { emailVerifiedAt: new Date() } : { phoneVerifiedAt: new Date() },
+      }),
+    ]);
+
+    return { success: true, message: `Your ${channel} is now verified.` };
   }
 
   async deactivateMyAccount(id: string) {

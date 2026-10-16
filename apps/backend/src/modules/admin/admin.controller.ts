@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Param,
   Query,
@@ -46,6 +47,17 @@ class VerifyVehicleDto {
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  // ── Announcements ──────────────────────────────────────────
+  @Post('announcements')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send an announcement to all users or one role (push + in-app)' })
+  async createAnnouncement(
+    @CurrentUser() user: any,
+    @Body() dto: { subject: string; body: string; role?: UserRole },
+  ) {
+    return this.adminService.createAnnouncement(user.id, dto);
+  }
 
   // ── Stats ──────────────────────────────────────────────────
   @Get('stats')

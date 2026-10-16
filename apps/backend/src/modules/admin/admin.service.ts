@@ -5,14 +5,49 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { AuditAction, DriverStatus, OwnerStatus, VehicleStatus, CompanyStatus } from '@prisma/client';
+import { AuditAction, DriverStatus, OwnerStatus, VehicleStatus, CompanyStatus, NotificationChannel, UserRole, UserStatus } from '@prisma/client';
+import { Optional } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    @Optional() private readonly notifications?: NotificationsService,
   ) {}
+
+  // ── Announcements (admin → users push + in-app) ──────────────
+  async createAnnouncement(actorId: string, dto: { subject: string; body: string; role?: UserRole }) {
+    if (!dto?.subject?.trim() || !dto?.body?.trim()) {
+      throw new BadRequestException('An announcement needs both a title and a message.');
+    }
+    if (!this.notifications) throw new BadRequestException('Notifications are not available right now.');
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        status: { not: UserStatus.DEACTIVATED },
+        ...(dto.role ? { primaryRole: dto.role } : {}),
+      },
+      select: { id: true },
+    });
+    const userIds = users.map((u) => u.id);
+
+    const params = { type: 'ADMIN_ANNOUNCEMENT', subject: dto.subject.trim(), body: dto.body.trim() };
+    await this.notifications.sendBulk(userIds, { ...params, channel: NotificationChannel.IN_APP });
+    await this.notifications.sendBulk(userIds, { ...params, channel: NotificationChannel.PUSH });
+
+    await this.audit.log({
+      actorId,
+      action: AuditAction.CREATE,
+      resource: 'announcement',
+      resourceId: 'broadcast',
+      newData: { subject: params.subject, role: dto.role || 'ALL', recipients: userIds.length },
+    }).catch(() => null);
+
+    return { success: true, recipients: userIds.length, message: `Announcement sent to ${userIds.length} user${userIds.length === 1 ? '' : 's'}.` };
+  }
 
   // ── Platform Stats ─────────────────────────────────────────
   async getStats() {

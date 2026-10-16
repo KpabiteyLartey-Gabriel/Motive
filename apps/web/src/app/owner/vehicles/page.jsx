@@ -3,19 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import DashboardShell from '@/components/dashboard/DashboardShell';
+import { OWNER_NAV } from '@/lib/ownerNav';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { vehiclesApi, complianceApi } from '@/lib/api';
 import VehiclePhotos from '@/components/vehicles/VehiclePhotos';
 
-const NAV = [
-  { href: '/owner/dashboard',   icon: 'dashboard', label: 'Dashboard' },
-  { href: '/owner/vehicles',    icon: 'vehicle', label: 'Vehicles' },
-  { href: '/owner/drivers',     icon: 'drivers', label: 'Drivers' },
-  { href: '/owner/contracts',   icon: 'contract', label: 'Contracts' },
-  { href: '/owner/payments',    icon: 'payments', label: 'Payments' },
-  { href: '/owner/maintenance', icon: 'maintenance', label: 'Maintenance' },
-  { href: '/owner/disputes',    icon: 'disputes', label: 'Disputes' },
-];
+const NAV = OWNER_NAV;
 
 const STATUS_COLORS = {
   AVAILABLE: 'text-green-400',

@@ -82,6 +82,10 @@ export const usersApi = {
     return apiClient.post('/users/me/profile-photo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   deactivateMe: () => apiClient.patch('/users/me/deactivate'),
+  sendEmailCode: () => apiClient.post('/users/me/verification/email/send'),
+  confirmEmailCode: (code) => apiClient.post('/users/me/verification/email/confirm', { code }),
+  sendPhoneCode: () => apiClient.post('/users/me/verification/phone/send'),
+  confirmPhoneCode: (code) => apiClient.post('/users/me/verification/phone/confirm', { code }),
 };
 
 // ── Drivers ──────────────────────────────────────────────────
@@ -96,6 +100,7 @@ export const driversApi = {
 export const ownersApi = {
   createProfile: (data) => apiClient.post('/owners/profile', data),
   getMyProfile: () => apiClient.get('/owners/profile'),
+  updateProfile: (data) => apiClient.patch('/owners/profile', data),
   getById: (id) => apiClient.get(`/owners/${id}`),
 };
 
@@ -188,7 +193,7 @@ export const disputesApi = {
 export const notificationsApi = {
   list:    (params) => apiClient.get('/notifications', { params }),
   markRead:(id)     => apiClient.patch(`/notifications/${id}/read`),
-  markAllRead: ()   => apiClient.patch('/notifications/read-all'),
+  markAllRead: ()   => apiClient.post('/notifications/read-all'),
 };
 
 // ── Compliance ────────────────────────────────────────────────
@@ -234,6 +239,7 @@ export const locationShareApi = {
 
 // ── Admin ────────────────────────────────────────────────────
 export const adminApi = {
+  announce: (data) => apiClient.post('/admin/announcements', data),
   // Users
   listUsers:      (params) => apiClient.get('/users', { params }),
   getUser:        (id)     => apiClient.get(`/users/${id}`),

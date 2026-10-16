@@ -72,6 +72,7 @@ export const driversApi = {
 export const ownersApi = {
   createProfile: (data) => apiClient.post('/owners/profile', data),
   getMyProfile:  () => apiClient.get('/owners/profile'),
+  updateProfile: (data) => apiClient.patch('/owners/profile', data),
   getById:       (id) => apiClient.get(`/owners/${id}`),
 };
 
@@ -110,7 +111,27 @@ export const paymentsApi = {
 export const notificationsApi = {
   list:    (params) => apiClient.get('/notifications', { params }),
   markRead: (id) => apiClient.patch(`/notifications/${id}/read`),
-  markAllRead: () => apiClient.patch('/notifications/read-all'),
+  markAllRead: () => apiClient.post('/notifications/read-all'),
+  registerPushToken: (data) => apiClient.post('/notifications/push-token', data),
+  removePushToken: (token) => apiClient.delete(`/notifications/push-token/${encodeURIComponent(token)}`),
+};
+
+export const usersApi = {
+  getMe:    () => apiClient.get('/users/me'),
+  updateMe: (data) => apiClient.patch('/users/me', data),
+  changePassword: (data) => apiClient.patch('/users/me/password', data),
+  deactivateMe: () => apiClient.patch('/users/me/deactivate'),
+  sendEmailCode:    () => apiClient.post('/users/me/verification/email/send'),
+  confirmEmailCode: (code) => apiClient.post('/users/me/verification/email/confirm', { code }),
+  sendPhoneCode:    () => apiClient.post('/users/me/verification/phone/send'),
+  confirmPhoneCode: (code) => apiClient.post('/users/me/verification/phone/confirm', { code }),
+  uploadProfilePhoto: (uri) => {
+    const form = new FormData();
+    const name = uri.split('/').pop() || 'profile.jpg';
+    const type = name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+    form.append('file', { uri, name, type });
+    return apiClient.post('/users/me/profile-photo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Maintenance ──────────────────────────────────────────────
