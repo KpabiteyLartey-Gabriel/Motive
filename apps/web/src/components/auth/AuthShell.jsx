@@ -11,7 +11,10 @@ const points = [
 export default function AuthShell({ title, subtitle, children, footer }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1fr_480px]">
-      <aside className="relative hidden bg-ink px-10 py-10 lg:flex lg:flex-col dark:bg-dark-surface">
+      <aside className="relative hidden overflow-hidden bg-ink px-10 py-10 lg:flex lg:flex-col dark:bg-dark-surface">
+        <img src="/images/hero-vehicles.jpg" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-[#04150F]/85 via-[#04150F]/45 to-[#04150F]/90" />
+        <div className="relative flex flex-1 flex-col">
         <Link href="/" aria-label="+Motive home"><BrandMark dark /></Link>
         <div className="my-auto max-w-md">
           <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white">Run vehicle work without the guesswork.</h2>
@@ -25,13 +28,18 @@ export default function AuthShell({ title, subtitle, children, footer }) {
             ))}
           </ul>
         </div>
-        <p className="text-xs text-brand-100/50">Secure · Transparent · Built for Ghana</p>
+        <p className="text-xs text-brand-100/60">Secure · Transparent · Built for Ghana</p>
+        </div>
       </aside>
 
       <main className="flex flex-col bg-[#F6F8F7] px-4 py-8 sm:px-8 dark:bg-dark-bg">
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <div className="mb-8 flex justify-center lg:hidden">
-            <Link href="/" aria-label="+Motive home"><BrandMark /></Link>
+          <div className="relative mb-6 overflow-hidden rounded-[20px] lg:hidden">
+            <img src="/images/hero-vehicles.jpg" alt="Cars and transport vehicles managed on +Motive" className="h-44 w-full object-cover" />
+            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#04150F]/85 via-[#04150F]/30 to-transparent" />
+            <div className="absolute bottom-3 left-4">
+              <Link href="/" aria-label="+Motive home"><BrandMark dark /></Link>
+            </div>
           </div>
           <div className="rounded-[20px] border border-line bg-white p-6 shadow-card sm:p-8 dark:border-dark-border dark:bg-dark-card">
             <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{title}</h1>
