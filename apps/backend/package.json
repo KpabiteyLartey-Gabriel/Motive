@@ -4,7 +4,7 @@
   "private": true,
   "description": "GH Motive Backend API — NestJS",
   "scripts": {
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "node dist/main",
     "dev": "nest start --watch",
@@ -33,6 +33,7 @@
     "@nestjs/throttler": "^5.1.1",
     "@prisma/client": "^5.8.0",
     "@types/nodemailer": "^8.0.2",
+    "axios": "^1.20.0",
     "bcrypt": "^5.1.1",
     "bullmq": "^6.3.11",
     "class-transformer": "^0.5.1",
