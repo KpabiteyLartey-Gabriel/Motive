@@ -84,10 +84,10 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Admin — GH Motive">
+    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Admin — +Motive">
       {/* Welcome */}
       <div className="mb-8">
-        <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>GH Motive Administration</h2>
+        <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>+Motive Administration</h2>
         <p className="text-sm text-steel dark:text-neutral-500">
           Platform overview — users, accounts, vehicles and operations.
         </p>

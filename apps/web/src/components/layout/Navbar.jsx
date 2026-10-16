@@ -17,10 +17,10 @@ export function BrandMark({ dark = false }) {
   return (
     <span className="flex items-center gap-2.5">
       <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-brand-600 text-white shadow-sm">
-        <span className="text-[11px] font-bold tracking-tight">GH</span>
+        <span className="text-[11px] font-bold tracking-tight">+</span>
       </span>
       <span className={`text-[15px] font-semibold tracking-tight ${dark ? 'text-white' : 'text-ink dark:text-white'}`}>
-        GH Motive
+        +Motive
       </span>
     </span>
   );
@@ -61,7 +61,7 @@ export default function Navbar() {
       </a>
       <div className="mx-auto max-w-page px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="shrink-0 rounded-lg" aria-label="GH Motive home">
+          <Link href="/" className="shrink-0 rounded-lg" aria-label="+Motive home">
             <BrandMark />
           </Link>
 

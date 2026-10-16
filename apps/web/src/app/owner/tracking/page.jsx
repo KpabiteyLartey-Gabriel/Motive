@@ -147,7 +147,7 @@ function ShareResultModal({ share, onClose }) {
           </div>
 
           <p className="text-xs text-fog mb-5">
-            Recipients with the GH Motive app will be prompted to open it. Others will see the location in their browser.
+            Recipients with the +Motive app will be prompted to open it. Others will see the location in their browser.
           </p>
 
           <button onClick={onClose} className="btn-solar w-full py-2.5 text-sm">Done</button>

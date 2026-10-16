@@ -3,7 +3,7 @@ import RegisterForm from '@/components/auth/RegisterForm';
 import AuthShell from '@/components/auth/AuthShell';
 import Link from 'next/link';
 
-export const metadata = { title: 'Create Account — GH Motive' };
+export const metadata = { title: 'Create Account — +Motive' };
 
 export default function RegisterPage() {
   return (

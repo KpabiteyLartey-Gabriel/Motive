@@ -66,7 +66,7 @@ export default function InvitePage() {
   return (
     <main className="min-h-screen bg-chalk dark:bg-dark-surface flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md bg-white dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-2xl p-6">
-        <p className="text-xs font-semibold tracking-wide text-neutral-500 mb-1">GH MOTIVE INVITATION</p>
+        <p className="text-xs font-semibold tracking-wide text-neutral-500 mb-1">+MOTIVE INVITATION</p>
         {loadError ? (
           <>
             <h1 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">Invitation not available</h1>

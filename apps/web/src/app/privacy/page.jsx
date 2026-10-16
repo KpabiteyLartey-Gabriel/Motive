@@ -2,8 +2,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'Privacy Policy — GH Motive',
-  description: 'How GH Motive (+Motive) collects, uses and protects your information.',
+  title: 'Privacy Policy — +Motive',
+  description: 'How +Motive (+Motive) collects, uses and protects your information.',
 };
 
 const sections = [

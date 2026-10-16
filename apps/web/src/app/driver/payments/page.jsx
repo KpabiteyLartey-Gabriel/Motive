@@ -72,7 +72,7 @@ export default function DriverPaymentsPage() {
       <div className="mb-6 bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-4">
         <p className="text-xs text-neutral-500 mb-2">Make a Payment</p>
         <p className="text-sm text-neutral-300">
-          Payments are initiated via the <strong className="text-neutral-900 dark:text-white">GH Motive mobile app</strong>. Open the app, go to Payments, and follow the MTN MoMo prompt to pay your contract installment.
+          Payments are initiated via the <strong className="text-neutral-900 dark:text-white">+Motive mobile app</strong>. Open the app, go to Payments, and follow the MTN MoMo prompt to pay your contract installment.
         </p>
       </div>
 

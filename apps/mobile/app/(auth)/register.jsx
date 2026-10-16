@@ -68,7 +68,7 @@ export default function RegisterScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>GH</Text></View>
+          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>+</Text></View>
           <Text style={[s.title, { color: colors.textPrimary }]}>Create your account</Text>
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>Free to start — it only takes a minute.</Text>
 
@@ -111,7 +111,7 @@ export default function RegisterScreen() {
             </View>
             <Field label="Confirm password" placeholder="Repeat your password" error={fieldErrors.confirmPassword} secureTextEntry={!showPassword} autoComplete="new-password" value={form.confirmPassword} onChangeText={(v) => set('confirmPassword', v)} />
             <PrimaryButton title="Create free account" onPress={handleSubmit} loading={loading} />
-            <Text style={[s.terms, { color: colors.textMuted }]}>By creating an account you agree to GH Motive&apos;s Terms of Service and Privacy Policy.</Text>
+            <Text style={[s.terms, { color: colors.textMuted }]}>By creating an account you agree to +Motive&apos;s Terms of Service and Privacy Policy.</Text>
           </View>
 
           <View style={s.footer}>

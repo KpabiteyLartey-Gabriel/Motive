@@ -67,9 +67,9 @@ export default function PublicSharePage() {
       <header className="h-[56px] bg-paper dark:bg-dark-surface border-b border-concrete dark:border-dark-border flex items-center px-5 gap-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-6 h-6 bg-graphite dark:bg-paper rounded-icon flex items-center justify-center">
-            <span className="text-paper dark:text-graphite font-bold text-[9px]">GH</span>
+            <span className="text-paper dark:text-graphite font-bold text-[9px]">+</span>
           </div>
-          <span className="text-sm font-semibold text-graphite dark:text-paper">GH Motive</span>
+          <span className="text-sm font-semibold text-graphite dark:text-paper">+Motive</span>
         </Link>
         <span className="text-xs text-fog">· Live Location</span>
       </header>
@@ -85,7 +85,7 @@ export default function PublicSharePage() {
               <span className="text-danger text-xl">!</span>
             </div>
             <p className="text-sm font-medium text-graphite dark:text-paper">{error}</p>
-            <Link href="/" className="text-xs text-steel underline">Go to GH Motive</Link>
+            <Link href="/" className="text-xs text-steel underline">Go to +Motive</Link>
           </div>
         ) : (
           <>
@@ -150,7 +150,7 @@ export default function PublicSharePage() {
 
             {/* CTA to download app */}
             <div className="bg-paper dark:bg-dark-surface border border-concrete dark:border-dark-border rounded-xl px-5 py-4 text-center">
-              <p className="text-xs font-medium text-graphite dark:text-paper mb-1">Get GH Motive</p>
+              <p className="text-xs font-medium text-graphite dark:text-paper mb-1">Get +Motive</p>
               <p className="text-[10px] text-steel dark:text-neutral-500 mb-3">
                 Download the app for full vehicle operations, contracts and payments.
               </p>

@@ -1,5 +1,5 @@
 /**
- * GH Motive — SMS Provider interface
+ * +Motive — SMS Provider interface
  *
  * Any SMS provider (Arkesel, Mock) must implement this contract.
  * The NotificationsService only depends on this interface.

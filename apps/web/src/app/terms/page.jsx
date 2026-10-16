@@ -2,8 +2,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'Terms of Service — GH Motive',
-  description: 'The terms for using GH Motive (+Motive): contracts, payments, tracking, maintenance and legal services.',
+  title: 'Terms of Service — +Motive',
+  description: 'The terms for using +Motive (+Motive): contracts, payments, tracking, maintenance and legal services.',
 };
 
 const sections = [

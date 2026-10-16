@@ -107,9 +107,9 @@ export default function SharedTrackView() {
         <View style={s.header}>
           <View style={s.brand}>
             <View style={s.brandDot}>
-              <Text style={{ color: colors.background, fontSize: 9, fontWeight: '800' }}>GH</Text>
+              <Text style={{ color: colors.background, fontSize: 9, fontWeight: '800' }}>+</Text>
             </View>
-            <Text style={s.brandLabel}>GH Motive</Text>
+            <Text style={s.brandLabel}>+Motive</Text>
             <Text style={s.live}>· Live Location</Text>
           </View>
         </View>

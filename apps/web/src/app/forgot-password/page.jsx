@@ -2,7 +2,7 @@ import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 import AuthShell from '@/components/auth/AuthShell';
 import Link from 'next/link';
 
-export const metadata = { title: 'Forgot Password — GH Motive' };
+export const metadata = { title: 'Forgot Password — +Motive' };
 
 export default function ForgotPasswordPage() {
   return (

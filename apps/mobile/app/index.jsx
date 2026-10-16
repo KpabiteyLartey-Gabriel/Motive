@@ -21,10 +21,10 @@ export default function WelcomeScreen() {
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.brandRow}>
           <View style={[s.logo, { backgroundColor: colors.brand }]}>
-            <Text style={s.logoText}>GH</Text>
+            <Text style={s.logoText}>+</Text>
           </View>
           <View>
-            <Text style={[s.appName, { color: colors.textPrimary }]}>GH Motive</Text>
+            <Text style={[s.appName, { color: colors.textPrimary }]}>+Motive</Text>
             <Text style={[s.tagline, { color: colors.textSecondary }]}>Vehicle Operations & Fleet Management</Text>
           </View>
         </View>

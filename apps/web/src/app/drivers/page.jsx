@@ -3,8 +3,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'For Drivers — GH Motive',
-  description: 'Drive with confidence. GH Motive gives drivers transparent contracts, clear payment schedules and a complete record of every transaction.',
+  title: 'For Drivers — +Motive',
+  description: 'Drive with confidence. +Motive gives drivers transparent contracts, clear payment schedules and a complete record of every transaction.',
 };
 
 const benefits = [
@@ -69,7 +69,7 @@ export default function ForDriversPage() {
               Drive with full transparency
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
-              GH Motive gives drivers clear contracts, real-time payment tracking and a complete
+              +Motive gives drivers clear contracts, real-time payment tracking and a complete
               record of every transaction — so you always know exactly where you stand. Sign up with a
               valid driving licence: it is verified at onboarding and monitored, with alerts before it expires.
             </p>
@@ -137,7 +137,7 @@ export default function ForDriversPage() {
         {/* CTA */}
         <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
           <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
-            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Ready to drive with GH Motive?</h2>
+            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Ready to drive with +Motive?</h2>
             <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Create your free driver account and get matched with verified vehicles and contracts.</p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/register?role=driver" className="btn-primary px-6 text-[15px]">

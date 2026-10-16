@@ -117,7 +117,7 @@ export class PaymentsService {
         payerPhone: dto.payerPhone,
         amount: dto.amount,
         reference: payment.id, // use payment ID as reference for webhook lookup
-        description: `GH Motive contract payment ${payment.paymentNumber}`,
+        description: `+Motive contract payment ${payment.paymentNumber}`,
         recipientPhone: recipientPhone ?? undefined,
         recipientName,
       });
@@ -327,7 +327,7 @@ export class PaymentsService {
         recipientPhone: ownerMomo,
         amount: Number(payment.amount),
         reference: disbRef,
-        description: `GH Motive settlement for payment ${payment.paymentNumber}`,
+        description: `+Motive settlement for payment ${payment.paymentNumber}`,
       });
 
       this.logger.log(`Disbursement ${disbRef}: ${result.status} → ${ownerMomo}`);

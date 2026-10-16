@@ -5,12 +5,12 @@ import { ThemeProvider } from '@/lib/ThemeProvider';
 const geist = GeistSans;
 
 export const metadata = {
-  title: 'GH Motive — Vehicle Operations & Fleet Management Platform',
+  title: '+Motive — Vehicle Operations & Fleet Management Platform',
   description:
-    'GH Motive connects vehicle owners, drivers, transport companies and fleet managers on one unified platform in Ghana.',
+    '+Motive connects vehicle owners, drivers, transport companies and fleet managers on one unified platform in Ghana.',
   keywords: 'Ghana vehicle fleet management, commercial vehicle platform, transport company Ghana, driver app Ghana',
   openGraph: {
-    title: 'GH Motive',
+    title: '+Motive',
     description: 'Vehicle Operations, Mobility, Contract, Payment and Fleet Management Platform for Ghana',
     type: 'website',
   },

@@ -1,5 +1,5 @@
 /**
- * GH Motive mobile design tokens — clean fintech, light-first, emerald brand.
+ * +Motive mobile design tokens — clean fintech, light-first, emerald brand.
  * Mirrors the web system: canvas #F6F8F7, ink #0B1F17, brand emerald #059669.
  * Keep the useTheme()/getTheme()/palette API stable so every screen benefits.
  */

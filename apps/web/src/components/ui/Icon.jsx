@@ -1,5 +1,5 @@
 ﻿/**
- * GH Motive — Icon set
+ * +Motive — Icon set
  * All icons are 20×20 viewBox SVGs, stroke-based, 1.5 strokeWidth.
  * Accepts: size (default 16), className, color (defaults to currentColor)
  * Usage: <Icon name="home" size={18} className="text-neutral-900 dark:text-white" />

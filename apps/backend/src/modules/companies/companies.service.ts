@@ -267,7 +267,7 @@ export class CompaniesService {
       if (invite.phone && this.smsProvider) {
         await this.smsProvider.send({
           to: invite.phone,
-          message: `GH Motive: ${companyName} invited you to join as ${roleLabel}. Set up your account here: ${link} (expires in 7 days)`,
+          message: `+Motive: ${companyName} invited you to join as ${roleLabel}. Set up your account here: ${link} (expires in 7 days)`,
         });
       }
       if (invite.email) {

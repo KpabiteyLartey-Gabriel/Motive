@@ -3,7 +3,7 @@ import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
 import AuthShell from '@/components/auth/AuthShell';
 import Link from 'next/link';
 
-export const metadata = { title: 'Reset Password — GH Motive' };
+export const metadata = { title: 'Reset Password — +Motive' };
 
 export default function ResetPasswordPage() {
   return (

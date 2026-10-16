@@ -3,8 +3,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'For Companies — GH Motive',
-  description: 'Run a commercial fleet, manage drivers, automate payments and track every vehicle — GH Motive is built for transport companies.',
+  title: 'For Companies — +Motive',
+  description: 'Run a commercial fleet, manage drivers, automate payments and track every vehicle — +Motive is built for transport companies.',
 };
 
 const features = [
@@ -75,7 +75,7 @@ export default function ForCompaniesPage() {
               Run your commercial fleet from one platform
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
-              GH Motive gives transport companies the infrastructure to manage fleets,
+              +Motive gives transport companies the infrastructure to manage fleets,
               drivers, contracts, payments and maintenance — with full audit trails at every step.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
@@ -128,7 +128,7 @@ export default function ForCompaniesPage() {
         {/* CTA */}
         <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
           <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
-            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Bring your fleet to GH Motive</h2>
+            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Bring your fleet to +Motive</h2>
             <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Register your company and start managing your vehicles and drivers with full operational transparency.</p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/register?role=company" className="btn-primary px-6 text-[15px]">

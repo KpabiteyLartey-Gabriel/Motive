@@ -147,7 +147,7 @@ export default function CompanyTeamPage() {
           {isAdmin && (
             <form onSubmit={add} className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-4 mb-5">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">Invite a user</p>
-              <p className="text-xs text-neutral-500 mb-3">Enter their email or phone number — no account needed. If they already have a GH Motive account they are added right away; otherwise they receive a link (SMS for phone numbers) to set up their account, already tied to {company.name} with the role you pick. The link expires in 7 days.</p>
+              <p className="text-xs text-neutral-500 mb-3">Enter their email or phone number — no account needed. If they already have a +Motive account they are added right away; otherwise they receive a link (SMS for phone numbers) to set up their account, already tied to {company.name} with the role you pick. The link expires in 7 days.</p>
               <div className="grid sm:grid-cols-4 gap-3">
                 <input required placeholder="person@example.com or +233…" className="input sm:col-span-2" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
                 <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>

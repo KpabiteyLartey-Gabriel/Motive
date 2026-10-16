@@ -12,7 +12,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1fr_480px]">
       <aside className="relative hidden bg-ink px-10 py-10 lg:flex lg:flex-col dark:bg-dark-surface">
-        <Link href="/" aria-label="GH Motive home"><BrandMark dark /></Link>
+        <Link href="/" aria-label="+Motive home"><BrandMark dark /></Link>
         <div className="my-auto max-w-md">
           <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white">Run vehicle work without the guesswork.</h2>
           <p className="mt-3 leading-relaxed text-brand-100/75">Join owners, drivers and companies managing contracts and payments with total clarity.</p>
@@ -31,7 +31,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
       <main className="flex flex-col bg-[#F6F8F7] px-4 py-8 sm:px-8 dark:bg-dark-bg">
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <div className="mb-8 flex justify-center lg:hidden">
-            <Link href="/" aria-label="GH Motive home"><BrandMark /></Link>
+            <Link href="/" aria-label="+Motive home"><BrandMark /></Link>
           </div>
           <div className="rounded-[20px] border border-line bg-white p-6 shadow-card sm:p-8 dark:border-dark-border dark:bg-dark-card">
             <h1 className="text-2xl font-semibold tracking-tight text-ink dark:text-white">{title}</h1>

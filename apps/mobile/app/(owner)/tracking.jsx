@@ -102,7 +102,7 @@ export default function OwnerTracking() {
       const shareUrl = `${API_WEB_URL}/track/${share.token}`;
 
       await Share.share({
-        message: `Track ${selected.make} ${selected.model} (${selected.registrationNumber}) live on GH Motive:\n${shareUrl}`,
+        message: `Track ${selected.make} ${selected.model} (${selected.registrationNumber}) live on +Motive:\n${shareUrl}`,
         url: shareUrl,
         title: 'Share live vehicle location',
       });

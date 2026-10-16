@@ -3,8 +3,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'About — GH Motive',
-  description: 'GH Motive is a vehicle operations, mobility, fleet, contract and payment platform built for Ghana\'s transport sector.',
+  title: 'About — +Motive',
+  description: '+Motive is a vehicle operations, mobility, fleet, contract and payment platform built for Ghana\'s transport sector.',
 };
 
 const values = [
@@ -67,7 +67,7 @@ export default function AboutPage() {
               Bringing order to Ghana&apos;s transport sector
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
-              GH Motive — the company behind +Motive — is a vehicle operations, mobility, fleet, contract and payment platform
+              +Motive — the company behind +Motive — is a vehicle operations, mobility, fleet, contract and payment platform
               built specifically for Ghana. It replaces informal arrangements, verbal agreements
               and missing payment records with a transparent, auditable digital system.
             </p>
@@ -79,7 +79,7 @@ export default function AboutPage() {
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-12 max-w-2xl text-center">
               <p className="section-label">Mission</p>
-              <h2 className="section-title mt-2">Why GH Motive exists</h2>
+              <h2 className="section-title mt-2">Why +Motive exists</h2>
               <p className="section-subtitle mt-4">
                 Ghana&apos;s transport sector runs largely on informal arrangements. Drivers
                 operate under verbal agreements. Owners have no reliable way to track payments.
@@ -87,7 +87,7 @@ export default function AboutPage() {
                 without formal processes.
               </p>
               <p className="mt-4 text-base leading-relaxed text-steel dark:text-neutral-400">
-                GH Motive replaces all of that with a platform that every participant in the
+                +Motive replaces all of that with a platform that every participant in the
                 transport chain — drivers, owners, companies, fleet managers and maintenance
                 providers — can rely on.
               </p>
@@ -99,7 +99,7 @@ export default function AboutPage() {
                 <div key={i} data-reveal style={{ '--reveal-delay': `${(i % 2) * 90}ms` }} className="rounded-card border border-line bg-white p-6 shadow-card dark:border-dark-border dark:bg-dark-card">
                   <p className="section-label text-[13px]">Problem</p>
                   <p className="mt-1 text-[15px] font-semibold text-ink dark:text-white">{item.problem}</p>
-                  <p className="section-label mt-4 text-[13px]">GH Motive Solution</p>
+                  <p className="section-label mt-4 text-[13px]">+Motive Solution</p>
                   <p className="mt-1 text-sm leading-relaxed text-steel dark:text-neutral-400">{item.solution}</p>
                 </div>
               ))}
@@ -131,7 +131,7 @@ export default function AboutPage() {
             <p className="section-label">Platform</p>
             <h2 className="section-title mt-2">One platform for the entire chain</h2>
             <p className="section-subtitle mx-auto mt-4 max-w-2xl">
-              GH Motive serves every participant in Ghana&apos;s commercial transport sector
+              +Motive serves every participant in Ghana&apos;s commercial transport sector
               from a single, connected platform — web and mobile.
             </p>
             <div className="mt-10 grid grid-cols-2 gap-4 text-left md:grid-cols-3">
@@ -157,8 +157,8 @@ export default function AboutPage() {
         {/* CTA */}
         <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
           <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
-            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Join GH Motive</h2>
-            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Whether you drive, own vehicles or run a transport company — there is a place for you on GH Motive.</p>
+            <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Join +Motive</h2>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Whether you drive, own vehicles or run a transport company — there is a place for you on +Motive.</p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/register" className="btn-primary px-6 text-[15px]">
                 Create Account

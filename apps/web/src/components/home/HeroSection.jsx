@@ -35,7 +35,7 @@ export default function HeroSection() {
           </dl>
         </div>
 
-        <div className="anim-fade-up relative mx-auto w-full max-w-lg lg:max-w-none" style={{ '--anim-delay': '220ms' }} aria-label="Preview of the GH Motive dashboard">
+        <div className="anim-fade-up relative mx-auto w-full max-w-lg lg:max-w-none" style={{ '--anim-delay': '220ms' }} aria-label="Preview of the +Motive dashboard">
           <div className="anim-float rounded-[20px] border border-white/40 bg-white/90 p-4 shadow-lift sm:p-5 dark:border-dark-border dark:bg-dark-surface/95">
             <div className="rounded-card border border-line bg-white p-5 dark:border-dark-border dark:bg-dark-card">
               <div className="flex items-center justify-between gap-3">

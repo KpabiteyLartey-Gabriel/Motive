@@ -17,7 +17,7 @@ import {
  *
  * Hubtel DirectPay debits the payer's MoMo wallet and credits the recipient's
  * MoMo wallet in a single API call. Money goes directly from driver to owner —
- * GH Motive is never the financial intermediary.
+ * +Motive is never the financial intermediary.
  *
  * API docs: https://developers.hubtel.com/docs/directpay
  *

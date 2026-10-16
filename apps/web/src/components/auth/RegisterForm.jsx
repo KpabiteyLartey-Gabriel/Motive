@@ -131,7 +131,7 @@ export default function RegisterForm() {
       </div>
 
       <p className="text-[13px] leading-relaxed text-steel dark:text-neutral-400">
-        By creating an account you agree to GH Motive&apos;s{' '}
+        By creating an account you agree to +Motive&apos;s{' '}
         <Link href="/terms" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">Terms of Service</Link> and{' '}
         <Link href="/privacy" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">Privacy Policy</Link>.
       </p>

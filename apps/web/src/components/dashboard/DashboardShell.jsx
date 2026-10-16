@@ -68,7 +68,7 @@ export default function DashboardShell({ user, loading, logout, navItems, title,
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center border-b border-line px-4 dark:border-dark-border">
-        <Link href="/" aria-label="GH Motive home"><BrandMark /></Link>
+        <Link href="/" aria-label="+Motive home"><BrandMark /></Link>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-4"><NavList navItems={navItems} pathname={pathname} onNavigate={() => setOpen(false)} /></div>
       <div className="border-t border-line p-3 dark:border-dark-border">

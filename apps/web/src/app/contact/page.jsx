@@ -3,8 +3,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'Contact — GH Motive',
-  description: 'Talk to the GH Motive team — drivers, vehicle owners, transport companies, fleet managers, maintenance providers and legal professionals.',
+  title: 'Contact — +Motive',
+  description: 'Talk to the +Motive team — drivers, vehicle owners, transport companies, fleet managers, maintenance providers and legal professionals.',
 };
 
 const routes = [

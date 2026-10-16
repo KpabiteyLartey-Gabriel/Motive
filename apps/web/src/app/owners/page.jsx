@@ -3,7 +3,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'For Owners — GH Motive',
+  title: 'For Owners — +Motive',
   description: 'Manage your vehicles, create contracts, monitor payments and track driver performance — all in one place.',
 };
 
@@ -66,7 +66,7 @@ export default function ForOwnersPage() {
               Manage your vehicles with confidence
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
-              GH Motive gives vehicle owners the tools to create professional contracts,
+              +Motive gives vehicle owners the tools to create professional contracts,
               enforce payment schedules and track every GHS that flows through your fleet.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">

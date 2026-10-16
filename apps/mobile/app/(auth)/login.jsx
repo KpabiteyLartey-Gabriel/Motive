@@ -48,7 +48,7 @@ export default function LoginScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>GH</Text></View>
+          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>+</Text></View>
           <Text style={[s.title, { color: colors.textPrimary }]}>Welcome back</Text>
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>Sign in to see your contracts, payments and vehicles.</Text>
 
@@ -91,7 +91,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={s.footer}>
-            <Text style={{ color: colors.textSecondary, fontSize: 14.5 }}>New to GH Motive? </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 14.5 }}>New to +Motive? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')} hitSlop={8}>
               <Text style={{ color: colors.brand, fontWeight: '700', fontSize: 14.5 }}>Create free account</Text>
             </TouchableOpacity>

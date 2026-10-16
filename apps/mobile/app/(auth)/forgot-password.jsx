@@ -33,7 +33,7 @@ export default function ForgotPasswordScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>GH</Text></View>
+          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>+</Text></View>
           <Text style={[s.title, { color: colors.textPrimary }]}>Forgot password?</Text>
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>Enter the email or phone number on your account. We will send a reset link by email and SMS — it expires in 60 minutes.</Text>
 

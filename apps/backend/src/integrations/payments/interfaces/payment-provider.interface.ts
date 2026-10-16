@@ -1,5 +1,5 @@
 /**
- * GH Motive — PaymentProvider interface
+ * +Motive — PaymentProvider interface
  *
  * Every payment provider (Hubtel, MTN, Mock) must implement this contract.
  * Business logic in PaymentsService only depends on this interface — never on

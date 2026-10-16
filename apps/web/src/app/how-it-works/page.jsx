@@ -5,8 +5,8 @@ import PitchStory from '@/components/pitch/PitchStory';
 import PitchInfographic from '@/components/pitch/PitchInfographic';
 
 export const metadata = {
-  title: 'How It Works — GH Motive',
-  description: 'Learn how GH Motive connects drivers, vehicle owners and transport companies through transparent contracts and secure payments.',
+  title: 'How It Works — +Motive',
+  description: 'Learn how +Motive connects drivers, vehicle owners and transport companies through transparent contracts and secure payments.',
 };
 
 const steps = [
@@ -68,7 +68,7 @@ export default function HowItWorksPage() {
           <div className="anim-fade-up mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
             <p className="section-label">Process</p>
             <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl dark:text-white">
-              How GH Motive Works
+              How +Motive Works
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
               A transparent, auditable process from account registration through contract creation,
@@ -122,7 +122,7 @@ export default function HowItWorksPage() {
         <section className="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-24 dark:bg-dark-bg">
           <div data-reveal className="mx-auto max-w-page rounded-[24px] bg-ink px-6 py-12 text-center shadow-lift sm:px-10 lg:py-16 dark:bg-dark-surface">
             <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">Ready to get started?</h2>
-            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Join GH Motive and manage your vehicle operations with full transparency.</p>
+            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-brand-100/75">Join +Motive and manage your vehicle operations with full transparency.</p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/register" className="btn-primary px-6 text-[15px]">
                 Create Account

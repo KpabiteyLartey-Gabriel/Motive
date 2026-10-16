@@ -70,7 +70,7 @@ async function bootstrap() {
   // Swagger (only in non-production)
   if (nodeEnv !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('GH Motive API')
+      .setTitle('+Motive API')
       .setDescription('Vehicle Operations, Mobility, Contract, Payment and Fleet Management Platform')
       .setVersion('1.0')
       .addBearerAuth(
@@ -89,7 +89,7 @@ async function bootstrap() {
 
   await app.listen(port);
 
-  console.log(`🚀 GH Motive Backend running on http://localhost:${port}`);
+  console.log(`🚀 +Motive Backend running on http://localhost:${port}`);
   console.log(`🔗 API prefix: /${apiPrefix}`);
   console.log(`🌍 Environment: ${nodeEnv}`);
 }

@@ -19,7 +19,7 @@ import {
  *   - Disbursements API → credit owner's wallet (transfer to payee)
  *
  * Money flow:
- *   Driver's MTN wallet → MTN Collections → GH Motive float → MTN Disbursements → Owner's MTN wallet
+ *   Driver's MTN wallet → MTN Collections → +Motive float → MTN Disbursements → Owner's MTN wallet
  *
  * Note: Telecel Cash and AirtelTigo wallets are NOT directly supported via this provider.
  * For multi-network support, use the HubtelDirectPayProvider.

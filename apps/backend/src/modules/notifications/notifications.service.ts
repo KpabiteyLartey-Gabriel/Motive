@@ -52,7 +52,7 @@ export class NotificationsService {
         // Enqueue async push delivery via BullMQ
         await this.queueService.enqueuePush({
           userId: params.userId,
-          title:  params.subject || 'GH Motive',
+          title:  params.subject || '+Motive',
           body:   params.body,
           type:   params.type,
           data:   params.data,

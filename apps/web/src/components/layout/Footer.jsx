@@ -72,9 +72,9 @@ export default function Footer() {
           <div className="absolute inset-0 bg-gradient-to-l from-[#03130c]/55 via-transparent to-transparent" />
         </div>
         <div className="relative mx-auto flex min-h-[104px] max-w-page flex-col justify-center gap-2 px-4 py-6 text-[13px] text-brand-50/90 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>© {new Date().getFullYear()} GH Motive. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} +Motive. All rights reserved.</p>
           <p className="max-w-xl leading-relaxed">
-            Payment services are provided through licensed payment infrastructure. GH Motive does not provide legal advice.
+            Payment services are provided through licensed payment infrastructure. +Motive does not provide legal advice.
           </p>
         </div>
       </div>
