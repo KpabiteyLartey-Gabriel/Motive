@@ -37,8 +37,13 @@ export default function LoginScreen() {
       };
       router.replace(roleRoutes[user.primaryRole] || '/(driver)/dashboard');
     } catch (e) {
-      const message = e.response?.data?.message || 'Sign-in failed. Check your details and try again.';
-      setError(Array.isArray(message) ? message.join(' ') : message);
+      if (!e.response) {
+        // No answer at all — the backend could not be reached from this phone
+        setError('Cannot reach the +Motive server. Make sure the backend is running on the computer, and that this phone and the computer are on the same Wi-Fi, then try again.');
+      } else {
+        const message = e.response?.data?.message || 'Sign-in failed. Check your details and try again.';
+        setError(Array.isArray(message) ? message.join(' ') : message);
+      }
     } finally {
       setLoading(false);
     }

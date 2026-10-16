@@ -2,10 +2,22 @@ import axios from 'axios';
 import SecureStore from './storage';
 import Constants from 'expo-constants';
 
-const API_URL =
-  Constants.expoConfig?.extra?.apiUrl ||
-  process.env.EXPO_PUBLIC_API_URL ||
-  'http://localhost:3001/api/v1';
+function resolveApiUrl() {
+  const extra = Constants.expoConfig?.extra?.apiUrl;
+  if (extra) return extra;
+  // In development the phone loads this bundle from the dev computer over
+  // Wi-Fi — reach the backend on that same address. This keeps sign-in
+  // working when the computer's IP changes (new network, hotspot, DHCP),
+  // instead of failing on a stale hard-coded IP.
+  if (__DEV__) {
+    const hostUri = Constants.expoConfig?.hostUri || '';
+    const host = hostUri.split(':')[0];
+    if (host) return `http://${host}:3001/api/v1`;
+  }
+  return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+}
+
+const API_URL = resolveApiUrl();
 
 const apiClient = axios.create({
   baseURL: API_URL,
