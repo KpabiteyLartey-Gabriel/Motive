@@ -7,7 +7,7 @@ import { PaymentStatus, UserRole } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { PaymentProviderFactory } from '../../integrations/payments/payment-provider.factory';
-import { PaymentProviderName } from '../../integrations/payments/interfaces/payment-provider.interface';
+import { type PaymentProviderName } from '../../integrations/payments/interfaces/payment-provider.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';

@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationChannel, NotificationStatus } from '@prisma/client';
-import { ISmsProvider } from '../../integrations/sms/interfaces/sms-provider.interface';
+import { type ISmsProvider } from '../../integrations/sms/interfaces/sms-provider.interface';
 import { SMS_PROVIDER } from '../../integrations/sms/sms-integration.module';
 import { NotificationQueueService } from '../../queue/notification-queue.service';
 import { MessagingService } from '../messaging/messaging.service';

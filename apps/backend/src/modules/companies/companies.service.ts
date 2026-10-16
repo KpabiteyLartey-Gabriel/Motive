@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CompanyType, UserRole } from '@prisma/client';
 import { COMPANY_MEMBER_ROLES } from './dto/company-members.dto';
 import { SMS_PROVIDER } from '../../integrations/sms/sms-integration.module';
-import { ISmsProvider } from '../../integrations/sms/interfaces/sms-provider.interface';
+import { type ISmsProvider } from '../../integrations/sms/interfaces/sms-provider.interface';
 
 const COMPANY_FAMILY: UserRole[] = [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MEMBER, UserRole.FLEET_MANAGER];
 const MEMBER_INCLUDE = {
