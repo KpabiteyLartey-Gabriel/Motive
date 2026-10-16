@@ -1,4 +1,4 @@
-# GH Motive
+<img width="1718" height="915" alt="GH Motive Mobility Login Dashboard" src="https://github.com/user-attachments/assets/223da4bd-3c6c-4934-8fe0-e1317fa8da3d" /># GH Motive
 
 > Vehicle Operations, Mobility, Contract, Payment and Fleet Management Platform for Ghana
 
