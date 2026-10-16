@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import SecureStore from './storage';
 import Constants from 'expo-constants';
 
 const API_URL =

@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store';
+import SecureStore from './storage';
 import { notificationsApi } from './api';
 
 Notifications.setNotificationHandler({

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as SecureStore from 'expo-secure-store';
+import SecureStore from '../../lib/storage';
 import { useTheme } from '../../lib/theme';
 import { useAuth, fmtDate } from '../../lib/useAuth';
 import { ownersApi, usersApi, resolveVehiclePhoto } from '../../lib/api';

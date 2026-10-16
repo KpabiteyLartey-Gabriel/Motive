@@ -1,7 +1,19 @@
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, RefreshControl, ScrollView, Platform } from 'react-native';
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Circle, PROVIDER_DEFAULT } from 'react-native-maps';
+// react-native-maps has no web implementation — load it only on native so
+// the web runtime does not crash at import time.
+let MapView = null;
+let Marker = null;
+let Circle = null;
+let PROVIDER_DEFAULT = undefined;
+if (Platform.OS !== 'web') {
+  const maps = require('react-native-maps');
+  MapView = maps.default;
+  Marker = maps.Marker;
+  Circle = maps.Circle;
+  PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
+}
 import { useTheme, palette } from '../../lib/theme';
 import { useAuth } from '../../lib/useAuth';
 import { vehiclesApi, trackingApi } from '../../lib/api';
@@ -108,6 +120,7 @@ export default function DriverTracking() {
       >
         {/* Map */}
         <View style={styles.mapContainer}>
+          {MapView ? (
           <MapView
             style={styles.map}
             provider={PROVIDER_DEFAULT}
@@ -135,6 +148,13 @@ export default function DriverTracking() {
               </>
             )}
           </MapView>
+          ) : (
+            <View style={[styles.map, { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card }]}>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, paddingHorizontal: 24, textAlign: 'center' }}>
+                Live map is available in the +Motive mobile app. Your vehicle position details are shown below.
+              </Text>
+            </View>
+          )}
 
           {!position && (
             <View style={styles.noSignalOverlay}>

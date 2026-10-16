@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+import SecureStore from './storage';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
