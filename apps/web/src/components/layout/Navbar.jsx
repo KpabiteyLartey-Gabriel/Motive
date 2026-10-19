@@ -16,9 +16,8 @@ const navLinks = [
 export function BrandMark({ dark = false }) {
   return (
     <span className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-brand-600 text-white shadow-sm">
-        <span className="text-[11px] font-bold tracking-tight">+</span>
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/motive-logo.png" alt="+Motive logo" width={36} height={36} className="h-9 w-9 rounded-[10px] shadow-sm" />
       <span className={`text-[15px] font-semibold tracking-tight ${dark ? 'text-white' : 'text-ink dark:text-white'}`}>
         +Motive
       </span>

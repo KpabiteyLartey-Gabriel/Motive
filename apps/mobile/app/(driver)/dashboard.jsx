@@ -8,6 +8,7 @@ import { useTheme } from '../../lib/theme';
 import { useAuth, fmtGHS, fmtDate, greeting } from '../../lib/useAuth';
 import { contractsApi, paymentsApi, notificationsApi, driversApi } from '../../lib/api';
 import { Badge, EmptyState, ProgressBar, statusTone } from '../../components/ui';
+import BrandLogo from '../../components/BrandLogo';
 
 const HERO_IMAGE = require('../../assets/hero-vehicles.jpg');
 
@@ -92,9 +93,7 @@ export default function DriverDashboard() {
               </TouchableOpacity>
             </View>
             <View style={s.headerRow}>
-              <View style={s.logoMark}>
-                <Text style={s.logoText}>+</Text>
-              </View>
+              <BrandLogo size={46} />
               <View style={{ flex: 1 }}>
                 <Text style={s.greeting}>{greeting()}</Text>
                 <Text style={s.name} numberOfLines={1}>{firstName}</Text>

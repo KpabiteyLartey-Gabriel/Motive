@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { authApi } from '../../lib/api';
 import { useTheme } from '../../lib/theme';
 import { Field, PrimaryButton } from '../../components/ui';
+import BrandLogo from '../../components/BrandLogo';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function LoginScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>+</Text></View>
+          <BrandLogo size={52} />
           <Text style={[s.title, { color: colors.textPrimary }]}>Welcome back</Text>
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>Sign in to see your contracts, payments and vehicles.</Text>
 

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../lib/theme';
 import { PrimaryButton } from '../components/ui';
+import BrandLogo from '../components/BrandLogo';
 
 const HERO_IMAGE = require('../assets/hero-vehicles.jpg');
 const SLIDE_MS = 3200;
@@ -57,9 +58,7 @@ export default function WelcomeScreen() {
         <View style={s.imageShade} />
         <SafeAreaView style={s.brandSafe} edges={['top']}>
           <View style={s.brandRow}>
-            <View style={[s.logo, { backgroundColor: colors.brand }]}>
-              <Text style={s.logoText}>+</Text>
-            </View>
+            <BrandLogo size={52} />
             <View>
               <Text style={s.appName}>+Motive</Text>
               <Text style={s.tagline}>Positive Motive · Ghana</Text>

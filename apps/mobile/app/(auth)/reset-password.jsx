@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { authApi } from '../../lib/api';
 import { useTheme } from '../../lib/theme';
 import { Field, PrimaryButton } from '../../components/ui';
+import BrandLogo from '../../components/BrandLogo';
 
 // The reset email/SMS link opens the web reset page. In the app, users paste
 // the token from that link here (the long code after ?token= in the link).
@@ -45,7 +46,7 @@ export default function ResetPasswordScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
         <View style={{ flex: 1, padding: 20, paddingTop: 60 }}>
-          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>+</Text></View>
+          <BrandLogo size={52} />
           <Text style={[s.title, { color: colors.textPrimary }]}>Password changed</Text>
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>Your password has been reset and all other sessions were signed out. We also sent a confirmation by email and SMS.</Text>
           <PrimaryButton title="Sign in with new password" onPress={() => router.replace('/(auth)/login')} />
@@ -58,7 +59,7 @@ export default function ResetPasswordScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={[s.logo, { backgroundColor: colors.brand }]}><Text style={s.logoText}>+</Text></View>
+          <BrandLogo size={52} />
           <Text style={[s.title, { color: colors.textPrimary }]}>Set new password</Text>
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>Paste the reset link (or just the token) from your email/SMS, then choose a new password.</Text>
 
