@@ -5,16 +5,16 @@ import { TabIcon } from '../../components/TabIcon';
 import { registerPushToken } from '../../lib/push';
 
 export default function OwnerLayout() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   useEffect(() => { registerPushToken(); }, []);
 
   const screenOpts = {
-    tabBarActiveTintColor: colors.tabActive,
+    tabBarActiveTintColor: isDark ? colors.tabActive : '#B7791F',
     tabBarInactiveTintColor: colors.tabInactive,
     tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border, borderTopWidth: 1, height: 70, paddingTop: 6, paddingBottom: 10, paddingHorizontal: 6 },
     tabBarItemStyle: { borderRadius: 14, marginHorizontal: 2 },
-    tabBarActiveBackgroundColor: colors.brandSoft,
+    tabBarActiveBackgroundColor: 'transparent',
     tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 2 },
     headerStyle:        { backgroundColor: colors.surface },
     headerTintColor: colors.brand,
@@ -80,6 +80,7 @@ export default function OwnerLayout() {
     </Tabs>
   );
 }
+
 
 
 

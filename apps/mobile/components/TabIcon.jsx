@@ -1,6 +1,7 @@
 /** Tab icons — focused = filled emerald icon inside a soft pill. */
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../lib/theme';
 
 const ICONS = {
   home: { active: 'home', inactive: 'home-outline' },
@@ -24,17 +25,17 @@ const ICONS = {
 };
 
 export function TabIcon({ name, color, size = 23, focused = false }) {
+  const { colors } = useTheme();
   const entry = ICONS[name] || { active: 'square', inactive: 'square-outline' };
   return (
-    <View style={[styles.wrap, focused && styles.wrapFocused]}>
+    <View style={[styles.wrap, focused && { backgroundColor: colors.tileBg }]}>
       <Ionicons name={focused ? entry.active : entry.inactive} size={size} color={color} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: 52, height: 30, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  wrapFocused: { backgroundColor: '#D1FAE5' },
+  wrap: { width: 50, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
 });
 
 export default TabIcon;

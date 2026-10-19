@@ -11,16 +11,13 @@ import { Badge, EmptyState, statusTone } from '../../components/ui';
 
 const HERO_IMAGE = require('../../assets/hero-vehicles.jpg');
 
-function QuickLink({ icon, label, sub, onPress, colors }) {
+function QuickLink({ icon, label, onPress, colors }) {
   return (
-    <TouchableOpacity style={[s.link, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={onPress} activeOpacity={0.75} accessibilityRole="button">
-      <View style={[s.linkIcon, { backgroundColor: colors.brandSoft }]}>
-        <Ionicons name={icon} size={21} color={colors.brandText} />
+    <TouchableOpacity style={[s.link, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={onPress} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={label}>
+      <View style={[s.linkIcon, { backgroundColor: colors.tileBg }]}>
+        <Ionicons name={icon} size={21} color={colors.tileIcon} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[s.linkLabel, { color: colors.textPrimary }]}>{label}</Text>
-        <Text style={[s.linkSub, { color: colors.textMuted }]}>{sub}</Text>
-      </View>
+      <Text style={[s.linkLabel, { color: colors.textPrimary, flex: 1 }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -75,16 +72,9 @@ export default function OwnerDashboard() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.brand} />}>
 
         {/* Green greeting header */}
-        <LinearGradient colors={['#0E9F6E', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.header}>
+        <LinearGradient colors={['#17B978', '#067647']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.header}>
           <SafeAreaView edges={['top']}>
-            <View style={s.headerRow}>
-              <View style={s.logoMark}>
-                <Text style={s.logoText}>+</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.greeting}>{greeting()}</Text>
-                <Text style={s.name} numberOfLines={1}>{firstName}</Text>
-              </View>
+            <View style={s.headerBtns}>
               <TouchableOpacity style={s.headerBtn} onPress={() => router.push('/(owner)/notifications')} accessibilityRole="button" accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}>
                 <Ionicons name="notifications-outline" size={21} color="#fff" />
                 {unread > 0 && (
@@ -97,6 +87,15 @@ export default function OwnerDashboard() {
                 <Ionicons name="help-circle-outline" size={22} color="#fff" />
               </TouchableOpacity>
             </View>
+            <View style={s.headerRow}>
+              <View style={s.logoMark}>
+                <Text style={s.logoText}>+</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.greeting}>{greeting()}</Text>
+                <Text style={s.name} numberOfLines={1}>{firstName}</Text>
+              </View>
+            </View>
           </SafeAreaView>
         </LinearGradient>
 
@@ -105,7 +104,7 @@ export default function OwnerDashboard() {
           <View style={s.summaryTop}>
             <View style={{ flex: 1 }}>
               <Text style={[s.summaryTitle, { color: colors.textPrimary }]}>Fleet account</Text>
-              <Text style={[s.summarySub, { color: colors.textMuted }]}>
+              <Text style={[s.summarySub, { color: colors.accentText }]}>
                 {stats.vehicles === 0 ? 'Add your first vehicle to get started' : 'Your vehicles, contracts and earnings'}
               </Text>
             </View>
@@ -183,19 +182,20 @@ export default function OwnerDashboard() {
 
 const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  header: { paddingHorizontal: 20, paddingBottom: 58, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 14 },
-  logoMark: { width: 44, height: 44, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: '#fff', fontWeight: '800', fontSize: 20 },
-  greeting: { color: 'rgba(255,255,255,0.82)', fontSize: 13.5 },
-  name: { color: '#fff', fontSize: 23, fontWeight: '800', letterSpacing: -0.3, marginTop: 1 },
+  header: { paddingHorizontal: 20, paddingBottom: 62 },
+  headerBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingTop: 10 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 14 },
+  logoMark: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: '#fff', fontWeight: '800', fontSize: 22 },
+  greeting: { color: 'rgba(255,255,255,0.85)', fontSize: 14 },
+  name: { color: '#fff', fontSize: 24, fontWeight: '800', letterSpacing: -0.3, marginTop: 1 },
   headerBtn: { width: 42, height: 42, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.45)', alignItems: 'center', justifyContent: 'center' },
   bellBadge: { position: 'absolute', top: -6, right: -6, minWidth: 19, height: 19, borderRadius: 999, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   bellBadgeText: { color: '#fff', fontSize: 10.5, fontWeight: '800' },
-  summary: { marginHorizontal: 20, marginTop: -38, borderRadius: 20, borderWidth: 1, padding: 18, shadowColor: '#0B3D2A', shadowOpacity: 0.10, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  summary: { marginHorizontal: 20, marginTop: -40, borderRadius: 18, borderWidth: 1, padding: 22, shadowColor: '#0B3D2A', shadowOpacity: 0.10, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
   summaryTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  summaryTitle: { fontSize: 21, fontWeight: '800', letterSpacing: -0.3 },
-  summarySub: { fontSize: 13.5, marginTop: 4, lineHeight: 19 },
+  summaryTitle: { fontSize: 27, fontWeight: '800', letterSpacing: -0.4 },
+  summarySub: { fontSize: 13.5, marginTop: 5, lineHeight: 19, fontWeight: '600' },
   addBtn: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   summaryStats: { flexDirection: 'row', borderTopWidth: 1, marginTop: 16, paddingTop: 14 },
   summaryStat: { flex: 1, alignItems: 'center' },
@@ -203,9 +203,9 @@ const s = StyleSheet.create({
   summaryLabel: { fontSize: 11.5, marginTop: 3 },
   section: { fontSize: 16.5, fontWeight: '800', letterSpacing: -0.2, marginHorizontal: 20, marginTop: 24, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 20, justifyContent: 'space-between' },
-  link: { width: '48%', flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, padding: 13 },
-  linkIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  linkLabel: { fontSize: 14, fontWeight: '700' },
+  link: { width: '48%', flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderRadius: 16, padding: 13, minHeight: 72, shadowColor: '#0B3D2A', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  linkIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  linkLabel: { fontSize: 15, fontWeight: '700', lineHeight: 19 },
   linkSub: { fontSize: 11.5, marginTop: 1 },
   banner: { marginHorizontal: 20, marginTop: 22, height: 158, borderRadius: 18, overflow: 'hidden' },
   bannerImg: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
