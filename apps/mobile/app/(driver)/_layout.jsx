@@ -1,14 +1,20 @@
 ﻿import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
 import { useTheme } from '../../lib/theme';
 import { TabIcon } from '../../components/TabIcon';
+import { registerPushToken } from '../../lib/push';
 
 export default function DriverLayout() {
   const { colors } = useTheme();
 
+  useEffect(() => { registerPushToken(); }, []);
+
   const screenOpts = {
     tabBarActiveTintColor: colors.tabActive,
     tabBarInactiveTintColor: colors.tabInactive,
-    tabBarStyle: { backgroundColor: colors.headerBg, borderTopColor: colors.border, borderTopWidth: 1, height: 68, paddingTop: 6, paddingBottom: 8 },
+    tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border, borderTopWidth: 1, height: 70, paddingTop: 6, paddingBottom: 10, paddingHorizontal: 6 },
+    tabBarItemStyle: { borderRadius: 14, marginHorizontal: 2 },
+    tabBarActiveBackgroundColor: colors.brandSoft,
     tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 2 },
     headerStyle:        { backgroundColor: colors.surface },
     headerTintColor: colors.brand,
@@ -21,6 +27,7 @@ export default function DriverLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
+          headerShown: false,
           title: 'Home',
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="home" color={color} size={size} focused={focused} />,

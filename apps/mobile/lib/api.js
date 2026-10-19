@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Platform } from 'react-native';
 import SecureStore from './storage';
 import Constants from 'expo-constants';
 
@@ -10,6 +11,11 @@ function resolveApiUrl() {
   // working when the computer's IP changes (new network, hotspot, DHCP),
   // instead of failing on a stale hard-coded IP.
   if (__DEV__) {
+    // On web, reach the backend on the same host the page was loaded from —
+    // never a stale IP saved in .env.
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
+      return `http://${window.location.hostname}:3001/api/v1`;
+    }
     const hostUri = Constants.expoConfig?.hostUri || '';
     const host = hostUri.split(':')[0];
     if (host) return `http://${host}:3001/api/v1`;
