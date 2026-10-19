@@ -143,6 +143,7 @@ export const vehiclesApi = {
     return apiClient.post(`/vehicles/${id}/photos`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   setPhotos: (id, imageUrls) => apiClient.patch(`/vehicles/${id}/photos`, { imageUrls }),
+  updateStatus: (id, status) => apiClient.patch(`/vehicles/${id}/status`, { status }),
 };
 
 // ── Contracts ────────────────────────────────────────────────

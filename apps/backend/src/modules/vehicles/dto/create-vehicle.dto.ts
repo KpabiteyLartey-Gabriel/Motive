@@ -1,8 +1,8 @@
 import {
-  IsString, IsInt, IsEnum, IsOptional, IsNumber, Min, Max, IsArray, ArrayMaxSize
+  IsString, IsInt, IsEnum, IsOptional, IsNumber, Min, Max, IsArray, ArrayMaxSize, IsBoolean
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { VehicleType, FuelType, TransmissionType } from '@prisma/client';
+import { VehicleType, FuelType, TransmissionType, OperatingModel, VehicleStatus } from '@prisma/client';
 
 export class CreateVehicleDto {
   @ApiProperty({ example: 'GR-1234-24' })
@@ -45,6 +45,21 @@ export class CreateVehicleDto {
   @IsEnum(TransmissionType)
   transmission: TransmissionType;
 
+  @ApiPropertyOptional({ enum: OperatingModel, description: 'How the vehicle will earn: Work & Pay, Rental, or Driving On' })
+  @IsEnum(OperatingModel)
+  @IsOptional()
+  operatingModel?: OperatingModel;
+
+  @ApiPropertyOptional({ description: 'Publish immediately so the vehicle is AVAILABLE for contracts. Default false (saved as DRAFT).' })
+  @IsBoolean()
+  @IsOptional()
+  publish?: boolean;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @IsOptional()
+  estimatedValue?: number;
+
   @ApiPropertyOptional()
   @IsInt()
   @IsOptional()
@@ -66,4 +81,10 @@ export class CreateVehicleDto {
   @IsString({ each: true })
   @IsOptional()
   imageUrls?: string[];
+}
+
+export class UpdateVehicleStatusDto {
+  @ApiProperty({ enum: VehicleStatus, description: 'Owners may publish (AVAILABLE) or unpublish (DRAFT); other transitions are managed by contracts/admin.' })
+  @IsEnum(VehicleStatus)
+  status: VehicleStatus;
 }

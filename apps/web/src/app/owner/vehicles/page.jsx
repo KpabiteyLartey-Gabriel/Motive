@@ -17,19 +17,92 @@ const STATUS_COLORS = {
   INACTIVE: 'text-neutral-500',
 };
 
+const VEHICLE_TYPES = ['SEDAN', 'SUV', 'PICKUP', 'MINIBUS', 'BUS', 'TRUCK', 'MOTORCYCLE', 'TRICYCLE', 'OTHER'];
+const FUEL_TYPES = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'LPG'];
+const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC'];
+const OPERATING_MODELS = [
+  { value: 'WORK_AND_PAY', label: 'Work & Pay' },
+  { value: 'DRIVING_ON', label: 'Driving On (DriveOn)' },
+  { value: 'RENTAL', label: 'Rental' },
+];
+const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: new Date().getFullYear(), color: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', mileage: '', estimatedValue: '', region: '' };
+
 export default function OwnerVehiclesPage() {
   const { user, loading, logout } = useAuth({ requiredRoles: ['OWNER'] });
   const [vehicles, setVehicles]   = useState([]);
   const [fetching, setFetching]   = useState(true);
   const [selected, setSelected]   = useState(null);
+  const [showForm, setShowForm]     = useState(false);
+  const [form, setForm]             = useState(EMPTY_FORM);
+  const [saving, setSaving]         = useState(false);
+  const [formError, setFormError]   = useState('');
+  const [statusBusy, setStatusBusy] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
+  const loadVehicles = () => {
     vehiclesApi.list({ limit: 50 })
       .then((r) => setVehicles(r.data?.data?.vehicles || []))
       .catch(() => {})
       .finally(() => setFetching(false));
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    loadVehicles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const submitVehicle = async (publish) => {
+    setFormError('');
+    if (!form.registrationNumber.trim() || !form.make.trim() || !form.model.trim() || !form.year) {
+      setFormError('Registration number, make, model and year are required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        registrationNumber: form.registrationNumber.trim(),
+        make: form.make.trim(),
+        model: form.model.trim(),
+        year: Number(form.year),
+        color: form.color.trim() || undefined,
+        type: form.type,
+        fuelType: form.fuelType,
+        transmission: form.transmission,
+        operatingModel: form.operatingModel,
+        mileage: form.mileage ? Number(form.mileage) : undefined,
+        estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
+        region: form.region.trim() || undefined,
+        publish,
+      };
+      const res = await vehiclesApi.create(payload);
+      const created = res.data?.data;
+      setVehicles((prev) => [created, ...prev]);
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+      if (created?.id) setSelected(created);
+    } catch (e) {
+      const m = e.response?.data?.message || 'Could not save the vehicle. Please try again.';
+      setFormError(Array.isArray(m) ? m.join(' ') : m);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changeStatus = async (vehicle, status) => {
+    setStatusBusy(true);
+    try {
+      const res = await vehiclesApi.updateStatus(vehicle.id, status);
+      const updated = res.data?.data || { ...vehicle, status };
+      setVehicles((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
+      setSelected((s) => (s?.id === updated.id ? { ...s, ...updated } : s));
+    } catch (e) {
+      alert(e.response?.data?.message || 'Could not update the vehicle status.');
+    } finally {
+      setStatusBusy(false);
+    }
+  };
 
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
@@ -37,10 +110,50 @@ export default function OwnerVehiclesPage() {
     <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="My Vehicles">
       <SectionHeader title="Registered Vehicles" description="Vehicles registered under your account" />
 
+      <div className="flex justify-end mb-4">
+        <button onClick={() => setShowForm((v) => !v)} className="btn-primary text-sm">
+          {showForm ? 'Close form' : '+ Add vehicle'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-5 mb-5">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">Add a vehicle</h3>
+          <p className="text-xs text-neutral-400 mb-4">Publish it now to make it Available for contracts, or save it as a draft and publish later. You can add photos after saving.</p>
+          {formError && <div className="bg-danger/10 border border-danger/20 text-danger text-xs px-4 py-3 rounded-lg mb-4">{formError}</div>}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <label className="text-xs text-neutral-400">Registration number *<input className="input mt-1" placeholder="GR-1234-26" value={form.registrationNumber} onChange={(e) => set('registrationNumber', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Make *<input className="input mt-1" placeholder="Toyota" value={form.make} onChange={(e) => set('make', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Model *<input className="input mt-1" placeholder="Corolla" value={form.model} onChange={(e) => set('model', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Year *<input className="input mt-1" type="number" min="1980" max="2100" value={form.year} onChange={(e) => set('year', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Colour<input className="input mt-1" placeholder="White" value={form.color} onChange={(e) => set('color', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Region<input className="input mt-1" placeholder="Greater Accra" value={form.region} onChange={(e) => set('region', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Vehicle type
+              <select className="input mt-1" value={form.type} onChange={(e) => set('type', e.target.value)}>{VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}</select>
+            </label>
+            <label className="text-xs text-neutral-400">Fuel
+              <select className="input mt-1" value={form.fuelType} onChange={(e) => set('fuelType', e.target.value)}>{FUEL_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}</select>
+            </label>
+            <label className="text-xs text-neutral-400">Transmission
+              <select className="input mt-1" value={form.transmission} onChange={(e) => set('transmission', e.target.value)}>{TRANSMISSIONS.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}</select>
+            </label>
+            <label className="text-xs text-neutral-400">How it will earn
+              <select className="input mt-1" value={form.operatingModel} onChange={(e) => set('operatingModel', e.target.value)}>{OPERATING_MODELS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select>
+            </label>
+            <label className="text-xs text-neutral-400">Mileage (km)<input className="input mt-1" type="number" min="0" placeholder="85000" value={form.mileage} onChange={(e) => set('mileage', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Estimated value (GHS)<input className="input mt-1" type="number" min="0" placeholder="95000" value={form.estimatedValue} onChange={(e) => set('estimatedValue', e.target.value)} /></label>
+          </div>
+          <div className="flex gap-3 mt-5 flex-wrap">
+            <button onClick={() => submitVehicle(true)} disabled={saving} className="btn-primary text-sm disabled:opacity-40">{saving ? 'Saving…' : 'Publish vehicle'}</button>
+            <button onClick={() => submitVehicle(false)} disabled={saving} className="btn-graphite text-sm disabled:opacity-40">Save as draft</button>
+          </div>
+        </div>
+      )}
+
       {fetching ? (
         <div className="text-neutral-500 text-sm py-8 text-center">Loading vehicles…</div>
       ) : vehicles.length === 0 ? (
-        <EmptyState icon="🚗" title="No vehicles yet" description="You haven't registered any vehicles. Contact the administrator to register your first vehicle." />
+        <EmptyState icon="🚗" title="No vehicles yet" description="Use the Add vehicle button above to register and publish your first vehicle." />
       ) : (
         <div className="space-y-3">
           {vehicles.map((v) => (
@@ -59,6 +172,18 @@ export default function OwnerVehiclesPage() {
 
               {selected?.id === v.id && (
                 <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-dark-border grid grid-cols-2 gap-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                  <div className="col-span-2 flex items-center gap-3 flex-wrap">
+                    {v.status === 'DRAFT' && (
+                      <button onClick={() => changeStatus(v, 'AVAILABLE')} disabled={statusBusy} className="btn-primary text-xs disabled:opacity-40">Publish vehicle</button>
+                    )}
+                    {v.status === 'AVAILABLE' && (
+                      <button onClick={() => changeStatus(v, 'DRAFT')} disabled={statusBusy} className="btn-graphite text-xs disabled:opacity-40">Unpublish</button>
+                    )}
+                    {v.status !== 'DRAFT' && v.status !== 'AVAILABLE' && (
+                      <span className="text-neutral-400">Status is managed by its contract or maintenance.</span>
+                    )}
+                    <span className="text-neutral-500">{v.status === 'AVAILABLE' ? 'Published — available for contracts' : v.status === 'DRAFT' ? 'Draft — only you can see it' : v.status.replace(/_/g, ' ')}</span>
+                  </div>
                   <VehiclePhotos vehicle={v} editable onPhotosChange={(upd) => { setVehicles((prev) => prev.map((x) => (x.id === upd.id ? { ...x, ...upd } : x))); setSelected((s) => (s?.id === upd.id ? { ...s, ...upd } : s)); }} />
                   <div>
                     <p className="text-neutral-500">VIN / Chassis</p>

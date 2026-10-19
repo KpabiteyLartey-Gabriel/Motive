@@ -8,7 +8,7 @@ import { VehicleStatus } from '@prisma/client';
 import { join } from 'path';
 import { VehiclesService } from './vehicles.service';
 import { StorageService } from '../storage/storage.service';
-import { CreateVehicleDto } from './dto/create-vehicle.dto';
+import { CreateVehicleDto, UpdateVehicleStatusDto } from './dto/create-vehicle.dto';
 import { UpdateVehiclePhotosDto } from './dto/update-vehicle-photos.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -52,6 +52,13 @@ export class VehiclesController {
   @ApiOperation({ summary: 'Get vehicle by ID' })
   async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.vehiclesService.findById(id, user.id, user.primaryRole);
+  }
+
+  @Patch(':id/status')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Publish (AVAILABLE) or unpublish (DRAFT) a vehicle you own' })
+  async updateStatus(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateVehicleStatusDto) {
+    return this.vehiclesService.updateStatus(id, dto.status, user.id, user.primaryRole);
   }
 
   @Patch(':id/photos')

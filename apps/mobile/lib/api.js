@@ -117,6 +117,7 @@ export const vehiclesApi = {
   getById: (id) => apiClient.get(`/vehicles/${id}`),
   create:  (data) => apiClient.post('/vehicles', data),
   setPhotos: (id, imageUrls) => apiClient.patch(`/vehicles/${id}/photos`, { imageUrls }),
+  updateStatus: (id, status) => apiClient.patch(`/vehicles/${id}/status`, { status }),
 };
 
 // ── Contracts ────────────────────────────────────────────────

@@ -40,6 +40,54 @@ describe('VehiclesService.findAll pagination', () => {
   });
 });
 
+describe('VehiclesService publish / unpublish', () => {
+  const create = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'veh-9', ...data }));
+  const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'veh-1', ...data }));
+  const prisma: any = {
+    owner: { findUnique: jest.fn().mockResolvedValue({ id: 'owner-1', userId: 'user-1' }) },
+    companyMember: { findFirst: jest.fn().mockResolvedValue(null) },
+    vehicle: {
+      create,
+      findUnique: jest.fn().mockResolvedValue({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT' }),
+      update,
+    },
+  };
+  const svc = new VehiclesService(prisma);
+  const dto: any = { registrationNumber: 'GR-9000-26', make: 'Toyota', model: 'Corolla', year: 2021, type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC' };
+  beforeEach(() => jest.clearAllMocks());
+
+  it('creates a DRAFT by default and never leaks the publish flag to Prisma', async () => {
+    const res: any = await svc.create('user-1', { ...dto });
+    expect(res.status).toBe('DRAFT');
+    expect(create.mock.calls[0][0].data.publish).toBeUndefined();
+  });
+
+  it('creates AVAILABLE when publish is true', async () => {
+    const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'WORK_AND_PAY' });
+    expect(res.status).toBe('AVAILABLE');
+    expect(res.operatingModel).toBe('WORK_AND_PAY');
+  });
+
+  it('owner can publish a draft and unpublish an available vehicle', async () => {
+    const pub: any = await svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER');
+    expect(pub.status).toBe('AVAILABLE');
+    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'AVAILABLE' });
+    const unpub: any = await svc.updateStatus('veh-1', 'DRAFT' as any, 'user-1', 'OWNER');
+    expect(unpub.status).toBe('DRAFT');
+  });
+
+  it('owner cannot force lifecycle states or publish an assigned vehicle', async () => {
+    await expect(svc.updateStatus('veh-1', 'ASSIGNED' as any, 'user-1', 'OWNER')).rejects.toThrow(/only publish a draft/);
+    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'ASSIGNED' });
+    await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/only publish a draft/);
+  });
+
+  it('another owner is denied access entirely', async () => {
+    prisma.owner.findUnique.mockResolvedValueOnce({ id: 'owner-2', userId: 'user-2' });
+    await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-2', 'OWNER')).rejects.toThrow(/Access denied/);
+  });
+});
+
 describe('VehiclesService vehicle photos', () => {
   const vehicle: any = { id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, currentDriverId: null, imageUrls: ['https://cdn.example.com/front.jpg'] };
   const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...vehicle, ...data }));

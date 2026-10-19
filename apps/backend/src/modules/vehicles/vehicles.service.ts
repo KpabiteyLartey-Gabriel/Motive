@@ -40,14 +40,17 @@ export class VehiclesService {
     const ownerId = owner?.id || null;
     const managingCompanyId = companyMember?.companyId || null;
 
+    const { publish, ...vehicleData } = dto as any;
     const imageUrls = dto.imageUrls ? this.validatePhotoUrls(dto.imageUrls) : [];
     return this.prisma.vehicle.create({
       data: {
-        ...dto,
+        ...vehicleData,
         imageUrls,
         ownerId,
         managingCompanyId,
-        status: VehicleStatus.DRAFT,
+        // Publishing makes the vehicle AVAILABLE for contracts/drivers;
+        // otherwise it stays a private DRAFT only the owner can see.
+        status: publish ? VehicleStatus.AVAILABLE : VehicleStatus.DRAFT,
       },
     });
   }
@@ -145,6 +148,19 @@ export class VehiclesService {
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
     await this.assertVehicleAccess(vehicle, requestingUserId, requestingUserRole);
+
+    // Owners (and fleet roles) may only publish/unpublish their own vehicle:
+    // DRAFT -> AVAILABLE (publish) and AVAILABLE -> DRAFT (unpublish).
+    // Lifecycle states (ASSIGNED, ACTIVE, UNDER_MAINTENANCE, …) are driven
+    // by contracts and maintenance, never set directly here.
+    const isAdmin = requestingUserRole === UserRole.ADMIN || requestingUserRole === UserRole.SUPER_ADMIN;
+    if (!isAdmin) {
+      const publishable = vehicle.status === VehicleStatus.DRAFT || vehicle.status === VehicleStatus.AVAILABLE;
+      const targetOk = status === VehicleStatus.DRAFT || status === VehicleStatus.AVAILABLE;
+      if (!publishable || !targetOk) {
+        throw new ForbiddenException('You can only publish a draft vehicle or unpublish an available one. This vehicle is managed by its contract or maintenance state.');
+      }
+    }
 
     return this.prisma.vehicle.update({
       where: { id: vehicleId },
