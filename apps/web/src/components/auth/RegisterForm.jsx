@@ -59,6 +59,21 @@ export default function RegisterForm() {
       const roleRedirects = { DRIVER: '/driver/dashboard', OWNER: '/owner/dashboard', COMPANY_ADMIN: '/company/dashboard' };
       router.push(roleRedirects[user.primaryRole] || '/dashboard');
     } catch (err) {
+      // If the connection dropped after the account was saved, signing in
+      // with the same details succeeds — treat that as a completed signup
+      // instead of wrongly reporting failure.
+      if (!err.response && (submitData.email || submitData.phone)) {
+        try {
+          const loginRes = await authApi.login({ identifier: submitData.email || submitData.phone, password: submitData.password });
+          const { accessToken, refreshToken, user } = loginRes.data.data;
+          localStorage.setItem('gh_motive_access_token', accessToken);
+          localStorage.setItem('gh_motive_refresh_token', refreshToken);
+          localStorage.setItem('gh_motive_user', JSON.stringify(user));
+          const roleRedirects = { DRIVER: '/driver/dashboard', OWNER: '/owner/dashboard', COMPANY_ADMIN: '/company/dashboard' };
+          router.push(roleRedirects[user.primaryRole] || '/dashboard');
+          return;
+        } catch {}
+      }
       const message = err.response?.data?.message || 'Registration failed. Please try again.';
       setError(Array.isArray(message) ? message.join(' ') : message);
     } finally {

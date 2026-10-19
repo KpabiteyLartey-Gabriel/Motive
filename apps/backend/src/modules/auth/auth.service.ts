@@ -45,39 +45,29 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    // Check if email or phone already exists
-    if (dto.email) {
-      const existingEmail = await this.prisma.user.findUnique({
-        where: { email: dto.email },
-      });
-      if (existingEmail) {
-        throw new ConflictException('Email address is already registered');
-      }
-    }
-
-    if (dto.phone) {
-      const existingPhone = await this.prisma.user.findUnique({
-        where: { phone: dto.phone },
-      });
-      if (existingPhone) {
-        throw new ConflictException('Phone number is already registered');
-      }
-    }
-
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email or phone number is required');
     }
 
-    const saltRounds = this.configService.get<number>('app.bcryptSaltRounds', 12);
-    const passwordHash = await bcrypt.hash(dto.password, saltRounds);
-
-    // Find the role
-    const role = await this.prisma.role.findUnique({
-      where: { name: dto.role },
-    });
+    // Run the independent lookups together — sequential round-trips to the
+    // hosted database made signup take several seconds.
+    const [existingEmail, existingPhone, role] = await Promise.all([
+      dto.email ? this.prisma.user.findUnique({ where: { email: dto.email } }) : Promise.resolve(null),
+      dto.phone ? this.prisma.user.findUnique({ where: { phone: dto.phone } }) : Promise.resolve(null),
+      this.prisma.role.findUnique({ where: { name: dto.role } }),
+    ]);
+    if (existingEmail) {
+      throw new ConflictException('Email address is already registered');
+    }
+    if (existingPhone) {
+      throw new ConflictException('Phone number is already registered');
+    }
     if (!role) {
       throw new BadRequestException(`Invalid role: ${dto.role}`);
     }
+
+    const saltRounds = this.configService.get<number>('app.bcryptSaltRounds', 12);
+    const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
     const user = await this.prisma.user.create({
       data: {
@@ -112,8 +102,10 @@ export class AuthService {
 
     this.logger.log(`New user registered: ${user.id} (${user.email || user.phone})`);
 
-    // Welcome / email confirmation + SMS (best-effort; never blocks signup)
-    await this.notifyUser(user.id, {
+    // Welcome email + SMS run in the background: gateways can take many
+    // seconds and must never hold up signup (a slow welcome message made
+    // registration look like it failed after the account was created).
+    void this.notifyUser(user.id, {
       subject: 'Welcome to +Motive',
       body: `Hello ${user.firstName}, welcome to +Motive. Your ${user.primaryRole.toLowerCase().replace(/_/g, ' ')} account is ready — sign in to get started.`,
       type: 'WELCOME',

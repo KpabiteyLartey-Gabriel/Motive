@@ -35,6 +35,27 @@ describe('AuthService password reset', () => {
     );
   });
 
+  it('register returns promptly even when welcome notifications hang', async () => {
+    const p: any = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'new-1', email: 'new@test.com', phone: null, firstName: 'New', lastName: 'User', primaryRole: 'DRIVER', status: 'PENDING_VERIFICATION', createdAt: new Date() }),
+      },
+      role: { findUnique: jest.fn().mockResolvedValue({ id: 'role-1', name: 'DRIVER' }) },
+      userRoleAssignment: { findMany: jest.fn().mockResolvedValue([{ role: { name: 'DRIVER' } }]) },
+      refreshToken: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const slowNotifications = { send: jest.fn(() => new Promise(() => {})) }; // gateway never replies
+    const svc = new AuthService(p, {} as any, { sign: () => 'access-token' } as any, { get: (_k: string, d: any) => d } as any, slowNotifications as any);
+    const res: any = await Promise.race([
+      svc.register({ firstName: 'New', lastName: 'User', email: 'new@test.com', password: 'Password@123', role: 'DRIVER' } as any),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('register waited on notifications')), 1500)),
+    ]);
+    expect(res.user.email).toBe('new@test.com');
+    expect(res.accessToken).toBe('access-token');
+    expect(slowNotifications.send).toHaveBeenCalled();
+  });
+
   it('issues a hashed expiring token and notifies without revealing the token', async () => {
     prisma.user.findFirst.mockResolvedValue(user);
     const res = await service.forgotPassword('A@Test.com');

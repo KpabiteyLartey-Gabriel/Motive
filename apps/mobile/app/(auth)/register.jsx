@@ -60,6 +60,21 @@ export default function RegisterScreen() {
       const roleRoutes = { DRIVER: '/(driver)/dashboard', OWNER: '/(owner)/dashboard', COMPANY_ADMIN: '/(driver)/dashboard' };
       router.replace(roleRoutes[user.primaryRole] || '/(driver)/dashboard');
     } catch (e) {
+      // If the connection dropped after the account was saved, signing in
+      // with the same details succeeds — treat that as a completed signup
+      // instead of wrongly reporting failure.
+      if (!e.response && (form.email.trim() || form.phone.trim())) {
+        try {
+          const loginRes = await authApi.login({ identifier: form.email.trim() || form.phone.trim(), password: form.password });
+          const { accessToken, refreshToken, user } = loginRes.data.data;
+          await SecureStore.setItemAsync('accessToken', accessToken);
+          await SecureStore.setItemAsync('refreshToken', refreshToken);
+          await SecureStore.setItemAsync('user', JSON.stringify(user));
+          const roleRoutes = { DRIVER: '/(driver)/dashboard', OWNER: '/(owner)/dashboard', COMPANY_ADMIN: '/(driver)/dashboard' };
+          router.replace(roleRoutes[user.primaryRole] || '/(driver)/dashboard');
+          return;
+        } catch {}
+      }
       const message = e.response?.data?.message || 'Registration failed. Please try again.';
       setError(Array.isArray(message) ? message.join(' ') : message);
     } finally { setLoading(false); }
