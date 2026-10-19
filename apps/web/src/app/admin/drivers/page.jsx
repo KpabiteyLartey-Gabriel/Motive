@@ -116,6 +116,7 @@ export default function AdminDriversPage() {
   const [statusFilter, setStatus]   = useState('');
   const [page, setPage]             = useState(1);
   const [selected, setSelected]     = useState(null);
+  const [missingProfiles, setMissingProfiles] = useState([]);
 
   const load = useCallback(() => {
     if (!user) return;
@@ -131,6 +132,21 @@ export default function AdminDriversPage() {
   }, [user, page, search, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Driver accounts that never completed driver setup have no profile yet —
+  // surface them here so they are not mistaken for missing drivers.
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([
+      adminApi.listDrivers({ page: 1, limit: 100 }),
+      adminApi.listUsers({ role: 'DRIVER', page: 1, limit: 100 }),
+    ])
+      .then(([dRes, uRes]) => {
+        const withProfile = new Set((dRes.data.data.drivers || []).map((d) => d.userId));
+        setMissingProfiles((uRes.data.data.users || []).filter((u) => !withProfile.has(u.id)));
+      })
+      .catch(() => {});
+  }, [user, drivers]);
 
   const handleStatusChange = (updated) => {
     setDrivers((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
@@ -174,6 +190,25 @@ export default function AdminDriversPage() {
           </p>
         </div>
       </div>
+
+      {missingProfiles.length > 0 && (
+        <div className="bg-solar-yellow/10 border border-solar-yellow/30 rounded-card px-5 py-4 mb-5">
+          <p className="text-sm font-medium text-graphite dark:text-paper mb-1">
+            {missingProfiles.length} driver account{missingProfiles.length !== 1 ? 's' : ''} without a driver profile yet
+          </p>
+          <p className="text-xs text-steel dark:text-neutral-400 leading-relaxed mb-3">
+            These people registered with the Driver role but have not completed driver setup (licence and KYC), so they have no driver profile and cannot be verified here yet. They appear under Users until they finish setup in the app.
+          </p>
+          <div className="space-y-1.5">
+            {missingProfiles.map((u) => (
+              <p key={u.id} className="text-xs text-steel dark:text-neutral-300">
+                <span className="font-medium text-graphite dark:text-paper">{u.firstName} {u.lastName}</span>
+                {' — '}{u.email || u.phone || '—'}{' · '}{(u.status || '').replace(/_/g, ' ')}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
