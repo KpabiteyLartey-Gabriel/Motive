@@ -66,10 +66,12 @@ export default function PublicSharePage() {
       {/* Minimal header */}
       <header className="h-[56px] bg-paper dark:bg-dark-surface border-b border-concrete dark:border-dark-border flex items-center px-5 gap-3">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-graphite dark:bg-paper rounded-icon flex items-center justify-center">
-            <span className="text-paper dark:text-graphite font-bold text-[9px]">+</span>
-          </div>
-          <span className="text-sm font-semibold text-graphite dark:text-paper">+Motive</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/motive-logo.png" alt="+Motive logo" width={24} height={24} className="h-6 w-6 rounded-md" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/motive-name-dark.png" alt="Motive" className="h-[18px] w-auto dark:hidden" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/motive-name-white.png" alt="" aria-hidden="true" className="hidden h-[18px] w-auto dark:block" />
         </Link>
         <span className="text-xs text-fog">· Live Location</span>
       </header>

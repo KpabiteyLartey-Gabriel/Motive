@@ -7,7 +7,7 @@
  */
 import { View, Text, Image, StyleSheet, Animated, Easing, Dimensions, AccessibilityInfo } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
-import { MOTIVE_LOGO, LOGO_GREEN } from './BrandLogo';
+import { MOTIVE_LOGO, LOGO_GREEN, BrandName } from './BrandLogo';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(SCREEN_W * 0.88, 380);
@@ -116,7 +116,7 @@ export default function AnimatedSplash() {
         <LogoCrop cx={QR_PLUS.cx} cy={QR_PLUS.cy} sizeFrac={QR_PLUS.size} transform={[{ scale: plusScale }]} />
       </View>
 
-      <Text style={s.wordmark}>+Motive</Text>
+      <BrandName variant="white" height={38} style={{ marginTop: 22 }} />
       <Text style={s.tagline}>Positive Motive — drive, earn, own.</Text>
     </Animated.View>
   );

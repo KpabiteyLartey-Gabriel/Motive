@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../lib/theme';
 import { locationShareApi } from '../../lib/api';
-import BrandLogo from '../../components/BrandLogo';
+import BrandLogo, { BrandName } from '../../components/BrandLogo';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -108,7 +108,7 @@ export default function SharedTrackView() {
         <View style={s.header}>
           <View style={s.brand}>
             <BrandLogo size={22} />
-            <Text style={s.brandLabel}>+Motive</Text>
+            <BrandName height={18} />
             <Text style={s.live}>· Live Location</Text>
           </View>
         </View>

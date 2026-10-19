@@ -18,9 +18,17 @@ export function BrandMark({ dark = false }) {
     <span className="flex items-center gap-2.5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/images/motive-logo.png" alt="+Motive logo" width={36} height={36} className="h-9 w-9 rounded-[10px] shadow-sm" />
-      <span className={`text-[15px] font-semibold tracking-tight ${dark ? 'text-white' : 'text-ink dark:text-white'}`}>
-        +Motive
-      </span>
+      {dark ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/images/motive-name-white.png" alt="Motive" className="h-6 w-auto" />
+      ) : (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/motive-name-dark.png" alt="Motive" className="h-6 w-auto dark:hidden" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/motive-name-white.png" alt="" aria-hidden="true" className="hidden h-6 w-auto dark:block" />
+        </>
+      )}
     </span>
   );
 }
