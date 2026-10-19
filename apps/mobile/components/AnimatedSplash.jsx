@@ -1,131 +1,95 @@
 /**
- * Animated +Motive splash.
- * The master logo is a flat image (the supplied SVG wraps a JPEG), so the
- * moving parts are live layers over the real logo: both tyres rotate, the
- * location pin slowly zooms in and out, and the QR-code plus pops out and
- * settles back. Shows briefly on launch, then fades away.
+ * Animated +Motive splash — plays the owner's logo_animation video as a
+ * frame sequence (the video codec does not play reliably on phones, so the
+ * app ships its frames: tyres rotating, location pin zooming, QR plus).
+ * The native static splash shows frame 1 on the same background, so the
+ * animation continues seamlessly when this overlay mounts.
  */
-import { View, Text, Image, StyleSheet, Animated, Easing, Dimensions, AccessibilityInfo } from 'react-native';
+import { View, Text, Image, StyleSheet, Animated, Dimensions, AccessibilityInfo } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
-import { MOTIVE_LOGO, LOGO_GREEN, BrandName } from './BrandLogo';
+import { BrandName } from './BrandLogo';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const LOGO_SIZE = Math.min(SCREEN_W * 0.88, 380);
+const FRAME_MS = 83; // 30 frames ≈ 2.5s, matching the 5s video at 2x
 
-// Parts of the master logo, as fractions of its square size (measured on
-// the 2000x2000 motive-logo master).
-const WHEELS = [
-  { cx: 0.38, cy: 0.702 },
-  { cx: 0.81, cy: 0.702 },
+const FRAMES = [
+  require('../assets/splash-frames/frame-01.jpg'),
+  require('../assets/splash-frames/frame-02.jpg'),
+  require('../assets/splash-frames/frame-03.jpg'),
+  require('../assets/splash-frames/frame-04.jpg'),
+  require('../assets/splash-frames/frame-05.jpg'),
+  require('../assets/splash-frames/frame-06.jpg'),
+  require('../assets/splash-frames/frame-07.jpg'),
+  require('../assets/splash-frames/frame-08.jpg'),
+  require('../assets/splash-frames/frame-09.jpg'),
+  require('../assets/splash-frames/frame-10.jpg'),
+  require('../assets/splash-frames/frame-11.jpg'),
+  require('../assets/splash-frames/frame-12.jpg'),
+  require('../assets/splash-frames/frame-13.jpg'),
+  require('../assets/splash-frames/frame-14.jpg'),
+  require('../assets/splash-frames/frame-15.jpg'),
+  require('../assets/splash-frames/frame-16.jpg'),
+  require('../assets/splash-frames/frame-17.jpg'),
+  require('../assets/splash-frames/frame-18.jpg'),
+  require('../assets/splash-frames/frame-19.jpg'),
+  require('../assets/splash-frames/frame-20.jpg'),
+  require('../assets/splash-frames/frame-21.jpg'),
+  require('../assets/splash-frames/frame-22.jpg'),
+  require('../assets/splash-frames/frame-23.jpg'),
+  require('../assets/splash-frames/frame-24.jpg'),
+  require('../assets/splash-frames/frame-25.jpg'),
+  require('../assets/splash-frames/frame-26.jpg'),
+  require('../assets/splash-frames/frame-27.jpg'),
+  require('../assets/splash-frames/frame-28.jpg'),
+  require('../assets/splash-frames/frame-29.jpg'),
+  require('../assets/splash-frames/frame-30.jpg'),
 ];
-const PIN = { cx: 0.73, cy: 0.495, size: 0.15 };
-const QR_PLUS = { cx: 0.208, cy: 0.281, size: 0.17 };
-
-function LogoCrop({ cx, cy, sizeFrac, transform, rounded = false }) {
-  const box = LOGO_SIZE * sizeFrac;
-  const left = (cx - sizeFrac / 2) * LOGO_SIZE;
-  const top = (cy - sizeFrac / 2) * LOGO_SIZE;
-  return (
-    <Animated.View style={{ position: 'absolute', left, top, width: box, height: box, transform }}>
-      <View style={{ flex: 1, overflow: 'hidden', borderRadius: rounded ? box / 2 : 0, backgroundColor: LOGO_GREEN }}>
-        <Image
-          source={MOTIVE_LOGO}
-          style={{ position: 'absolute', left: -left, top: -top, width: LOGO_SIZE, height: LOGO_SIZE }}
-          resizeMode="cover"
-        />
-      </View>
-    </Animated.View>
-  );
-}
 
 export default function AnimatedSplash() {
   const [gone, setGone] = useState(false);
+  const [frame, setFrame] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
-  const wheelSpin = useRef(new Animated.Value(0)).current;
-  const pinZoom = useRef(new Animated.Value(0)).current;
-  const plusPop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    let loops = [];
+    let interval = null;
     let cancelled = false;
 
-    AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
-      if (cancelled || reduced) return;
-      const wheel = Animated.loop(
-        Animated.timing(wheelSpin, { toValue: 1, duration: 1200, easing: Easing.linear, useNativeDriver: true })
-      );
-      const pin = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pinZoom, { toValue: 1, duration: 1300, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(pinZoom, { toValue: 0, duration: 1300, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ])
-      );
-      const plus = Animated.loop(
-        Animated.sequence([
-          Animated.timing(plusPop, { toValue: 1, duration: 650, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-          Animated.timing(plusPop, { toValue: 0, duration: 650, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.delay(700),
-        ])
-      );
-      loops = [wheel, pin, plus];
-      loops.forEach((l) => l.start());
-    }).catch(() => {});
-
-    const dismiss = setTimeout(() => {
+    const dismissTimer = setTimeout(() => {
       Animated.timing(fade, { toValue: 0, duration: 380, useNativeDriver: true }).start(() => setGone(true));
-    }, 2500);
+    }, FRAME_MS * FRAMES.length + 350);
 
-    return () => { cancelled = true; loops.forEach((l) => l.stop()); clearTimeout(dismiss); };
-  }, [fade, wheelSpin, pinZoom, plusPop]);
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduced) => {
+        if (cancelled || reduced) return; // reduced motion: hold first frame
+        interval = setInterval(() => {
+          setFrame((prev) => {
+            if (prev >= FRAMES.length - 1) {
+              if (interval) clearInterval(interval);
+              return prev;
+            }
+            return prev + 1;
+          });
+        }, FRAME_MS);
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; if (interval) clearInterval(interval); clearTimeout(dismissTimer); };
+  }, [fade]);
 
   if (gone) return null;
 
-  const wheelRotate = wheelSpin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const pinScale = pinZoom.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] });
-  const plusScale = plusPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.17] });
-  const wheelBox = LOGO_SIZE * 0.112;
-
   return (
-    <Animated.View style={[s.root, { opacity: fade }]} accessibilityLabel="+Motive is loading">
-      <View style={s.logoWrap}>
-        <Image source={MOTIVE_LOGO} style={s.logo} resizeMode="cover" />
-
-        {/* Tyres — rotating dashed rings over both wheels */}
-        {WHEELS.map((w, i) => (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: w.cx * LOGO_SIZE - wheelBox / 2,
-              top: w.cy * LOGO_SIZE - wheelBox / 2,
-              width: wheelBox,
-              height: wheelBox,
-              borderRadius: wheelBox / 2,
-              borderWidth: Math.max(3, LOGO_SIZE * 0.007),
-              borderStyle: 'dashed',
-              borderColor: 'rgba(255,255,255,0.95)',
-              transform: [{ rotate: wheelRotate }],
-            }}
-          />
-        ))}
-
-        {/* Location pin — slow zoom in and out */}
-        <LogoCrop cx={PIN.cx} cy={PIN.cy} sizeFrac={PIN.size} transform={[{ scale: pinScale }]} />
-
-        {/* QR-code plus — pops out clear, then settles back */}
-        <LogoCrop cx={QR_PLUS.cx} cy={QR_PLUS.cy} sizeFrac={QR_PLUS.size} transform={[{ scale: plusScale }]} />
-      </View>
-
-      <BrandName variant="white" height={38} style={{ marginTop: 22 }} />
+    <Animated.View style={[s.root, { opacity: fade }]} accessibilityLabel="Motive is loading">
+      <Image source={FRAMES[frame]} style={s.logo} resizeMode="contain" />
+      <BrandName variant="dark" height={36} style={{ marginTop: 18 }} />
       <Text style={s.tagline}>Positive Motive — drive, earn, own.</Text>
     </Animated.View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: LOGO_GREEN, alignItems: 'center', justifyContent: 'center', zIndex: 50, elevation: 50 },
-  logoWrap: { width: LOGO_SIZE, height: LOGO_SIZE, borderRadius: LOGO_SIZE * 0.2, overflow: 'hidden' },
+  root: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FDFFFC', alignItems: 'center', justifyContent: 'center', zIndex: 50, elevation: 50 },
   logo: { width: LOGO_SIZE, height: LOGO_SIZE },
-  wordmark: { color: '#FFFFFF', fontSize: 30, fontWeight: '800', letterSpacing: -0.5, marginTop: 22 },
-  tagline: { color: 'rgba(255,255,255,0.78)', fontSize: 13.5, marginTop: 5 },
+  tagline: { color: '#4A5D54', fontSize: 13.5, marginTop: 6 },
 });
