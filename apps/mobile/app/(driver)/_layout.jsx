@@ -77,7 +77,7 @@ export default function DriverLayout() {
       <Tabs.Screen name="maintenance" options={{ href: null, title: 'Maintenance' }} />
       <Tabs.Screen name="disputes"    options={{ href: null, title: 'Disputes' }} />
       <Tabs.Screen name="incidents"   options={{ href: null, title: 'Incidents' }} />
-      <Tabs.Screen name="tracking"    options={{ href: null, title: 'Track Vehicle' }} />
+      {/* No tracking for drivers — live vehicle tracking is owner-only. */}
     </Tabs>
   );
 }

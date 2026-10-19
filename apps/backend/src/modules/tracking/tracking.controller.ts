@@ -94,19 +94,22 @@ export class TrackingController {
 
   // ── Vehicle tracking (role-based access) ───────────────────
   @Get('vehicles/:vehicleId/device')
-  @ApiOperation({ summary: 'Get tracking device for a vehicle' })
+  @Roles(...FLEET_ROLES, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get tracking device for a vehicle (owners and fleet roles only — never drivers)' })
   getDevice(@Param('vehicleId') vehicleId: string, @CurrentUser() user: any) {
     return this.trackingService.getDeviceForVehicle(vehicleId, user.id, user.primaryRole);
   }
 
   @Get('vehicles/:vehicleId/location')
-  @ApiOperation({ summary: 'Get last known location for a vehicle' })
+  @Roles(...FLEET_ROLES, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get last known location for a vehicle (owners and fleet roles only — never drivers)' })
   getLastLocation(@Param('vehicleId') vehicleId: string, @CurrentUser() user: any) {
     return this.trackingService.getLastLocation(vehicleId, user.id, user.primaryRole);
   }
 
   @Get('vehicles/:vehicleId/history')
-  @ApiOperation({ summary: 'Get location history for a vehicle' })
+  @Roles(...FLEET_ROLES, UserRole.OWNER)
+  @ApiOperation({ summary: 'Get location history for a vehicle (owners and fleet roles only — never drivers)' })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
   @ApiQuery({ name: 'limit', required: false })

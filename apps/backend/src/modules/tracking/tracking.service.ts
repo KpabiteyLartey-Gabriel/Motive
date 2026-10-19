@@ -264,7 +264,10 @@ export class TrackingService {
   ) {
     await this.assertOwnerAccess(vehicleId, userId, userRole);
 
-    const { from, to, limit = 100 } = params;
+    const { from, to } = params;
+    // Query pipes can turn a missing ?limit into NaN — never pass that to Prisma.
+    const rawLimit = Number((params as any)?.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 500) : 100;
     const where: any = { vehicleId };
     if (from || to) {
       where.recordedAt = {};
@@ -275,7 +278,7 @@ export class TrackingService {
     const records = await this.prisma.locationRecord.findMany({
       where,
       orderBy: { recordedAt: 'desc' },
-      take: Math.min(limit, 500),
+      take: limit,
     });
 
     return { vehicleId, count: records.length, records };
