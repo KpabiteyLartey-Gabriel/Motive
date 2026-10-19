@@ -28,7 +28,7 @@ export function TabIcon({ name, color, size = 23, focused = false }) {
   const { colors } = useTheme();
   const entry = ICONS[name] || { active: 'square', inactive: 'square-outline' };
   return (
-    <View style={[styles.wrap, focused && { backgroundColor: colors.tileBg }]}>
+    <View style={[styles.wrap, focused && { backgroundColor: colors.brandSoft }]}>
       <Ionicons name={focused ? entry.active : entry.inactive} size={size} color={color} />
     </View>
   );

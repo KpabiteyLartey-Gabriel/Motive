@@ -14,8 +14,8 @@ const HERO_IMAGE = require('../../assets/hero-vehicles.jpg');
 function QuickLink({ icon, label, onPress, colors }) {
   return (
     <TouchableOpacity style={[s.link, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={onPress} activeOpacity={0.75} accessibilityRole="button" accessibilityLabel={label}>
-      <View style={[s.linkIcon, { backgroundColor: colors.tileBg }]}>
-        <Ionicons name={icon} size={21} color={colors.tileIcon} />
+      <View style={[s.linkIcon, { backgroundColor: colors.brandSoft }]}>
+        <Ionicons name={icon} size={21} color={colors.brandText} />
       </View>
       <Text style={[s.linkLabel, { color: colors.textPrimary, flex: 1 }]}>{label}</Text>
     </TouchableOpacity>
@@ -104,7 +104,7 @@ export default function OwnerDashboard() {
           <View style={s.summaryTop}>
             <View style={{ flex: 1 }}>
               <Text style={[s.summaryTitle, { color: colors.textPrimary }]}>Fleet account</Text>
-              <Text style={[s.summarySub, { color: colors.accentText }]}>
+              <Text style={[s.summarySub, { color: colors.textMuted }]}>
                 {stats.vehicles === 0 ? 'Add your first vehicle to get started' : 'Your vehicles, contracts and earnings'}
               </Text>
             </View>

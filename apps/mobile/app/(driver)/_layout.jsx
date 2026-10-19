@@ -5,12 +5,12 @@ import { TabIcon } from '../../components/TabIcon';
 import { registerPushToken } from '../../lib/push';
 
 export default function DriverLayout() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   useEffect(() => { registerPushToken(); }, []);
 
   const screenOpts = {
-    tabBarActiveTintColor: isDark ? colors.tabActive : '#B7791F',
+    tabBarActiveTintColor: colors.tabActive,
     tabBarInactiveTintColor: colors.tabInactive,
     tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border, borderTopWidth: 1, height: 70, paddingTop: 6, paddingBottom: 10, paddingHorizontal: 6 },
     tabBarItemStyle: { borderRadius: 14, marginHorizontal: 2 },
