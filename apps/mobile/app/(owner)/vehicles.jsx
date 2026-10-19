@@ -11,6 +11,7 @@ import { Image } from 'react-native';
 const TYPES = ['SEDAN', 'SUV', 'PICKUP', 'MINIBUS', 'BUS', 'TRUCK', 'MOTORCYCLE', 'TRICYCLE', 'OTHER'];
 const FUELS = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'LPG'];
 const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC'];
+const GHANA_REGIONS = ['Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern', 'Greater Accra', 'North East', 'Northern', 'Oti', 'Savannah', 'Upper East', 'Upper West', 'Volta', 'Western', 'Western North'];
 const MODELS = [
   { value: 'WORK_AND_PAY', label: 'Work & Pay' },
   { value: 'DRIVING_ON', label: 'DriveOn' },
@@ -319,8 +320,8 @@ export default function OwnerVehicles() {
               <View style={{ flex: 1 }}><Field label="Colour" placeholder="White" value={form.color} onChangeText={(v) => set('color', v)} /></View>
             </View>
             <View style={{ height: 12 }} />
-            <Field label="Region" placeholder="Greater Accra" value={form.region} onChangeText={(v) => set('region', v)} />
             <View style={{ height: 14 }} />
+            <ChipRow label="Region" options={GHANA_REGIONS} value={form.region} onChange={(v) => set('region', v)} colors={colors} />
             <ChipRow label="Vehicle type" options={TYPES} value={form.type} onChange={(v) => set('type', v)} colors={colors} />
             <ChipRow label="Fuel" options={FUELS} value={form.fuelType} onChange={(v) => set('fuelType', v)} colors={colors} />
             <ChipRow label="Transmission" options={TRANSMISSIONS} value={form.transmission} onChange={(v) => set('transmission', v)} colors={colors} />

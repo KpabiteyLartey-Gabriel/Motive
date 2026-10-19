@@ -20,6 +20,7 @@ const STATUS_COLORS = {
 const VEHICLE_TYPES = ['SEDAN', 'SUV', 'PICKUP', 'MINIBUS', 'BUS', 'TRUCK', 'MOTORCYCLE', 'TRICYCLE', 'OTHER'];
 const FUEL_TYPES = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'LPG'];
 const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC'];
+const GHANA_REGIONS = ['Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern', 'Greater Accra', 'North East', 'Northern', 'Oti', 'Savannah', 'Upper East', 'Upper West', 'Volta', 'Western', 'Western North'];
 const OPERATING_MODELS = [
   { value: 'WORK_AND_PAY', label: 'Work & Pay' },
   { value: 'DRIVING_ON', label: 'Driving On (DriveOn)' },
@@ -184,7 +185,12 @@ export default function OwnerVehiclesPage() {
             <label className="text-xs text-neutral-400">Model *<input className="input mt-1" placeholder="Corolla" value={form.model} onChange={(e) => set('model', e.target.value)} /></label>
             <label className="text-xs text-neutral-400">Year *<input className="input mt-1" type="number" min="1980" max="2100" value={form.year} onChange={(e) => set('year', e.target.value)} /></label>
             <label className="text-xs text-neutral-400">Colour<input className="input mt-1" placeholder="White" value={form.color} onChange={(e) => set('color', e.target.value)} /></label>
-            <label className="text-xs text-neutral-400">Region<input className="input mt-1" placeholder="Greater Accra" value={form.region} onChange={(e) => set('region', e.target.value)} /></label>
+            <label className="text-xs text-neutral-400">Region
+              <select className="input mt-1" value={form.region} onChange={(e) => set('region', e.target.value)}>
+                <option value="">Select region…</option>
+                {GHANA_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </label>
             <label className="text-xs text-neutral-400">Vehicle type
               <select className="input mt-1" value={form.type} onChange={(e) => set('type', e.target.value)}>{VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}</select>
             </label>
