@@ -53,6 +53,53 @@ export function getTheme(scheme) {
 }
 
 export function useTheme() {
-  const scheme = useColorScheme();
+  const systemScheme = useColorScheme();
+  const preference = useThemePreferenceValue();
+  const scheme = preference === 'system' ? systemScheme : preference;
   return getTheme(scheme);
+}
+
+// ── Theme preference ('system' | 'light' | 'dark') ───────────
+// Persisted on the device and applied live to every screen.
+import { useEffect, useState } from 'react';
+import storage from './storage';
+
+let themePreference = 'system';
+let themePreferenceLoaded = false;
+const themeListeners = new Set();
+
+function notifyThemeListeners() {
+  themeListeners.forEach((fn) => { try { fn(themePreference); } catch {} });
+}
+
+export async function initThemePreference() {
+  if (themePreferenceLoaded) return themePreference;
+  themePreferenceLoaded = true;
+  try {
+    const saved = await storage.getItemAsync('themePreference');
+    if (saved === 'light' || saved === 'dark' || saved === 'system') {
+      themePreference = saved;
+      notifyThemeListeners();
+    }
+  } catch {}
+  return themePreference;
+}
+
+export function setThemePreference(preference) {
+  if (!['system', 'light', 'dark'].includes(preference)) return;
+  themePreference = preference;
+  themePreferenceLoaded = true;
+  storage.setItemAsync('themePreference', preference).catch(() => {});
+  notifyThemeListeners();
+}
+
+export function useThemePreferenceValue() {
+  const [preference, setPreference] = useState(themePreference);
+  useEffect(() => {
+    const listener = (next) => setPreference(next);
+    themeListeners.add(listener);
+    initThemePreference();
+    return () => { themeListeners.delete(listener); };
+  }, []);
+  return preference;
 }

@@ -10,7 +10,7 @@ import { Card, Badge, StatTile, ProgressBar, EmptyState, ActionTile, PrimaryButt
 
 export default function DriverDashboard() {
   const { colors } = useTheme();
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [contract, setContract] = useState(null);
   const [payments, setPayments] = useState([]);
@@ -123,10 +123,6 @@ export default function DriverDashboard() {
           </Card>
         )}
 
-        <TouchableOpacity style={[s.signOut, { borderColor: colors.border }]} onPress={logout} activeOpacity={0.8} accessibilityRole="button">
-          <Ionicons name="log-out-outline" size={18} color={colors.textSecondary} />
-          <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: 15 }}>Sign out</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

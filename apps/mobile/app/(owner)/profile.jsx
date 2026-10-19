@@ -7,6 +7,7 @@ import { useTheme } from '../../lib/theme';
 import { useAuth, fmtDate } from '../../lib/useAuth';
 import { ownersApi, usersApi, resolveVehiclePhoto } from '../../lib/api';
 import { Field, PrimaryButton, Badge } from '../../components/ui';
+import { AppearanceToggle } from '../../components/AppearanceToggle';
 
 function Section({ title, colors, children }) {
   return (
@@ -257,6 +258,12 @@ export default function OwnerSettings() {
             <Field label="New password" hint="At least 8 characters" secureTextEntry value={pw.newPassword} onChangeText={(v) => setPw({ ...pw, newPassword: v })} />
             <Field label="Confirm new password" secureTextEntry value={pw.confirm} onChangeText={(v) => setPw({ ...pw, confirm: v })} />
             <PrimaryButton title="Change password" onPress={changePassword} loading={busy} />
+          </View>
+        </Section>
+
+        <Section title="Appearance" colors={colors}>
+          <View style={{ padding: 16 }}>
+            <AppearanceToggle />
           </View>
         </Section>
 

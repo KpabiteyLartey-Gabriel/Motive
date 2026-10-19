@@ -77,6 +77,16 @@ export const authApi = {
 export const driversApi = {
   createProfile: (data) => apiClient.post('/drivers/profile', data),
   getMyProfile:  () => apiClient.get('/drivers/profile'),
+  updateProfile: (data) => apiClient.patch('/drivers/profile', data),
+  uploadDocument: (uri, type, expiryDate) => {
+    const form = new FormData();
+    const name = uri.split('/').pop() || 'document.jpg';
+    const mime = name.toLowerCase().endsWith('.png') ? 'image/png' : name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg';
+    form.append('file', { uri, name, type: mime });
+    form.append('type', type);
+    if (expiryDate) form.append('expiryDate', expiryDate);
+    return apiClient.post('/drivers/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
   getById:       (id) => apiClient.get(`/drivers/${id}`),
 };
 
