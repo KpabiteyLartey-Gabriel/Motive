@@ -118,6 +118,9 @@ export const vehiclesApi = {
   create:  (data) => apiClient.post('/vehicles', data),
   setPhotos: (id, imageUrls) => apiClient.patch(`/vehicles/${id}/photos`, { imageUrls }),
   updateStatus: (id, status) => apiClient.patch(`/vehicles/${id}/status`, { status }),
+  changeOperatingModel: (id, operatingModel) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel }),
+  getPendingModelChange: (id) => apiClient.get(`/vehicles/${id}/operating-model-request`),
+  decideModelChange: (id, requestId, approve) => apiClient.post(`/vehicles/${id}/operating-model-request/${requestId}/decision`, { approve }),
 };
 
 // ── Contracts ────────────────────────────────────────────────

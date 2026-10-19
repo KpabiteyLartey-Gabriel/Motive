@@ -668,6 +668,7 @@ model Vehicle {
   currentDriver      Driver?      @relation(fields: [currentDriverId], references: [id])
   documents          VehicleDocument[]
   assignments        DriverAssignment[]
+  modelChangeRequests VehicleOperatingModelChange[]
   contracts          Contract[]
   trackingDevice     TrackingDevice?
   ownershipTransfers OwnershipTransfer[]
@@ -677,6 +678,36 @@ model Vehicle {
   @@index([managingCompanyId])
   @@index([registrationNumber])
   @@map("vehicles")
+}
+
+enum VehicleModelChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// A requested change of a vehicle's contract type (operating model) after it
+// has been published. Work & Pay vehicles that already have a driver can only
+// change with that driver's approval, because the driver is buying the vehicle.
+model VehicleOperatingModelChange {
+  id            String                   @id @default(cuid())
+  vehicleId     String
+  fromModel     OperatingModel?
+  toModel       OperatingModel
+  requestedById String
+  driverId      String
+  status        VehicleModelChangeStatus @default(PENDING)
+  createdAt     DateTime                 @default(now())
+  decidedAt     DateTime?
+  decidedById   String?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([status])
+  @@map("vehicle_operating_model_changes")
 }
 
 model VehicleDocument {

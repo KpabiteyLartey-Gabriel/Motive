@@ -8,7 +8,7 @@ import { VehicleStatus } from '@prisma/client';
 import { join } from 'path';
 import { VehiclesService } from './vehicles.service';
 import { StorageService } from '../storage/storage.service';
-import { CreateVehicleDto, UpdateVehicleStatusDto } from './dto/create-vehicle.dto';
+import { CreateVehicleDto, UpdateVehicleStatusDto, ChangeOperatingModelDto, DecideModelChangeDto } from './dto/create-vehicle.dto';
 import { UpdateVehiclePhotosDto } from './dto/update-vehicle-photos.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -59,6 +59,27 @@ export class VehiclesController {
   @ApiOperation({ summary: 'Publish (AVAILABLE) or unpublish (DRAFT) a vehicle you own' })
   async updateStatus(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateVehicleStatusDto) {
     return this.vehiclesService.updateStatus(id, dto.status, user.id, user.primaryRole);
+  }
+
+  @Patch(':id/operating-model')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change contract type (Work & Pay with a driver requires driver approval; DriveOn can be changed by owner or assigned driver)' })
+  async changeOperatingModel(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: ChangeOperatingModelDto) {
+    return this.vehiclesService.changeOperatingModel(id, dto.operatingModel, user.id, user.primaryRole);
+  }
+
+  @Get(':id/operating-model-request')
+  @ApiOperation({ summary: 'Get the pending contract-type change request for a vehicle' })
+  async pendingModelChange(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.vehiclesService.findById(id, user.id, user.primaryRole);
+    return this.vehiclesService.getPendingModelChange(id);
+  }
+
+  @Post(':id/operating-model-request/:requestId/decision')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Assigned driver approves or rejects a Work & Pay contract-type change' })
+  async decideModelChange(@Param('id') id: string, @Param('requestId') requestId: string, @CurrentUser() user: any, @Body() dto: DecideModelChangeDto) {
+    return this.vehiclesService.decideModelChange(id, requestId, dto.approve, user.id);
   }
 
   @Patch(':id/photos')

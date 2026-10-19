@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
-import { VehicleStatus, UserRole } from '@prisma/client';
+import { VehicleStatus, UserRole, OperatingModel } from '@prisma/client';
 
 @Injectable()
 export class VehiclesService {
@@ -83,7 +83,12 @@ export class VehiclesService {
     } else if (userId && userRole === UserRole.DRIVER) {
       const driver = await this.prisma.driver.findUnique({ where: { userId } });
       if (!driver) return empty;
-      where.currentDriverId = driver.id;
+      // Assigned directly (currentDriverId) or via an ACTIVE contract party —
+      // contract activation does not always populate currentDriverId.
+      where.OR = [
+        { currentDriverId: driver.id },
+        { contracts: { some: { status: 'ACTIVE', parties: { some: { OR: [{ driverId: driver.id }, { userId, role: 'DRIVER' }] } } } } },
+      ];
     } else if (userId && [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MEMBER, UserRole.FLEET_MANAGER].some((r) => r === userRole)) {
       const memberships = await this.prisma.companyMember.findMany({
         where: { userId, isActive: true }, select: { companyId: true },
@@ -168,6 +173,129 @@ export class VehiclesService {
     });
   }
 
+  // ── Contract type (operating model) changes ─────────────────
+  // The type is chosen before publishing. After a driver is assigned:
+  //  - Work & Pay: the vehicle is becoming the driver's own, so an owner's
+  //    change must be approved by the assigned driver first.
+  //  - DriveOn / Rental: no ownership is promised, so the owner or the
+  //    assigned driver can change the type directly.
+  private async getAssignedDriver(vehicle: any) {
+    if (vehicle.currentDriverId) {
+      return this.prisma.driver.findUnique({ where: { id: vehicle.currentDriverId } });
+    }
+    const contract = await this.prisma.contract.findFirst({
+      where: { vehicleId: vehicle.id, status: 'ACTIVE' },
+      include: { parties: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    // Contract parties may carry only a userId (driverId is often null),
+    // so match the DRIVER party by role as well as by driverId.
+    const party = (contract?.parties || []).find((p: any) => p.role === 'DRIVER' || p.driverId);
+    if (party?.driverId) {
+      return this.prisma.driver.findUnique({ where: { id: party.driverId } });
+    }
+    if (party?.userId) {
+      return this.prisma.driver.findUnique({ where: { userId: party.userId } });
+    }
+    return null;
+  }
+
+  async changeOperatingModel(vehicleId: string, newModel: OperatingModel, requestingUserId: string, requestingUserRole: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    await this.assertVehicleAccess(vehicle, requestingUserId, requestingUserRole);
+
+    if (vehicle.operatingModel === newModel) {
+      return { changed: false, approvalRequired: false, vehicle };
+    }
+
+    const driver = await this.getAssignedDriver(vehicle);
+    const isAssignedDriver = !!driver && requestingUserRole === UserRole.DRIVER && driver.userId === requestingUserId;
+
+    // No driver yet: the owner/fleet side can set the type freely.
+    if (!driver) {
+      if (requestingUserRole === UserRole.DRIVER) {
+        throw new ForbiddenException('Only the vehicle owner can set the contract type before a driver is assigned');
+      }
+      const updated = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { operatingModel: newModel } });
+      return { changed: true, approvalRequired: false, vehicle: updated };
+    }
+
+    // Work & Pay with a driver: the vehicle is becoming the driver's own,
+    // so only the owner can propose a change and the driver must approve it.
+    if (vehicle.operatingModel === 'WORK_AND_PAY') {
+      if (isAssignedDriver) {
+        throw new ForbiddenException('This is a Work & Pay vehicle: a change of contract type must be proposed by the owner and approved by you, because the vehicle is becoming yours.');
+      }
+      await this.prisma.vehicleOperatingModelChange.updateMany({
+        where: { vehicleId, status: 'PENDING' },
+        data: { status: 'CANCELLED' },
+      });
+      const request = await this.prisma.vehicleOperatingModelChange.create({
+        data: {
+          vehicleId,
+          fromModel: vehicle.operatingModel,
+          toModel: newModel,
+          requestedById: requestingUserId,
+          driverId: driver.id,
+          status: 'PENDING',
+        },
+      });
+      await this.prisma.notification.create({
+        data: {
+          userId: driver.userId,
+          channel: 'IN_APP',
+          type: 'VEHICLE_MODEL_CHANGE_REQUEST',
+          subject: 'Contract type change needs your approval',
+          body: `The owner wants to change your Work & Pay vehicle (${vehicle.registrationNumber}) from Work & Pay to ${String(newModel).replace(/_/g, ' ')}. Because this vehicle is becoming yours under Work & Pay, it can only change if you approve. Open your Vehicle tab to approve or reject.`,
+          data: { vehicleId, requestId: request.id, fromModel: vehicle.operatingModel, toModel: newModel },
+          status: 'SENT',
+          sentAt: new Date(),
+        },
+      });
+      return { changed: false, approvalRequired: true, request, vehicle };
+    }
+
+    // DriveOn / Rental with a driver: the driver (or owner) can change later.
+    const updated = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { operatingModel: newModel } });
+    return { changed: true, approvalRequired: false, vehicle: updated };
+  }
+
+  async decideModelChange(vehicleId: string, requestId: string, approve: boolean, driverUserId: string) {
+    const request = await this.prisma.vehicleOperatingModelChange.findUnique({ where: { id: requestId } });
+    if (!request || request.vehicleId !== vehicleId) throw new NotFoundException('Change request not found');
+    if (request.status !== 'PENDING') throw new BadRequestException('This change request has already been decided');
+
+    const driver = await this.prisma.driver.findUnique({ where: { userId: driverUserId } });
+    if (!driver || driver.id !== request.driverId) {
+      throw new ForbiddenException('Only the assigned driver can approve or reject this change');
+    }
+
+    if (!approve) {
+      const rejected = await this.prisma.vehicleOperatingModelChange.update({
+        where: { id: requestId },
+        data: { status: 'REJECTED', decidedAt: new Date(), decidedById: driverUserId },
+      });
+      return { changed: false, approved: false, request: rejected };
+    }
+
+    const [, updatedVehicle] = await this.prisma.$transaction([
+      this.prisma.vehicleOperatingModelChange.update({
+        where: { id: requestId },
+        data: { status: 'APPROVED', decidedAt: new Date(), decidedById: driverUserId },
+      }),
+      this.prisma.vehicle.update({ where: { id: vehicleId }, data: { operatingModel: request.toModel } }),
+    ]);
+    return { changed: true, approved: true, vehicle: updatedVehicle };
+  }
+
+  async getPendingModelChange(vehicleId: string) {
+    return this.prisma.vehicleOperatingModelChange.findFirst({
+      where: { vehicleId, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   static readonly MAX_PHOTOS = 10;
 
   private validatePhotoUrls(urls: unknown): string[] {
@@ -230,10 +358,13 @@ export class VehiclesService {
 
     if (requestingUserRole === UserRole.DRIVER) {
       const driver = await this.prisma.driver.findUnique({ where: { userId: requestingUserId } });
-      if (!driver || vehicle.currentDriverId !== driver.id) {
+      if (!driver) {
         throw new ForbiddenException('Access denied to this vehicle');
       }
-      return;
+      if (vehicle.currentDriverId === driver.id) return;
+      const assigned = await this.getAssignedDriver(vehicle);
+      if (assigned?.id === driver.id) return;
+      throw new ForbiddenException('Access denied to this vehicle');
     }
 
     const companyRoles = [UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.COMPANY_MEMBER];

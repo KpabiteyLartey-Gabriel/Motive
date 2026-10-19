@@ -88,6 +88,92 @@ describe('VehiclesService publish / unpublish', () => {
   });
 });
 
+describe('VehiclesService contract-type (operating model) changes', () => {
+  function makeSvc(vehicle: any, driver: any = { id: 'driver-1', userId: 'driver-user' }) {
+    const prisma: any = {
+      owner: { findUnique: jest.fn().mockResolvedValue({ id: 'owner-1', userId: 'user-1' }) },
+      driver: { findUnique: jest.fn().mockResolvedValue(driver) },
+      contract: { findFirst: jest.fn().mockResolvedValue(null) },
+      notification: { create: jest.fn().mockResolvedValue({}) },
+      vehicleOperatingModelChange: {
+        create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'req-1', status: 'PENDING', ...data })),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'req-1', ...data })),
+        findUnique: jest.fn().mockResolvedValue({ id: 'req-1', vehicleId: vehicle.id, driverId: 'driver-1', status: 'PENDING', toModel: 'DRIVING_ON' }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue(vehicle),
+        update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...vehicle, ...data })),
+      },
+      $transaction: jest.fn().mockImplementation((ops: any[]) => Promise.all(ops)),
+    };
+    return { svc: new VehiclesService(prisma), prisma };
+  }
+  const wapVehicle = { id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'AVAILABLE', operatingModel: 'WORK_AND_PAY', currentDriverId: 'driver-1', registrationNumber: 'GR-1-26' };
+  const driveOnVehicle = { ...wapVehicle, operatingModel: 'DRIVING_ON' };
+  const freeVehicle = { ...wapVehicle, operatingModel: 'WORK_AND_PAY', currentDriverId: null };
+
+  it('unassigned vehicle: owner changes type directly', async () => {
+    const { svc } = makeSvc(freeVehicle, null);
+    const res: any = await svc.changeOperatingModel('veh-1', 'DRIVING_ON', 'user-1', 'OWNER');
+    expect(res.changed).toBe(true);
+    expect(res.vehicle.operatingModel).toBe('DRIVING_ON');
+  });
+
+  it('assigned Work & Pay: owner change needs driver approval and notifies the driver', async () => {
+    const { svc, prisma } = makeSvc(wapVehicle);
+    const res: any = await svc.changeOperatingModel('veh-1', 'DRIVING_ON', 'user-1', 'OWNER');
+    expect(res.changed).toBe(false);
+    expect(res.approvalRequired).toBe(true);
+    expect(res.request.toModel).toBe('DRIVING_ON');
+    expect(prisma.notification.create).toHaveBeenCalled();
+    // Vehicle itself is untouched until approval
+    expect(prisma.vehicle.update).not.toHaveBeenCalled();
+  });
+
+  it('assigned Work & Pay: the driver cannot change it directly', async () => {
+    const { svc } = makeSvc(wapVehicle);
+    await expect(svc.changeOperatingModel('veh-1', 'DRIVING_ON', 'driver-user', 'DRIVER')).rejects.toThrow(/must be proposed by the owner/);
+  });
+
+  it('driver approves: vehicle type changes; driver rejects: it stays', async () => {
+    const { svc } = makeSvc(wapVehicle);
+    const ok: any = await svc.decideModelChange('veh-1', 'req-1', true, 'driver-user');
+    expect(ok.approved).toBe(true);
+    expect(ok.vehicle.operatingModel).toBe('DRIVING_ON');
+    const no: any = await svc.decideModelChange('veh-1', 'req-1', false, 'driver-user');
+    expect(no.approved).toBe(false);
+  });
+
+  it('only the assigned driver can decide', async () => {
+    const { svc, prisma } = makeSvc(wapVehicle);
+    prisma.driver.findUnique.mockResolvedValue({ id: 'driver-2', userId: 'other-user' });
+    await expect(svc.decideModelChange('veh-1', 'req-1', true, 'other-user')).rejects.toThrow(/Only the assigned driver/);
+  });
+
+  it('assigned via ACTIVE contract party with only a userId: Work & Pay change still needs approval', async () => {
+    const { svc, prisma } = makeSvc(freeVehicle);
+    prisma.contract.findFirst.mockResolvedValue({
+      parties: [
+        { userId: 'user-1', driverId: null, role: 'OWNER' },
+        { userId: 'driver-user', driverId: null, role: 'DRIVER' },
+      ],
+    });
+    const res: any = await svc.changeOperatingModel('veh-1', 'DRIVING_ON', 'user-1', 'OWNER');
+    expect(res.approvalRequired).toBe(true);
+    expect(prisma.vehicle.update).not.toHaveBeenCalled();
+  });
+
+  it('assigned DriveOn: owner or driver can change directly without approval', async () => {
+    const { svc } = makeSvc(driveOnVehicle);
+    const byOwner: any = await svc.changeOperatingModel('veh-1', 'WORK_AND_PAY', 'user-1', 'OWNER');
+    expect(byOwner.changed).toBe(true);
+    const byDriver: any = await svc.changeOperatingModel('veh-1', 'RENTAL', 'driver-user', 'DRIVER');
+    expect(byDriver.changed).toBe(true);
+  });
+});
+
 describe('VehiclesService vehicle photos', () => {
   const vehicle: any = { id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, currentDriverId: null, imageUrls: ['https://cdn.example.com/front.jpg'] };
   const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...vehicle, ...data }));

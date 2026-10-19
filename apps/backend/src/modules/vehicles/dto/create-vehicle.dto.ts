@@ -88,3 +88,15 @@ export class UpdateVehicleStatusDto {
   @IsEnum(VehicleStatus)
   status: VehicleStatus;
 }
+
+export class ChangeOperatingModelDto {
+  @ApiProperty({ enum: OperatingModel, description: 'The contract type to change to. Work & Pay vehicles with a driver need driver approval.' })
+  @IsEnum(OperatingModel)
+  operatingModel: OperatingModel;
+}
+
+export class DecideModelChangeDto {
+  @ApiProperty({ description: 'true to approve the change, false to reject it' })
+  @IsBoolean()
+  approve: boolean;
+}

@@ -1,10 +1,17 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
 import { useAuth, fmtDate } from '../../lib/useAuth';
 import { vehiclesApi, complianceApi } from '../../lib/api';
 import VehiclePhotos from '../../components/VehiclePhotos';
+import { PrimaryButton } from '../../components/ui';
+
+const MODELS = [
+  { value: 'WORK_AND_PAY', label: 'Work & Pay' },
+  { value: 'DRIVING_ON', label: 'DriveOn' },
+  { value: 'RENTAL', label: 'Rental' },
+];
 
 function InfoRow({ label, value, colors }) {
   return (
@@ -23,6 +30,9 @@ export default function DriverVehicle() {
   const [compliance, setCompliance] = useState([]);
   const [fetching, setFetching]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingReq, setPendingReq] = useState(null);
+  const [busy, setBusy]             = useState(false);
+  const [msg, setMsg]               = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -33,11 +43,49 @@ export default function DriverVehicle() {
       if (v) {
         const cRes = await complianceApi.listForVehicle(v.id);
         setCompliance(cRes.data?.data || []);
+        try {
+          const pRes = await vehiclesApi.getPendingModelChange(v.id);
+          setPendingReq(pRes.data?.data || null);
+        } catch { setPendingReq(null); }
       }
     } catch {}
     setFetching(false);
     setRefreshing(false);
   }, []);
+
+  const decide = async (approve) => {
+    if (!vehicle || !pendingReq) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      const res = await vehiclesApi.decideModelChange(vehicle.id, pendingReq.id, approve);
+      const d = res.data?.data || {};
+      if (d.vehicle) setVehicle((v) => ({ ...v, ...d.vehicle }));
+      setPendingReq(null);
+      setMsg(approve ? 'Approved — the contract type has been changed.' : 'Rejected — the contract type stays as it is.');
+    } catch (e) {
+      setMsg(e.response?.data?.message || 'Could not record your decision.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeOwnModel = async (target) => {
+    if (!vehicle || target === vehicle.operatingModel) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      const res = await vehiclesApi.changeOperatingModel(vehicle.id, target);
+      const d = res.data?.data || {};
+      if (d.vehicle) setVehicle((v) => ({ ...v, ...d.vehicle }));
+      if (d.approvalRequired) setMsg('This needs the owner to propose it and you to approve.');
+      else setMsg('Contract type updated.');
+    } catch (e) {
+      setMsg(e.response?.data?.message || 'Could not change the contract type.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => { if (user) load(); }, [user, load]);
   const onRefresh = () => { setRefreshing(true); load(); };
@@ -96,6 +144,50 @@ export default function DriverVehicle() {
           <InfoRow label="VIN"         value={vehicle.vin} colors={colors} />
           <InfoRow label="Engine No."  value={vehicle.engineNumber} colors={colors} />
           <InfoRow label="Operating"   value={vehicle.operatingModel?.replace(/_/g, ' ')} colors={colors} />
+        </View>
+
+        {/* Contract type */}
+        <Text style={[s.section, { color: colors.textSecondary }]}>Contract Type</Text>
+        <View style={[s.block, { borderColor: colors.border, padding: 16 }]}>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>
+            {(vehicle.operatingModel || 'Not set').replace(/_/g, ' ')}
+          </Text>
+          {pendingReq ? (
+            <>
+              <Text style={{ fontSize: 13, color: colors.warning, lineHeight: 19, marginBottom: 6 }}>
+                The owner wants to change this vehicle from {(pendingReq.fromModel || '').replace(/_/g, ' ')} to {(pendingReq.toModel || '').replace(/_/g, ' ')}.
+              </Text>
+              <Text style={{ fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginBottom: 12 }}>
+                This is a Work &amp; Pay vehicle, which becomes your own — so the change only happens if you approve it.
+              </Text>
+              <PrimaryButton title="Approve change" loading={busy} onPress={() => decide(true)} />
+              <TouchableOpacity onPress={() => decide(false)} disabled={busy} style={{ alignItems: 'center', paddingVertical: 13 }}>
+                <Text style={{ color: colors.danger, fontWeight: '700', fontSize: 14 }}>Reject — keep Work &amp; Pay</Text>
+              </TouchableOpacity>
+            </>
+          ) : vehicle.operatingModel === 'WORK_AND_PAY' ? (
+            <Text style={{ fontSize: 12.5, color: colors.textMuted, lineHeight: 18 }}>
+              This vehicle is on Work &amp; Pay and becomes yours. Only the owner can propose a change, and it will need your approval here first.
+            </Text>
+          ) : (
+            <>
+              <Text style={{ fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginBottom: 10 }}>
+                DriveOn and Rental types can be changed directly. Switching to Work &amp; Pay will still need the owner to propose it.
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {MODELS.map((m) => {
+                  const active = vehicle.operatingModel === m.value;
+                  return (
+                    <TouchableOpacity key={m.value} disabled={busy || active} onPress={() => changeOwnModel(m.value)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: active ? colors.brand : colors.border, backgroundColor: active ? colors.brandSoft : colors.card }}>
+                      <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? colors.brandText : colors.textSecondary }}>{m.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {busy ? <Text style={{ fontSize: 12.5, color: colors.textMuted, marginTop: 8 }}>Saving…</Text> : null}
+            </>
+          )}
+          {msg ? <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 8, lineHeight: 19 }}>{msg}</Text> : null}
         </View>
 
         {/* Compliance */}

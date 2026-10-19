@@ -37,6 +37,40 @@ export default function OwnerVehiclesPage() {
   const [saving, setSaving]         = useState(false);
   const [formError, setFormError]   = useState('');
   const [statusBusy, setStatusBusy] = useState(false);
+  const [newModel, setNewModel]       = useState('WORK_AND_PAY');
+  const [modelBusy, setModelBusy]     = useState(false);
+  const [modelMsg, setModelMsg]       = useState('');
+  const [pendingReq, setPendingReq]   = useState(null);
+
+  useEffect(() => {
+    if (!selected?.id) { setPendingReq(null); return; }
+    setNewModel(selected.operatingModel || 'WORK_AND_PAY');
+    setModelMsg('');
+    vehiclesApi.getPendingModelChange(selected.id)
+      .then((r) => setPendingReq(r.data?.data || null))
+      .catch(() => setPendingReq(null));
+  }, [selected?.id]);
+
+  const changeModel = async (vehicle) => {
+    setModelBusy(true);
+    setModelMsg('');
+    try {
+      const res = await vehiclesApi.changeOperatingModel(vehicle.id, newModel);
+      const d = res.data?.data || {};
+      if (d.approvalRequired) {
+        setPendingReq(d.request);
+        setModelMsg('Change requested. Because this is a Work & Pay vehicle with a driver assigned, the driver must approve it before it changes — the vehicle is becoming theirs.');
+      } else if (d.vehicle) {
+        setVehicles((prev) => prev.map((x) => (x.id === d.vehicle.id ? { ...x, ...d.vehicle } : x)));
+        setSelected((s) => (s?.id === d.vehicle.id ? { ...s, ...d.vehicle } : s));
+        setModelMsg('Contract type updated.');
+      }
+    } catch (e) {
+      setModelMsg(e.response?.data?.message || 'Could not change the contract type.');
+    } finally {
+      setModelBusy(false);
+    }
+  };
 
   const loadVehicles = () => {
     vehiclesApi.list({ limit: 50 })
@@ -183,6 +217,23 @@ export default function OwnerVehiclesPage() {
                       <span className="text-neutral-400">Status is managed by its contract or maintenance.</span>
                     )}
                     <span className="text-neutral-500">{v.status === 'AVAILABLE' ? 'Published — available for contracts' : v.status === 'DRAFT' ? 'Draft — only you can see it' : v.status.replace(/_/g, ' ')}</span>
+                  </div>
+                  <div className="col-span-2 border-t border-neutral-200 dark:border-dark-border pt-4">
+                    <p className="text-neutral-500 mb-2">Contract type: <span className="font-semibold text-neutral-800 dark:text-neutral-100">{(v.operatingModel || 'Not set').replace(/_/g, ' ')}</span></p>
+                    {pendingReq ? (
+                      <div className="bg-solar-yellow/10 border border-solar-yellow/30 rounded-lg px-3 py-2.5 text-amber-700 dark:text-amber-300">
+                        Waiting for the assigned driver to approve changing {(pendingReq.fromModel || '').replace(/_/g, ' ')} → {(pendingReq.toModel || '').replace(/_/g, ' ')}. Work & Pay vehicles become the driver&apos;s own, so they must agree first.
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <select className="input !w-auto text-xs" value={newModel} onChange={(e) => setNewModel(e.target.value)}>
+                          {OPERATING_MODELS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                        <button onClick={() => changeModel(v)} disabled={modelBusy || newModel === v.operatingModel} className="btn-primary text-xs disabled:opacity-40">{modelBusy ? 'Saving…' : 'Change contract type'}</button>
+                        <span className="text-neutral-400">Work & Pay changes with a driver assigned need the driver&apos;s approval. DriveOn can be changed any time.</span>
+                      </div>
+                    )}
+                    {modelMsg && <p className="mt-2 text-neutral-500">{modelMsg}</p>}
                   </div>
                   <VehiclePhotos vehicle={v} editable onPhotosChange={(upd) => { setVehicles((prev) => prev.map((x) => (x.id === upd.id ? { ...x, ...upd } : x))); setSelected((s) => (s?.id === upd.id ? { ...s, ...upd } : s)); }} />
                   <div>

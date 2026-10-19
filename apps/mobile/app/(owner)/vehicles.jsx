@@ -89,6 +89,38 @@ export default function OwnerVehicles() {
     }
   };
 
+  const [pendingReq, setPendingReq] = useState(null);
+  const [modelBusy, setModelBusy]   = useState(false);
+  const [modelMsg, setModelMsg]     = useState('');
+
+  const loadPending = async (vehicleId) => {
+    try {
+      const r = await vehiclesApi.getPendingModelChange(vehicleId);
+      setPendingReq(r.data?.data || null);
+    } catch { setPendingReq(null); }
+  };
+
+  const changeModel = async (vehicle, target) => {
+    setModelBusy(true);
+    setModelMsg('');
+    try {
+      const res = await vehiclesApi.changeOperatingModel(vehicle.id, target);
+      const d = res.data?.data || {};
+      if (d.approvalRequired) {
+        setPendingReq(d.request);
+        setModelMsg('Change requested — the assigned driver must approve it first, because this Work & Pay vehicle is becoming theirs.');
+      } else if (d.vehicle) {
+        setVehicles((prev) => prev.map((x) => (x.id === d.vehicle.id ? { ...x, ...d.vehicle } : x)));
+        setSelected((s) => (s?.id === d.vehicle.id ? { ...s, ...d.vehicle } : s));
+        setModelMsg('Contract type updated.');
+      }
+    } catch (e) {
+      setModelMsg(e.response?.data?.message || 'Could not change the contract type.');
+    } finally {
+      setModelBusy(false);
+    }
+  };
+
   const changeStatus = async (vehicle, status) => {
     setStatusBusy(true);
     try {
@@ -117,6 +149,8 @@ export default function OwnerVehicles() {
 
   const openVehicle = async (v) => {
     setSelected(v);
+    setModelMsg('');
+    loadPending(v.id);
     try {
       const res = await complianceApi.listForVehicle(v.id);
       setCompliance(res.data?.data || []);
@@ -155,6 +189,26 @@ export default function OwnerVehicles() {
             </View>
           )}
           {formError ? <Text style={{ color: colors.danger, fontSize: 13, marginBottom: 12 }}>{formError}</Text> : null}
+
+          <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14, marginBottom: 16, backgroundColor: colors.card }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>
+              Contract type: {(selected.operatingModel || 'Not set').replace(/_/g, ' ')}
+            </Text>
+            {pendingReq ? (
+              <Text style={{ fontSize: 13, color: colors.warning, lineHeight: 19 }}>
+                Waiting for the assigned driver to approve changing {(pendingReq.fromModel || '').replace(/_/g, ' ')} → {(pendingReq.toModel || '').replace(/_/g, ' ')}. Work & Pay vehicles become the driver&apos;s own, so they must agree first.
+              </Text>
+            ) : (
+              <>
+                <Text style={{ fontSize: 12.5, color: colors.textMuted, marginBottom: 10, lineHeight: 18 }}>
+                  Choose the type this vehicle is published for. Work & Pay changes with a driver assigned need the driver&apos;s approval. DriveOn can be changed any time.
+                </Text>
+                <ChipRow label="" options={MODELS} value={selected.operatingModel || 'WORK_AND_PAY'} onChange={(v) => changeModel(selected, v)} colors={colors} />
+                {modelBusy ? <Text style={{ fontSize: 12.5, color: colors.textMuted }}>Saving…</Text> : null}
+              </>
+            )}
+            {modelMsg ? <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 8, lineHeight: 19 }}>{modelMsg}</Text> : null}
+          </View>
 
           <VehiclePhotos vehicle={selected} colors={colors} />
 
