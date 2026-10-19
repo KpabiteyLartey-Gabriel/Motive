@@ -265,6 +265,23 @@ export class UsersService {
     return { success: true, message: `Your ${channel} is now verified.` };
   }
 
+  // Admin-only: set a known test password so admins can sign in as a test
+  // account. Passwords are bcrypt-hashed at rest and can never be viewed.
+  async adminResetPassword(id: string, newPassword: string, actorId: string) {
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+    const target: any = await this.getUserOrThrow(id);
+    const actor: any = await this.prisma.user.findUnique({ where: { id: actorId }, select: { primaryRole: true } });
+    if (target.primaryRole === UserRole.SUPER_ADMIN && actor?.primaryRole !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only a Super Admin can reset a Super Admin password');
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    await this.revokeRefreshTokens(id);
+    return { success: true, email: target.email, phone: target.phone, message: 'Password reset. Previous sessions have been signed out.' };
+  }
+
   async deactivateMyAccount(id: string) {
     await this.getUserOrThrow(id);
     const user = await this.prisma.user.update({

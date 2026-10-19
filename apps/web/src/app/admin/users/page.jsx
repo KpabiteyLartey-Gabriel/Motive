@@ -29,11 +29,31 @@ function RoleBadge({ role }) {
 }
 
 // ── User Detail Drawer ─────────────────────────────────────────
+const TEST_PASSWORD = 'Test@12345';
+
 function UserDrawer({ user, onClose, onStatusChange, onRoleChange, isSuperAdmin }) {
   const [statusLoading, setStatusLoading] = useState(false);
   const [roleLoading, setRoleLoading]     = useState(false);
   const [selectedRole, setSelectedRole]   = useState(user.primaryRole);
   const [error, setError] = useState('');
+  const [testPassword, setTestPassword]   = useState(TEST_PASSWORD);
+  const [resetLoading, setResetLoading]   = useState(false);
+  const [resetDone, setResetDone]         = useState('');
+
+  const handleResetPassword = async () => {
+    if (!testPassword || testPassword.length < 8) { setError('Test password must be at least 8 characters.'); return; }
+    setResetLoading(true);
+    setError('');
+    setResetDone('');
+    try {
+      await adminApi.resetPassword(user.id, testPassword);
+      setResetDone(`You can now sign in as ${user.email || user.phone} with password: ${testPassword}`);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to reset password.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const handleStatus = async (status) => {
     setStatusLoading(true);
@@ -144,6 +164,34 @@ function UserDrawer({ user, onClose, onStatusChange, onRoleChange, isSuperAdmin 
             </div>
           </div>
 
+          {/* Password — testing only (passwords are encrypted and cannot be viewed) */}
+          <div>
+            <p className="text-xs font-medium text-fog uppercase tracking-widest mb-3">Password (Testing)</p>
+            <p className="text-xs text-steel dark:text-neutral-400 mb-3">
+              Passwords are encrypted, so they cannot be shown. For testing, reset this account to a password you know, then sign in with it.
+            </p>
+            <div className="flex gap-2">
+              <input
+                className="input flex-1 text-sm"
+                value={testPassword}
+                onChange={(e) => setTestPassword(e.target.value)}
+                placeholder="New test password"
+              />
+              <button
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="btn-graphite text-sm disabled:opacity-40 whitespace-nowrap"
+              >
+                {resetLoading ? '…' : 'Reset password'}
+              </button>
+            </div>
+            {resetDone && (
+              <div className="mt-3 bg-success/10 border border-success/20 text-success text-xs px-4 py-3 rounded-lg break-all">
+                {resetDone}
+              </div>
+            )}
+          </div>
+
           {/* Role change — Super Admin only */}
           {isSuperAdmin && (
             <div>
@@ -229,6 +277,15 @@ export default function AdminUsersPage() {
             {pagination ? `${pagination.total} total accounts` : 'Loading…'}
           </p>
         </div>
+      </div>
+
+      {/* Testing logins */}
+      <div className="bg-solar-yellow/10 border border-solar-yellow/30 rounded-card px-5 py-4 mb-5">
+        <p className="text-sm font-medium text-graphite dark:text-paper mb-1">Testing logins</p>
+        <p className="text-xs text-steel dark:text-neutral-400 leading-relaxed">
+          Passwords are encrypted and cannot be displayed for any account. Seeded Super Admin: <span className="font-mono">admin@ghmotive.com</span> / <span className="font-mono">Admin@GHMotive2024!</span>.
+          For every other account, click the user, then use <strong>Password (Testing) → Reset password</strong> to set <span className="font-mono">{TEST_PASSWORD}</span> and sign in with it.
+        </p>
       </div>
 
       {/* Filters */}

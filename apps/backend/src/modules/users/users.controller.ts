@@ -16,7 +16,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '@prisma/client';
-import { IsEnum } from 'class-validator';
+import { IsEnum, IsString, MinLength } from 'class-validator';
 import { join } from 'path';
 
 import { UsersService } from './users.service';
@@ -38,6 +38,12 @@ class UpdateStatusDto {
 class UpdateRoleDto {
   @IsEnum(UserRole)
   role: UserRole;
+}
+
+class AdminResetPasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
 }
 
 @ApiTags('Users')
@@ -154,6 +160,19 @@ export class UsersController {
     @CurrentUser() actor: any,
   ) {
     return this.usersService.updateStatus(id, dto.status, actor.id);
+  }
+
+  @Patch(':id/reset-password')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset a user password for testing (Admin only; passwords cannot be viewed)' })
+  async adminResetPassword(
+    @Param('id') id: string,
+    @Body() dto: AdminResetPasswordDto,
+    @CurrentUser() actor: any,
+  ) {
+    return this.usersService.adminResetPassword(id, dto.newPassword, actor.id);
   }
 
   @Patch(':id/role')

@@ -245,6 +245,7 @@ export const adminApi = {
   getUser:        (id)     => apiClient.get(`/users/${id}`),
   updateStatus:   (id, status) => apiClient.patch(`/users/${id}/status`, { status }),
   updateRole:     (id, role)   => apiClient.patch(`/users/${id}/role`, { role }),
+  resetPassword:  (id, newPassword) => apiClient.patch(`/users/${id}/reset-password`, { newPassword }),
 
   // Stats
   getStats: () => apiClient.get('/admin/stats'),

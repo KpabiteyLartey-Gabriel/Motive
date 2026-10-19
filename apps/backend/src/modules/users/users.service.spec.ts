@@ -46,6 +46,20 @@ describe('UsersService account settings', () => {
     await expect(svc.changePassword('u-1', 'OldPass123!', 'short')).rejects.toThrow();
   });
 
+  it('adminResetPassword sets a known test password and revokes tokens', async () => {
+    const res: any = await svc.adminResetPassword('u-1', 'Test@12345', 'admin-1');
+    expect(res.success).toBe(true);
+    const data = update.mock.calls[0][0].data;
+    await expect(bcrypt.compare('Test@12345', data.passwordHash)).resolves.toBe(true);
+    expect(revoke).toHaveBeenCalled();
+    expect(JSON.stringify(res)).not.toContain('passwordHash');
+  });
+
+  it('adminResetPassword enforces a minimum length', async () => {
+    await expect(svc.adminResetPassword('u-1', 'short', 'admin-1')).rejects.toThrow();
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('deactivateMyAccount sets DEACTIVATED and revokes tokens', async () => {
     const res: any = await svc.deactivateMyAccount('u-1');
     expect(res.status).toBe('DEACTIVATED');
