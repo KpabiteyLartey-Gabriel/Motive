@@ -38,10 +38,28 @@ export class VehiclesService {
     }
 
     const ownerId = owner?.id || null;
-    const managingCompanyId = companyMember?.companyId || null;
 
-    const { publish, ...vehicleData } = dto as any;
+    const { publish, managingCompanyId: requestedCompanyId, ...vehicleData } = dto as any;
     const imageUrls = dto.imageUrls ? this.validatePhotoUrls(dto.imageUrls) : [];
+
+    // Rental is a company business: only companies publish vehicles for rent.
+    // A company member publishes under their own company; an individual owner
+    // must choose the company that will rent the vehicle out for them.
+    let managingCompanyId = companyMember?.companyId || null;
+    if (vehicleData.operatingModel === OperatingModel.RENTAL) {
+      if (companyMember) {
+        if (requestedCompanyId && requestedCompanyId !== companyMember.companyId) {
+          throw new BadRequestException('A company can only publish rental vehicles under its own company.');
+        }
+        managingCompanyId = companyMember.companyId;
+      } else if (requestedCompanyId) {
+        const company = await this.assertActiveCompany(requestedCompanyId);
+        managingCompanyId = company.id;
+      } else if (publish) {
+        throw new BadRequestException('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out, then publish.');
+      }
+    }
+
     return this.prisma.vehicle.create({
       data: {
         ...vehicleData,
@@ -53,6 +71,15 @@ export class VehiclesService {
         status: publish ? VehicleStatus.AVAILABLE : VehicleStatus.DRAFT,
       },
     });
+  }
+
+  private async assertActiveCompany(companyId: string) {
+    const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new NotFoundException('The chosen company was not found');
+    if (company.status !== 'ACTIVE') {
+      throw new BadRequestException('The chosen company is not active yet, so it cannot rent vehicles out. Please choose another company.');
+    }
+    return company;
   }
 
   async findAll(params: {
@@ -165,6 +192,11 @@ export class VehiclesService {
       if (!publishable || !targetOk) {
         throw new ForbiddenException('You can only publish a draft vehicle or unpublish an available one. This vehicle is managed by its contract or maintenance state.');
       }
+      // Rental vehicles publish through a company — an owner must have chosen
+      // the company that will rent it out before it can go live.
+      if (status === VehicleStatus.AVAILABLE && vehicle.operatingModel === OperatingModel.RENTAL && !vehicle.managingCompanyId) {
+        throw new BadRequestException('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out first, then publish.');
+      }
     }
 
     return this.prisma.vehicle.update({
@@ -200,14 +232,39 @@ export class VehiclesService {
     return null;
   }
 
-  async changeOperatingModel(vehicleId: string, newModel: OperatingModel, requestingUserId: string, requestingUserRole: string) {
+  async changeOperatingModel(vehicleId: string, newModel: OperatingModel, requestingUserId: string, requestingUserRole: string, managingCompanyId?: string) {
     const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
     await this.assertVehicleAccess(vehicle, requestingUserId, requestingUserRole);
 
     if (vehicle.operatingModel === newModel) {
+      // Same type: this is how an owner attaches the rental company to a
+      // vehicle that is already set to RENTAL.
+      if (newModel === OperatingModel.RENTAL && managingCompanyId && requestingUserRole !== UserRole.DRIVER && managingCompanyId !== vehicle.managingCompanyId) {
+        if (!vehicle.managingCompanyId || requestingUserRole === UserRole.OWNER) {
+          const company = await this.assertActiveCompany(managingCompanyId);
+          const updated = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { managingCompanyId: company.id } });
+          return { changed: false, approvalRequired: false, companyUpdated: true, vehicle: updated };
+        }
+      }
       return { changed: false, approvalRequired: false, vehicle };
     }
+
+    // Rental is published by companies only: changing to RENTAL needs the
+    // company that will rent the vehicle out (already attached, or chosen now).
+    let rentalCompanyId: string | null = null;
+    if (newModel === OperatingModel.RENTAL) {
+      if (vehicle.managingCompanyId) {
+        rentalCompanyId = vehicle.managingCompanyId;
+      } else if (managingCompanyId) {
+        const company = await this.assertActiveCompany(managingCompanyId);
+        rentalCompanyId = company.id;
+      } else {
+        throw new BadRequestException('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out.');
+      }
+    }
+    const typeData: any = { operatingModel: newModel };
+    if (rentalCompanyId && rentalCompanyId !== vehicle.managingCompanyId) typeData.managingCompanyId = rentalCompanyId;
 
     const driver = await this.getAssignedDriver(vehicle);
     const isAssignedDriver = !!driver && requestingUserRole === UserRole.DRIVER && driver.userId === requestingUserId;
@@ -217,7 +274,7 @@ export class VehiclesService {
       if (requestingUserRole === UserRole.DRIVER) {
         throw new ForbiddenException('Only the vehicle owner can set the contract type before a driver is assigned');
       }
-      const updated = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { operatingModel: newModel } });
+      const updated = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: typeData });
       return { changed: true, approvalRequired: false, vehicle: updated };
     }
 
@@ -226,6 +283,12 @@ export class VehiclesService {
     if (vehicle.operatingModel === 'WORK_AND_PAY') {
       if (isAssignedDriver) {
         throw new ForbiddenException('This is a Work & Pay vehicle: a change of contract type must be proposed by the owner and approved by you, because the vehicle is becoming yours.');
+      }
+      // Attach the chosen rental company now (without changing the type yet)
+      // so an approval lands the vehicle under that company.
+      let currentVehicle: any = vehicle;
+      if (rentalCompanyId && rentalCompanyId !== vehicle.managingCompanyId) {
+        currentVehicle = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { managingCompanyId: rentalCompanyId } });
       }
       await this.prisma.vehicleOperatingModelChange.updateMany({
         where: { vehicleId, status: 'PENDING' },
@@ -253,11 +316,11 @@ export class VehiclesService {
           sentAt: new Date(),
         },
       });
-      return { changed: false, approvalRequired: true, request, vehicle };
+      return { changed: false, approvalRequired: true, request, vehicle: currentVehicle };
     }
 
     // DriveOn / Rental with a driver: the driver (or owner) can change later.
-    const updated = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { operatingModel: newModel } });
+    const updated = await this.prisma.vehicle.update({ where: { id: vehicleId }, data: typeData });
     return { changed: true, approvalRequired: false, vehicle: updated };
   }
 

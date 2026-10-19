@@ -144,7 +144,7 @@ export const vehiclesApi = {
   },
   setPhotos: (id, imageUrls) => apiClient.patch(`/vehicles/${id}/photos`, { imageUrls }),
   updateStatus: (id, status) => apiClient.patch(`/vehicles/${id}/status`, { status }),
-  changeOperatingModel: (id, operatingModel) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel }),
+  changeOperatingModel: (id, operatingModel, managingCompanyId) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel, ...(managingCompanyId ? { managingCompanyId } : {}) }),
   getPendingModelChange: (id) => apiClient.get(`/vehicles/${id}/operating-model-request`),
   decideModelChange: (id, requestId, approve) => apiClient.post(`/vehicles/${id}/operating-model-request/${requestId}/decision`, { approve }),
 };

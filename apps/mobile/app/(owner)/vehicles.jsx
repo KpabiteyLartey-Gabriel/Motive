@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
 import { useAuth, fmtGHS, fmtDate } from '../../lib/useAuth';
-import { vehiclesApi, complianceApi, resolveVehiclePhoto } from '../../lib/api';
+import { vehiclesApi, complianceApi, companiesApi, resolveVehiclePhoto } from '../../lib/api';
 import VehiclePhotos from '../../components/VehiclePhotos';
 import { Field, PrimaryButton } from '../../components/ui';
 import { Image } from 'react-native';
@@ -16,7 +16,7 @@ const MODELS = [
   { value: 'DRIVING_ON', label: 'DriveOn' },
   { value: 'RENTAL', label: 'Rental' },
 ];
-const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), color: '', region: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', mileage: '', estimatedValue: '' };
+const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), color: '', region: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '' };
 
 function ChipRow({ label, options, value, onChange, colors }) {
   return (
@@ -53,10 +53,23 @@ export default function OwnerVehicles() {
   const [statusBusy, setStatusBusy] = useState(false);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
+  const [companies, setCompanies] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+    companiesApi.list({ limit: 50 })
+      .then((r) => setCompanies((r.data?.data?.companies || []).filter((c) => c.status === 'ACTIVE')))
+      .catch(() => setCompanies([]));
+  }, [user]);
+
   const submitVehicle = async (publish) => {
     setFormError('');
     if (!form.registrationNumber.trim() || !form.make.trim() || !form.model.trim() || !form.year) {
       setFormError('Registration number, make, model and year are required.');
+      return;
+    }
+    if (publish && form.operatingModel === 'RENTAL' && !form.managingCompanyId) {
+      setFormError('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out, or save it as a draft and choose later.');
       return;
     }
     setSaving(true);
@@ -72,6 +85,7 @@ export default function OwnerVehicles() {
         fuelType: form.fuelType,
         transmission: form.transmission,
         operatingModel: form.operatingModel,
+        managingCompanyId: form.operatingModel === 'RENTAL' && form.managingCompanyId ? form.managingCompanyId : undefined,
         mileage: form.mileage ? Number(form.mileage) : undefined,
         estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
         publish,
@@ -92,6 +106,8 @@ export default function OwnerVehicles() {
   const [pendingReq, setPendingReq] = useState(null);
   const [modelBusy, setModelBusy]   = useState(false);
   const [modelMsg, setModelMsg]     = useState('');
+  const [rentalCompanyId, setRentalCompanyId] = useState('');
+  const [showRentalPicker, setShowRentalPicker] = useState(false);
 
   const loadPending = async (vehicleId) => {
     try {
@@ -101,18 +117,29 @@ export default function OwnerVehicles() {
   };
 
   const changeModel = async (vehicle, target) => {
+    if (target === 'RENTAL' && !rentalCompanyId && !vehicle.managingCompanyId) {
+      setShowRentalPicker(true);
+      setModelMsg('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out, then confirm.');
+      return;
+    }
     setModelBusy(true);
     setModelMsg('');
     try {
-      const res = await vehiclesApi.changeOperatingModel(vehicle.id, target);
+      const res = await vehiclesApi.changeOperatingModel(vehicle.id, target, target === 'RENTAL' ? (rentalCompanyId || undefined) : undefined);
       const d = res.data?.data || {};
       if (d.approvalRequired) {
         setPendingReq(d.request);
+        if (d.vehicle) {
+          setVehicles((prev) => prev.map((x) => (x.id === d.vehicle.id ? { ...x, ...d.vehicle } : x)));
+          setSelected((s) => (s?.id === d.vehicle.id ? { ...s, ...d.vehicle } : s));
+        }
+        setShowRentalPicker(false);
         setModelMsg('Change requested — the assigned driver must approve it first, because this Work & Pay vehicle is becoming theirs.');
       } else if (d.vehicle) {
         setVehicles((prev) => prev.map((x) => (x.id === d.vehicle.id ? { ...x, ...d.vehicle } : x)));
         setSelected((s) => (s?.id === d.vehicle.id ? { ...s, ...d.vehicle } : s));
-        setModelMsg('Contract type updated.');
+        setShowRentalPicker(false);
+        setModelMsg(d.companyUpdated ? 'Rental company saved. You can publish this vehicle now.' : 'Contract type updated.');
       }
     } catch (e) {
       setModelMsg(e.response?.data?.message || 'Could not change the contract type.');
@@ -150,6 +177,8 @@ export default function OwnerVehicles() {
   const openVehicle = async (v) => {
     setSelected(v);
     setModelMsg('');
+    setRentalCompanyId(v.managingCompanyId || '');
+    setShowRentalPicker(false);
     loadPending(v.id);
     try {
       const res = await complianceApi.listForVehicle(v.id);
@@ -201,9 +230,19 @@ export default function OwnerVehicles() {
             ) : (
               <>
                 <Text style={{ fontSize: 12.5, color: colors.textMuted, marginBottom: 10, lineHeight: 18 }}>
-                  Choose the type this vehicle is published for. Work & Pay changes with a driver assigned need the driver&apos;s approval. DriveOn can be changed any time.
+                  Choose the type this vehicle is published for. Work & Pay changes with a driver assigned need the driver&apos;s approval. DriveOn can be changed any time. Rental is published through a company you choose.
                 </Text>
                 <ChipRow label="" options={MODELS} value={selected.operatingModel || 'WORK_AND_PAY'} onChange={(v) => changeModel(selected, v)} colors={colors} />
+                {(showRentalPicker || selected.operatingModel === 'RENTAL') && (
+                  <>
+                    <ChipRow label="Company that will rent it out" options={companies.map((c) => ({ value: c.id, label: c.name }))} value={rentalCompanyId || selected.managingCompanyId || ''} onChange={setRentalCompanyId} colors={colors} />
+                    {selected.operatingModel === 'RENTAL' && !selected.managingCompanyId ? (
+                      <PrimaryButton title="Save rental company" loading={modelBusy} onPress={() => changeModel(selected, 'RENTAL')} />
+                    ) : selected.operatingModel !== 'RENTAL' ? (
+                      <PrimaryButton title="Confirm — rent through this company" loading={modelBusy} onPress={() => changeModel(selected, 'RENTAL')} />
+                    ) : null}
+                  </>
+                )}
                 {modelBusy ? <Text style={{ fontSize: 12.5, color: colors.textMuted }}>Saving…</Text> : null}
               </>
             )}
@@ -286,6 +325,13 @@ export default function OwnerVehicles() {
             <ChipRow label="Fuel" options={FUELS} value={form.fuelType} onChange={(v) => set('fuelType', v)} colors={colors} />
             <ChipRow label="Transmission" options={TRANSMISSIONS} value={form.transmission} onChange={(v) => set('transmission', v)} colors={colors} />
             <ChipRow label="How it will earn" options={MODELS} value={form.operatingModel} onChange={(v) => set('operatingModel', v)} colors={colors} />
+            {form.operatingModel === 'RENTAL' && (
+              <>
+                <Text style={{ fontSize: 12.5, color: colors.textMuted, marginBottom: 10, lineHeight: 18 }}>Only companies publish rentals. Choose the company that will rent this vehicle out.</Text>
+                <ChipRow label="Company that will rent it out *" options={companies.map((c) => ({ value: c.id, label: c.name }))} value={form.managingCompanyId} onChange={(v) => set('managingCompanyId', v)} colors={colors} />
+                {companies.length === 0 ? <Text style={{ fontSize: 12.5, color: colors.warning, marginBottom: 10 }}>No active companies found yet — you can save as a draft and choose later.</Text> : null}
+              </>
+            )}
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}><Field label="Mileage (km)" placeholder="85000" keyboardType="number-pad" value={form.mileage} onChangeText={(v) => set('mileage', v)} /></View>
               <View style={{ flex: 1 }}><Field label="Value (GHS)" placeholder="95000" keyboardType="number-pad" value={form.estimatedValue} onChangeText={(v) => set('estimatedValue', v)} /></View>

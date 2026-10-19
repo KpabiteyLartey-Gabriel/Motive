@@ -55,6 +55,11 @@ export class CreateVehicleDto {
   @IsOptional()
   publish?: boolean;
 
+  @ApiPropertyOptional({ description: 'Company that will rent this vehicle out. Required when an owner publishes a RENTAL vehicle — only companies publish rentals.' })
+  @IsString()
+  @IsOptional()
+  managingCompanyId?: string;
+
   @ApiPropertyOptional()
   @IsNumber()
   @IsOptional()
@@ -93,6 +98,11 @@ export class ChangeOperatingModelDto {
   @ApiProperty({ enum: OperatingModel, description: 'The contract type to change to. Work & Pay vehicles with a driver need driver approval.' })
   @IsEnum(OperatingModel)
   operatingModel: OperatingModel;
+
+  @ApiPropertyOptional({ description: 'Company that will rent the vehicle out. Required when changing to RENTAL and the vehicle has no managing company yet.' })
+  @IsString()
+  @IsOptional()
+  managingCompanyId?: string;
 }
 
 export class DecideModelChangeDto {

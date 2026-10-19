@@ -46,6 +46,7 @@ describe('VehiclesService publish / unpublish', () => {
   const prisma: any = {
     owner: { findUnique: jest.fn().mockResolvedValue({ id: 'owner-1', userId: 'user-1' }) },
     companyMember: { findFirst: jest.fn().mockResolvedValue(null) },
+    company: { findUnique: jest.fn().mockResolvedValue({ id: 'comp-1', status: 'ACTIVE' }) },
     vehicle: {
       create,
       findUnique: jest.fn().mockResolvedValue({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT' }),
@@ -66,6 +67,30 @@ describe('VehiclesService publish / unpublish', () => {
     const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'WORK_AND_PAY' });
     expect(res.status).toBe('AVAILABLE');
     expect(res.operatingModel).toBe('WORK_AND_PAY');
+  });
+
+  it('owner cannot publish a RENTAL vehicle without choosing a company', async () => {
+    await expect(svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL' })).rejects.toThrow(/Only companies can publish vehicles for rent/);
+  });
+
+  it('owner can publish a RENTAL vehicle through a chosen active company', async () => {
+    const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL', managingCompanyId: 'comp-1' });
+    expect(res.status).toBe('AVAILABLE');
+    expect(res.managingCompanyId).toBe('comp-1');
+    expect(create.mock.calls[create.mock.calls.length - 1][0].data.managingCompanyId).toBe('comp-1');
+  });
+
+  it('owner can save a RENTAL draft before choosing a company, but not publish it after', async () => {
+    const res: any = await svc.create('user-1', { ...dto, operatingModel: 'RENTAL' });
+    expect(res.status).toBe('DRAFT');
+    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT', operatingModel: 'RENTAL' });
+    await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/Only companies can publish vehicles for rent/);
+  });
+
+  it('a company member publishes a RENTAL vehicle under their own company', async () => {
+    prisma.companyMember.findFirst.mockResolvedValueOnce({ companyId: 'comp-9', userId: 'user-1' });
+    const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL' });
+    expect(res.managingCompanyId).toBe('comp-9');
   });
 
   it('owner can publish a draft and unpublish an available vehicle', async () => {
@@ -93,6 +118,7 @@ describe('VehiclesService contract-type (operating model) changes', () => {
     const prisma: any = {
       owner: { findUnique: jest.fn().mockResolvedValue({ id: 'owner-1', userId: 'user-1' }) },
       driver: { findUnique: jest.fn().mockResolvedValue(driver) },
+      company: { findUnique: jest.fn().mockResolvedValue({ id: 'comp-1', status: 'ACTIVE' }) },
       contract: { findFirst: jest.fn().mockResolvedValue(null) },
       notification: { create: jest.fn().mockResolvedValue({}) },
       vehicleOperatingModelChange: {
@@ -169,8 +195,17 @@ describe('VehiclesService contract-type (operating model) changes', () => {
     const { svc } = makeSvc(driveOnVehicle);
     const byOwner: any = await svc.changeOperatingModel('veh-1', 'WORK_AND_PAY', 'user-1', 'OWNER');
     expect(byOwner.changed).toBe(true);
-    const byDriver: any = await svc.changeOperatingModel('veh-1', 'RENTAL', 'driver-user', 'DRIVER');
+    const byDriver: any = await svc.changeOperatingModel('veh-1', 'WORK_AND_PAY', 'driver-user', 'DRIVER');
     expect(byDriver.changed).toBe(true);
+  });
+
+  it('changing to RENTAL needs a company: blocked without one, works with a chosen active company', async () => {
+    const { svc } = makeSvc(freeVehicle, null);
+    await expect(svc.changeOperatingModel('veh-1', 'RENTAL', 'user-1', 'OWNER')).rejects.toThrow(/Only companies can publish vehicles for rent/);
+    const res: any = await svc.changeOperatingModel('veh-1', 'RENTAL', 'user-1', 'OWNER', 'comp-1');
+    expect(res.changed).toBe(true);
+    expect(res.vehicle.operatingModel).toBe('RENTAL');
+    expect(res.vehicle.managingCompanyId).toBe('comp-1');
   });
 });
 

@@ -65,7 +65,7 @@ export class VehiclesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Change contract type (Work & Pay with a driver requires driver approval; DriveOn can be changed by owner or assigned driver)' })
   async changeOperatingModel(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: ChangeOperatingModelDto) {
-    return this.vehiclesService.changeOperatingModel(id, dto.operatingModel, user.id, user.primaryRole);
+    return this.vehiclesService.changeOperatingModel(id, dto.operatingModel, user.id, user.primaryRole, dto.managingCompanyId);
   }
 
   @Get(':id/operating-model-request')

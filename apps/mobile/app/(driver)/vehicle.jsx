@@ -172,7 +172,7 @@ export default function DriverVehicle() {
           ) : (
             <>
               <Text style={{ fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginBottom: 10 }}>
-                DriveOn and Rental types can be changed directly. Switching to Work &amp; Pay will still need the owner to propose it.
+                DriveOn can be changed directly. Rental is published through a company, so switching to Rental goes through the owner and their chosen company.
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {MODELS.map((m) => {
