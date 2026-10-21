@@ -1,6 +1,24 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+function resolveApiUrl() {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const host = window.location.hostname;
+    // On the public hosted site, call the API on the same domain (/api/v1 is
+    // routed to the backend). Calling localhost from a public page makes
+    // Chrome show an "Access other apps and services on this device" prompt
+    // (Local Network Access) and the request is blocked.
+    if (host !== 'localhost' && host !== '127.0.0.1' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+      return '/api/v1';
+    }
+    // Local dev (localhost or a LAN address): the backend runs on port 3001
+    // of the same machine.
+    return `http://${host}:3001/api/v1`;
+  }
+  return 'http://localhost:3001/api/v1';
+}
+
+const API_URL = resolveApiUrl();
 
 const apiClient = axios.create({
   baseURL: API_URL,
