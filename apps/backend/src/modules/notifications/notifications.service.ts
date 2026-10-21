@@ -5,7 +5,7 @@ import { type ISmsProvider } from '../../integrations/sms/interfaces/sms-provide
 import { SMS_PROVIDER } from '../../integrations/sms/sms-integration.module';
 import { NotificationQueueService } from '../../queue/notification-queue.service';
 import { MessagingService } from '../messaging/messaging.service';
-import Expo from 'expo-server-sdk';
+import { isExpoPushToken } from '../../integrations/push/push.service';
 
 export interface SendNotificationParams {
   userId: string;
@@ -135,7 +135,7 @@ export class NotificationsService {
   // ── Push token registration ────────────────────────────────
 
   async registerPushToken(userId: string, token: string, platform: string, deviceId?: string) {
-    if (!Expo.isExpoPushToken(token)) {
+    if (!isExpoPushToken(token)) {
       this.logger.warn(`[Push] registerPushToken called with invalid token for user ${userId}`);
       return null;
     }
