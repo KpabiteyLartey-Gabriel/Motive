@@ -19,6 +19,7 @@ function VerificationReview({ vehicle, onClose, onDecided }) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState(null);
 
   const decide = async (approve) => {
     setBusy(approve ? 'approve' : 'reject');
@@ -73,7 +74,7 @@ function VerificationReview({ vehicle, onClose, onDecided }) {
                 return (
                   <div key={slot.kind} className="border border-neutral-200 dark:border-dark-border rounded-lg p-2">
                     <p className="text-[11px] text-neutral-500 mb-2">{slot.label}</p>
-                    {url ? <a href={resolveVehiclePhoto(url)} target="_blank" rel="noreferrer"><img src={resolveVehiclePhoto(url)} alt="" className="w-full h-28 object-cover rounded-md" /></a> : <div className="w-full h-28 rounded-md bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-[11px] text-red-400">Missing</div>}
+                    {url ? <button type="button" onClick={() => setPreview({ url: resolveVehiclePhoto(url), label: slot.label })} className="block w-full cursor-zoom-in"><img src={resolveVehiclePhoto(url)} alt="" className="w-full h-28 object-cover rounded-md" /></button> : <div className="w-full h-28 rounded-md bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-[11px] text-red-400">Missing</div>}
                   </div>
                 );
               })}
@@ -89,6 +90,19 @@ function VerificationReview({ vehicle, onClose, onDecided }) {
           </div>
         </div>
       </div>
+
+      {preview && (
+        <div className="fixed inset-0 lg:right-[512px] z-[60] bg-black/80 flex flex-col" onClick={() => setPreview(null)}>
+          <div className="flex items-center justify-between px-5 py-3">
+            <p className="text-sm text-white/90">{preview.label} — {vehicle.make} {vehicle.model} ({vehicle.registrationNumber})</p>
+            <button type="button" onClick={() => setPreview(null)} className="text-white/80 hover:text-white text-xl leading-none px-2" aria-label="Close preview">✕</button>
+          </div>
+          <div className="flex-1 flex items-center justify-center px-6 pb-6 min-h-0">
+            <img src={preview.url} alt={preview.label} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+          </div>
+          <p className="text-center text-xs text-white/60 pb-4">Click anywhere outside the image to close</p>
+        </div>
+      )}
     </>
   );
 }
