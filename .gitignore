@@ -25,3 +25,5 @@ ui-check/chrome-profile/
 ui-check/
 apps/backend/uploads/profiles/*
 apps/backend/uploads/vehicles/*
+.vercel
+.env*

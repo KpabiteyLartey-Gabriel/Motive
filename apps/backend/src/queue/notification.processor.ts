@@ -1,20 +1,43 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Job, Worker } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../integrations/push/push.service';
 import { NOTIFICATION_QUEUE } from './notification-queue.constants';
+import { buildRedisConnection } from './redis-connection';
 import { JOB_SEND_PUSH, SendPushJobData } from './notification-queue.service';
 
-@Processor(NOTIFICATION_QUEUE)
-export class NotificationProcessor extends WorkerHost {
+@Injectable()
+export class NotificationProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationProcessor.name);
+  private worker?: Worker;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly pushService: PushService,
-  ) {
-    super();
+    private readonly config: ConfigService,
+  ) {}
+
+  onModuleInit() {
+    // A failed Redis connection must never take the API down with it: log
+    // worker errors and keep serving HTTP. Push delivery is best effort.
+    try {
+      this.worker = new Worker(NOTIFICATION_QUEUE, (job: Job) => this.process(job), {
+        connection: buildRedisConnection(this.config),
+      });
+      this.worker.on('error', (err) =>
+        this.logger.error(`Notification worker error: ${err.message}`),
+      );
+      this.worker.on('failed', (job, err) =>
+        this.logger.warn(`Notification job ${job?.id} failed: ${err.message}`),
+      );
+    } catch (err: any) {
+      this.logger.error(`Could not start notification worker: ${err?.message || err}`);
+    }
+  }
+
+  async onModuleDestroy() {
+    await this.worker?.close().catch(() => undefined);
   }
 
   async process(job: Job): Promise<void> {

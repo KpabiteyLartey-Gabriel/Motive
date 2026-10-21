@@ -1,30 +1,37 @@
-import { Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Queue } from 'bullmq';
 import { NotificationQueueService } from './notification-queue.service';
 import { NotificationProcessor } from './notification.processor';
 import { PushIntegrationModule } from '../integrations/push/push-integration.module';
-import { NOTIFICATION_QUEUE } from './notification-queue.constants';
+import { NOTIFICATION_QUEUE, NOTIFICATION_QUEUE_TOKEN } from './notification-queue.constants';
+import { buildRedisConnection } from './redis-connection';
 
 export { NOTIFICATION_QUEUE };
 
+// The queue is built on the `bullmq` package directly (CommonJS). The
+// `@nestjs/bullmq` wrapper is ESM-only and crashes when required from this
+// CommonJS app on some runtimes (ERR_REQUIRE_ESM on Vercel), which took the
+// whole API down at startup.
 @Module({
-  imports: [
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
+  imports: [ConfigModule, PushIntegrationModule],
+  providers: [
+    {
+      provide: NOTIFICATION_QUEUE_TOKEN,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-          password: config.get<string>('REDIS_PASSWORD') || undefined,
-        },
-      }),
-    }),
-    BullModule.registerQueue({ name: NOTIFICATION_QUEUE }),
-    PushIntegrationModule,
+      useFactory: (config: ConfigService) => {
+        const queue = new Queue(NOTIFICATION_QUEUE, {
+          connection: buildRedisConnection(config),
+        });
+        queue.on('error', (err) =>
+          new Logger('NotificationQueue').error(`Notification queue error: ${err.message}`),
+        );
+        return queue;
+      },
+    },
+    NotificationQueueService,
+    NotificationProcessor,
   ],
-  providers: [NotificationQueueService, NotificationProcessor],
   exports: [NotificationQueueService],
 })
 export class NotificationQueueModule {}

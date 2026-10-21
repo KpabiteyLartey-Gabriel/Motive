@@ -1,7 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
+import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { NOTIFICATION_QUEUE } from './notification-queue.constants';
+import { NOTIFICATION_QUEUE_TOKEN } from './notification-queue.constants';
 
 export const JOB_SEND_PUSH = 'send-push';
 
@@ -14,12 +13,16 @@ export interface SendPushJobData {
 }
 
 @Injectable()
-export class NotificationQueueService {
+export class NotificationQueueService implements OnModuleDestroy {
   private readonly logger = new Logger(NotificationQueueService.name);
 
   constructor(
-    @InjectQueue(NOTIFICATION_QUEUE) private readonly queue: Queue,
+    @Inject(NOTIFICATION_QUEUE_TOKEN) private readonly queue: Queue,
   ) {}
+
+  async onModuleDestroy() {
+    await this.queue.close().catch(() => undefined);
+  }
 
   /**
    * Enqueue a push notification delivery job for a single user.

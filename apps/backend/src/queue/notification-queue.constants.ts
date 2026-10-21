@@ -1,1 +1,3 @@
 export const NOTIFICATION_QUEUE = 'notifications';
+
+export const NOTIFICATION_QUEUE_TOKEN = 'NOTIFICATION_QUEUE_INSTANCE';
