@@ -165,6 +165,16 @@ export const vehiclesApi = {
   changeOperatingModel: (id, operatingModel, managingCompanyId) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel, ...(managingCompanyId ? { managingCompanyId } : {}) }),
   getPendingModelChange: (id) => apiClient.get(`/vehicles/${id}/operating-model-request`),
   decideModelChange: (id, requestId, approve) => apiClient.post(`/vehicles/${id}/operating-model-request/${requestId}/decision`, { approve }),
+  updateDetails: (id, data) => apiClient.patch(`/vehicles/${id}/details`, data),
+  uploadEvidence: (id, kind, file) => {
+    const form = new FormData();
+    form.append('kind', kind);
+    form.append('file', file);
+    return apiClient.post(`/vehicles/${id}/verification/evidence/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  submitVerification: (id) => apiClient.post(`/vehicles/${id}/verification/submit`, {}),
+  verificationQueue: () => apiClient.get('/vehicles/verification/queue'),
+  decideVerification: (id, approve, note) => apiClient.post(`/vehicles/${id}/verification/decision`, { approve, ...(note ? { note } : {}) }),
 };
 
 // ── Contracts ────────────────────────────────────────────────

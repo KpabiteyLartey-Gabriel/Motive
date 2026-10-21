@@ -79,6 +79,13 @@ enum OwnerStatus {
   SUSPENDED
 }
 
+enum VehicleVerificationStatus {
+  NOT_SUBMITTED
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
 enum VehicleStatus {
   DRAFT
   PENDING_VERIFICATION
@@ -655,6 +662,15 @@ model Vehicle {
   currency           String        @default("GHS")
   status             VehicleStatus @default(DRAFT)
   operatingModel     OperatingModel?
+  // Manual verification by a Super Admin before a vehicle may be published:
+  // submitted identity data (registration, chassis, engine, colour, type,
+  // year…) is checked against specific evidence photos/documents.
+  verificationStatus      VehicleVerificationStatus @default(NOT_SUBMITTED)
+  verificationEvidence    Json?
+  verificationNote        String?
+  verificationSubmittedAt DateTime?
+  verifiedAt              DateTime?
+  verifiedById            String?
   ownerId            String?
   managingCompanyId  String?
   currentDriverId    String?
@@ -674,6 +690,7 @@ model Vehicle {
   ownershipTransfers OwnershipTransfer[]
 
   @@index([status])
+  @@index([verificationStatus])
   @@index([ownerId])
   @@index([managingCompanyId])
   @@index([registrationNumber])

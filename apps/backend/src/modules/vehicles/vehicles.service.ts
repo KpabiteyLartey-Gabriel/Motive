@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
-import { VehicleStatus, UserRole, OperatingModel } from '@prisma/client';
+import { VehicleStatus, UserRole, OperatingModel, VehicleVerificationStatus } from '@prisma/client';
 
 @Injectable()
 export class VehiclesService {
@@ -66,9 +66,10 @@ export class VehiclesService {
         imageUrls,
         ownerId,
         managingCompanyId,
-        // Publishing makes the vehicle AVAILABLE for contracts/drivers;
-        // otherwise it stays a private DRAFT only the owner can see.
-        status: publish ? VehicleStatus.AVAILABLE : VehicleStatus.DRAFT,
+        // Every vehicle starts as a private DRAFT. It can only be published
+        // (AVAILABLE) after a Super Admin verifies it — see updateStatus.
+        status: VehicleStatus.DRAFT,
+        verificationStatus: VehicleVerificationStatus.NOT_SUBMITTED,
       },
     });
   }
@@ -197,6 +198,19 @@ export class VehiclesService {
       if (status === VehicleStatus.AVAILABLE && vehicle.operatingModel === OperatingModel.RENTAL && !vehicle.managingCompanyId) {
         throw new BadRequestException('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out first, then publish.');
       }
+    }
+
+    // Every published vehicle must first be verified by a Super Admin, who
+    // confirms the submitted identity (registration number, chassis number,
+    // engine number, colour, type, year…) against the evidence images.
+    if (status === VehicleStatus.AVAILABLE && vehicle.verificationStatus !== VehicleVerificationStatus.APPROVED) {
+      if (vehicle.verificationStatus === VehicleVerificationStatus.PENDING_REVIEW) {
+        throw new BadRequestException('This vehicle is waiting for verification. A Super Admin must verify it before it can be published.');
+      }
+      if (vehicle.verificationStatus === VehicleVerificationStatus.REJECTED) {
+        throw new BadRequestException(`This vehicle was not verified${vehicle.verificationNote ? `: ${vehicle.verificationNote}` : ''}. Fix the issues, resubmit for verification, and publish after approval.`);
+      }
+      throw new BadRequestException('This vehicle has not been verified yet. Add its chassis and engine numbers, upload the required evidence images, and submit it for verification by a Super Admin.');
     }
 
     return this.prisma.vehicle.update({
@@ -357,6 +371,168 @@ export class VehiclesService {
       where: { vehicleId, status: 'PENDING' },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // ── Vehicle verification (Super Admin, before publishing) ───
+  // The reviewer confirms the DVLA identity of the vehicle: registration
+  // number, chassis number, engine number, make/model, year, colour, type
+  // and fuel — against clear evidence images the owner must provide:
+  // front and rear photos showing the number plate, a close-up of the
+  // chassis/VIN plate, and the Vehicle Registration Certificate.
+  static readonly EVIDENCE_KINDS = ['frontPlate', 'rearPlate', 'vinPlate', 'registrationCert'] as const;
+  static readonly EVIDENCE_LABELS: Record<string, string> = {
+    frontPlate: 'front photo showing the number plate',
+    rearPlate: 'rear photo showing the number plate',
+    vinPlate: 'close-up of the chassis/VIN plate',
+    registrationCert: 'Vehicle Registration Certificate (DVLA)',
+  };
+  private static readonly IDENTITY_FIELDS = ['registrationNumber', 'chassisNumber', 'engineNumber', 'vin', 'make', 'model', 'year', 'color', 'type', 'fuelType'];
+
+  private invalidateVerificationIfNeeded(vehicle: any, changedKeys: string[]) {
+    const identityChanged = changedKeys.some((k) => VehiclesService.IDENTITY_FIELDS.includes(k));
+    if (vehicle.verificationStatus === VehicleVerificationStatus.APPROVED && identityChanged) {
+      return {
+        verificationStatus: VehicleVerificationStatus.NOT_SUBMITTED,
+        verifiedAt: null,
+        verifiedById: null,
+        verificationNote: 'Vehicle details changed after verification — please resubmit for verification.',
+        ...(vehicle.status === VehicleStatus.AVAILABLE ? { status: VehicleStatus.DRAFT } : {}),
+      };
+    }
+    if (vehicle.verificationStatus === VehicleVerificationStatus.REJECTED && changedKeys.length > 0) {
+      return { verificationStatus: VehicleVerificationStatus.NOT_SUBMITTED };
+    }
+    return {};
+  }
+
+  async updateDetails(vehicleId: string, dto: Record<string, any>, requestingUserId: string, requestingUserRole: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    if (requestingUserRole === UserRole.DRIVER) throw new ForbiddenException('Drivers cannot edit vehicle details');
+    await this.assertVehicleAccess(vehicle, requestingUserId, requestingUserRole);
+
+    const data: Record<string, any> = {};
+    for (const [k, v] of Object.entries(dto || {})) {
+      if (v !== undefined && (vehicle as any)[k] !== v) data[k] = v;
+    }
+    if (Object.keys(data).length === 0) return vehicle;
+    Object.assign(data, this.invalidateVerificationIfNeeded(vehicle, Object.keys(data)));
+    return this.prisma.vehicle.update({ where: { id: vehicleId }, data });
+  }
+
+  async setVerificationEvidence(vehicleId: string, kind: string, url: string, requestingUserId: string, requestingUserRole: string) {
+    if (!(VehiclesService.EVIDENCE_KINDS as readonly string[]).includes(kind)) {
+      throw new BadRequestException(`Unknown evidence kind "${kind}". Use one of: ${VehiclesService.EVIDENCE_KINDS.join(', ')}`);
+    }
+    const [cleanUrl] = this.validatePhotoUrls([url]);
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    if (requestingUserRole === UserRole.DRIVER) throw new ForbiddenException('Drivers cannot upload verification evidence');
+    await this.assertVehicleAccess(vehicle, requestingUserId, requestingUserRole);
+
+    const evidence = { ...((vehicle.verificationEvidence as Record<string, string>) || {}), [kind]: cleanUrl };
+    const data: Record<string, any> = { verificationEvidence: evidence };
+    if (vehicle.verificationStatus === VehicleVerificationStatus.APPROVED) {
+      Object.assign(data, {
+        verificationStatus: VehicleVerificationStatus.NOT_SUBMITTED,
+        verifiedAt: null,
+        verifiedById: null,
+        verificationNote: 'Verification evidence changed — please resubmit for verification.',
+        ...(vehicle.status === VehicleStatus.AVAILABLE ? { status: VehicleStatus.DRAFT } : {}),
+      });
+    }
+    return this.prisma.vehicle.update({ where: { id: vehicleId }, data });
+  }
+
+  async submitVerification(vehicleId: string, evidenceInput: Record<string, string> | undefined, requestingUserId: string, requestingUserRole: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    if (requestingUserRole === UserRole.DRIVER) throw new ForbiddenException('Drivers cannot submit vehicles for verification');
+    await this.assertVehicleAccess(vehicle, requestingUserId, requestingUserRole);
+    if (vehicle.verificationStatus === VehicleVerificationStatus.PENDING_REVIEW) {
+      throw new BadRequestException('This vehicle is already waiting for verification.');
+    }
+    if (vehicle.verificationStatus === VehicleVerificationStatus.APPROVED) {
+      throw new BadRequestException('This vehicle is already verified.');
+    }
+
+    const evidence: Record<string, string> = { ...((vehicle.verificationEvidence as Record<string, string>) || {}) };
+    for (const kind of VehiclesService.EVIDENCE_KINDS) {
+      const url = evidenceInput?.[kind];
+      if (url) evidence[kind] = this.validatePhotoUrls([url])[0];
+    }
+
+    const missing: string[] = [];
+    if (!vehicle.chassisNumber) missing.push('chassis number');
+    if (!vehicle.engineNumber) missing.push('engine number');
+    if (!vehicle.color) missing.push('vehicle colour');
+    for (const kind of VehiclesService.EVIDENCE_KINDS) {
+      if (!evidence[kind]) missing.push(VehiclesService.EVIDENCE_LABELS[kind]);
+    }
+    if (missing.length > 0) {
+      throw new BadRequestException(`Before submitting, please add: ${missing.join('; ')}. The Super Admin checks these against your submitted details (registration ${vehicle.registrationNumber}, ${vehicle.make} ${vehicle.model} ${vehicle.year}).`);
+    }
+
+    return this.prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: {
+        verificationEvidence: evidence,
+        verificationStatus: VehicleVerificationStatus.PENDING_REVIEW,
+        verificationSubmittedAt: new Date(),
+        verificationNote: null,
+      },
+    });
+  }
+
+  async verificationQueue() {
+    return this.prisma.vehicle.findMany({
+      where: { verificationStatus: VehicleVerificationStatus.PENDING_REVIEW },
+      orderBy: { verificationSubmittedAt: 'asc' },
+      include: {
+        owner: { include: { user: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } } } },
+        managingCompany: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async decideVerification(vehicleId: string, approve: boolean, note: string | undefined, superAdminId: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    if (vehicle.verificationStatus !== VehicleVerificationStatus.PENDING_REVIEW) {
+      throw new BadRequestException('This vehicle is not waiting for verification.');
+    }
+    if (!approve && !note?.trim()) {
+      throw new BadRequestException('Please say what does not match or is unclear, so the owner can fix it and resubmit.');
+    }
+    const updated = await this.prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: approve
+        ? { verificationStatus: VehicleVerificationStatus.APPROVED, verifiedAt: new Date(), verifiedById: superAdminId, verificationNote: note?.trim() || null }
+        : { verificationStatus: VehicleVerificationStatus.REJECTED, verifiedAt: null, verifiedById: null, verificationNote: note!.trim() },
+    });
+
+    // Tell the owner the outcome (best effort).
+    try {
+      const owner = vehicle.ownerId ? await this.prisma.owner.findUnique({ where: { id: vehicle.ownerId } }) : null;
+      const recipientId = owner?.userId;
+      if (recipientId) {
+        await this.prisma.notification.create({
+          data: {
+            userId: recipientId,
+            channel: 'IN_APP',
+            type: approve ? 'VEHICLE_VERIFIED' : 'VEHICLE_VERIFICATION_REJECTED',
+            subject: approve ? 'Your vehicle has been verified' : 'Your vehicle could not be verified',
+            body: approve
+              ? `Your ${vehicle.make} ${vehicle.model} (${vehicle.registrationNumber}) has been verified by our team. You can now publish it.`
+              : `Your ${vehicle.make} ${vehicle.model} (${vehicle.registrationNumber}) could not be verified: ${note!.trim()} Please correct the details or images and resubmit.`,
+            data: { vehicleId },
+            status: 'SENT',
+            sentAt: new Date(),
+          },
+        });
+      }
+    } catch { /* notification is best effort */ }
+    return updated;
   }
 
   static readonly MAX_PHOTOS = 10;

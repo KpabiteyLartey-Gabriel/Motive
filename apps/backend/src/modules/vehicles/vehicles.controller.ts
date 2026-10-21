@@ -1,16 +1,18 @@
 import {
   Controller, Get, Post, Patch, Body, Param, Query, UseGuards, UseInterceptors,
-  UploadedFiles, BadRequestException, HttpCode, HttpStatus
+  UploadedFile, UploadedFiles, BadRequestException, HttpCode, HttpStatus
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { VehicleStatus } from '@prisma/client';
+import { VehicleStatus, UserRole } from '@prisma/client';
 import { join } from 'path';
 import { VehiclesService } from './vehicles.service';
 import { StorageService } from '../storage/storage.service';
-import { CreateVehicleDto, UpdateVehicleStatusDto, ChangeOperatingModelDto, DecideModelChangeDto } from './dto/create-vehicle.dto';
+import { CreateVehicleDto, UpdateVehicleStatusDto, ChangeOperatingModelDto, DecideModelChangeDto, UpdateVehicleDto, SetVerificationEvidenceDto, SubmitVerificationDto, VerificationDecisionDto } from './dto/create-vehicle.dto';
 import { UpdateVehiclePhotosDto } from './dto/update-vehicle-photos.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 export const VEHICLE_PHOTO_DIR = join(process.cwd(), 'uploads', 'vehicles');
@@ -48,10 +50,61 @@ export class VehiclesController {
     });
   }
 
+  @Get('verification/queue')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Vehicles waiting for Super Admin verification (oldest first)' })
+  async verificationQueue() {
+    return this.vehiclesService.verificationQueue();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get vehicle by ID' })
   async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.vehiclesService.findById(id, user.id, user.primaryRole);
+  }
+
+  @Patch(':id/details')
+  @ApiOperation({ summary: 'Update vehicle details (chassis/engine numbers etc). Changing identity details after verification requires re-verification.' })
+  async updateDetails(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateVehicleDto) {
+    return this.vehiclesService.updateDetails(id, dto as any, user.id, user.primaryRole);
+  }
+
+  @Post(':id/verification/evidence/upload')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload one verification evidence image (multipart, field "file", plus "kind": frontPlate | rearPlate | vinPlate | registrationCert)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req: any, file: any, cb: any) => cb(null, IMAGE_MIME.test(file.mimetype || '')),
+  }))
+  async uploadEvidence(@Param('id') id: string, @CurrentUser() user: any, @UploadedFile() file: any, @Body('kind') kind: string) {
+    if (!file) throw new BadRequestException('No image file received (field "file", image files only, max 5MB)');
+    if (!kind) throw new BadRequestException('Evidence kind is required (frontPlate, rearPlate, vinPlate or registrationCert)');
+    const stored = await this.storage.uploadFile(file, `vehicles/${id}/verification`);
+    return this.vehiclesService.setVerificationEvidence(id, kind, stored.url, user.id, user.primaryRole);
+  }
+
+  @Patch(':id/verification/evidence')
+  @ApiOperation({ summary: 'Attach an already-uploaded evidence image URL to a verification slot' })
+  async setEvidence(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: SetVerificationEvidenceDto) {
+    return this.vehiclesService.setVerificationEvidence(id, dto.kind, dto.url, user.id, user.primaryRole);
+  }
+
+  @Post(':id/verification/submit')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Submit the vehicle for Super Admin verification. Requires chassis + engine numbers, colour, and all four evidence images.' })
+  async submitVerification(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: SubmitVerificationDto) {
+    return this.vehiclesService.submitVerification(id, dto?.evidence as any, user.id, user.primaryRole);
+  }
+
+  @Post(':id/verification/decision')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Super Admin verifies or rejects a vehicle (rejection requires a note saying what does not match)' })
+  async decideVerification(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: VerificationDecisionDto) {
+    return this.vehiclesService.decideVerification(id, dto.approve, dto.note, user.id);
   }
 
   @Patch(':id/status')

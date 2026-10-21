@@ -49,7 +49,7 @@ describe('VehiclesService publish / unpublish', () => {
     company: { findUnique: jest.fn().mockResolvedValue({ id: 'comp-1', status: 'ACTIVE' }) },
     vehicle: {
       create,
-      findUnique: jest.fn().mockResolvedValue({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT' }),
+      findUnique: jest.fn().mockResolvedValue({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT', verificationStatus: 'APPROVED' }),
       update,
     },
   };
@@ -63,9 +63,10 @@ describe('VehiclesService publish / unpublish', () => {
     expect(create.mock.calls[0][0].data.publish).toBeUndefined();
   });
 
-  it('creates AVAILABLE when publish is true', async () => {
+  it('creating with publish intent still starts as an unverified DRAFT (verification comes before publishing)', async () => {
     const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'WORK_AND_PAY' });
-    expect(res.status).toBe('AVAILABLE');
+    expect(res.status).toBe('DRAFT');
+    expect(res.verificationStatus).toBe('NOT_SUBMITTED');
     expect(res.operatingModel).toBe('WORK_AND_PAY');
   });
 
@@ -73,9 +74,9 @@ describe('VehiclesService publish / unpublish', () => {
     await expect(svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL' })).rejects.toThrow(/Only companies can publish vehicles for rent/);
   });
 
-  it('owner can publish a RENTAL vehicle through a chosen active company', async () => {
+  it('owner can register a RENTAL vehicle through a chosen active company (publishes after verification)', async () => {
     const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL', managingCompanyId: 'comp-1' });
-    expect(res.status).toBe('AVAILABLE');
+    expect(res.status).toBe('DRAFT');
     expect(res.managingCompanyId).toBe('comp-1');
     expect(create.mock.calls[create.mock.calls.length - 1][0].data.managingCompanyId).toBe('comp-1');
   });
@@ -206,6 +207,91 @@ describe('VehiclesService contract-type (operating model) changes', () => {
     expect(res.changed).toBe(true);
     expect(res.vehicle.operatingModel).toBe('RENTAL');
     expect(res.vehicle.managingCompanyId).toBe('comp-1');
+  });
+});
+
+describe('VehiclesService verification before publishing', () => {
+  const baseVehicle: any = {
+    id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT',
+    operatingModel: 'WORK_AND_PAY', currentDriverId: null,
+    registrationNumber: 'GR-1-26', make: 'Toyota', model: 'Corolla', year: 2020,
+    color: 'Silver', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC',
+    chassisNumber: 'JTDBR32E862000111', engineNumber: '1ZR-1234567',
+    verificationStatus: 'NOT_SUBMITTED', verificationEvidence: null, verificationNote: null,
+  };
+  const evidence = {
+    frontPlate: 'https://cdn.example.com/front.jpg',
+    rearPlate: 'https://cdn.example.com/rear.jpg',
+    vinPlate: 'https://cdn.example.com/vin.jpg',
+    registrationCert: 'https://cdn.example.com/vrc.jpg',
+  };
+  function makeSvc(vehicle: any = baseVehicle) {
+    const prisma: any = {
+      owner: { findUnique: jest.fn().mockResolvedValue({ id: 'owner-1', userId: 'user-1' }) },
+      driver: { findUnique: jest.fn().mockResolvedValue(null) },
+      contract: { findFirst: jest.fn().mockResolvedValue(null) },
+      notification: { create: jest.fn().mockResolvedValue({}) },
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue(vehicle),
+        update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...vehicle, ...data })),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    return { svc: new VehiclesService(prisma), prisma };
+  }
+
+  it('publishing is blocked until the vehicle is verified', async () => {
+    const { svc } = makeSvc();
+    await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/has not been verified yet/);
+  });
+
+  it('submit requires chassis, engine, colour and all four evidence images', async () => {
+    const { svc } = makeSvc();
+    await expect(svc.submitVerification('veh-1', undefined, 'user-1', 'OWNER')).rejects.toThrow(/front photo showing the number plate/);
+    await expect(svc.submitVerification('veh-1', undefined, 'user-1', 'OWNER')).rejects.toThrow(/Vehicle Registration Certificate/);
+    const { svc: svc2 } = makeSvc({ ...baseVehicle, chassisNumber: null });
+    await expect(svc2.submitVerification('veh-1', evidence, 'user-1', 'OWNER')).rejects.toThrow(/chassis number/);
+  });
+
+  it('submit with complete evidence moves to PENDING_REVIEW', async () => {
+    const { svc } = makeSvc();
+    const res: any = await svc.submitVerification('veh-1', evidence, 'user-1', 'OWNER');
+    expect(res.verificationStatus).toBe('PENDING_REVIEW');
+    expect(res.verificationEvidence.vinPlate).toContain('vin.jpg');
+    expect(res.verificationSubmittedAt).toBeTruthy();
+  });
+
+  it('evidence slots are validated and stored per kind', async () => {
+    const { svc } = makeSvc();
+    const res: any = await svc.setVerificationEvidence('veh-1', 'frontPlate', 'https://cdn.example.com/f.jpg', 'user-1', 'OWNER');
+    expect(res.verificationEvidence.frontPlate).toContain('f.jpg');
+    await expect(svc.setVerificationEvidence('veh-1', 'selfie', 'https://cdn.example.com/f.jpg', 'user-1', 'OWNER')).rejects.toThrow(/Unknown evidence kind/);
+    await expect(svc.setVerificationEvidence('veh-1', 'rearPlate', 'not-a-url', 'user-1', 'OWNER')).rejects.toThrow(/http\(s\) URL/);
+  });
+
+  it('rejection needs a reason; approval verifies and then publishing works', async () => {
+    const pending = { ...baseVehicle, verificationStatus: 'PENDING_REVIEW', verificationEvidence: evidence };
+    const { svc, prisma } = makeSvc(pending);
+    await expect(svc.decideVerification('veh-1', false, undefined, 'super-1')).rejects.toThrow(/Please say what does not match/);
+    const rejected: any = await svc.decideVerification('veh-1', false, 'Chassis number in the VIN photo does not match', 'super-1');
+    expect(rejected.verificationStatus).toBe('REJECTED');
+    expect(rejected.verificationNote).toContain('does not match');
+    const approved: any = await svc.decideVerification('veh-1', true, undefined, 'super-1');
+    expect(approved.verificationStatus).toBe('APPROVED');
+    expect(approved.verifiedById).toBe('super-1');
+    expect(prisma.notification.create).toHaveBeenCalled();
+    prisma.vehicle.findUnique.mockResolvedValue({ ...pending, verificationStatus: 'APPROVED' });
+    const pub: any = await svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER');
+    expect(pub.status).toBe('AVAILABLE');
+  });
+
+  it('changing identity details after approval invalidates verification and unpublishes', async () => {
+    const approvedLive = { ...baseVehicle, verificationStatus: 'APPROVED', status: 'AVAILABLE', verificationEvidence: evidence };
+    const { svc, prisma } = makeSvc(approvedLive);
+    const res: any = await svc.updateDetails('veh-1', { color: 'Black' }, 'user-1', 'OWNER');
+    expect(res.verificationStatus).toBe('NOT_SUBMITTED');
+    expect(res.status).toBe('DRAFT');
+    expect(prisma.vehicle.update.mock.calls[0][0].data.color).toBe('Black');
   });
 });
 

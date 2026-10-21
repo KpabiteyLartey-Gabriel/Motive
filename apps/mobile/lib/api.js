@@ -126,6 +126,9 @@ export const vehiclesApi = {
   changeOperatingModel: (id, operatingModel, managingCompanyId) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel, ...(managingCompanyId ? { managingCompanyId } : {}) }),
   getPendingModelChange: (id) => apiClient.get(`/vehicles/${id}/operating-model-request`),
   decideModelChange: (id, requestId, approve) => apiClient.post(`/vehicles/${id}/operating-model-request/${requestId}/decision`, { approve }),
+  updateDetails: (id, data) => apiClient.patch(`/vehicles/${id}/details`, data),
+  uploadEvidence: (id, kind, formData) => apiClient.post(`/vehicles/${id}/verification/evidence/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  submitVerification: (id) => apiClient.post(`/vehicles/${id}/verification/submit`, {}),
 };
 
 // ── Contracts ────────────────────────────────────────────────

@@ -7,6 +7,14 @@ import { vehiclesApi, complianceApi, companiesApi, resolveVehiclePhoto } from '.
 import VehiclePhotos from '../../components/VehiclePhotos';
 import { Field, PrimaryButton } from '../../components/ui';
 import { Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+
+const EVIDENCE_SLOTS = [
+  { kind: 'frontPlate', label: 'Front of vehicle — number plate clearly visible' },
+  { kind: 'rearPlate', label: 'Rear of vehicle — number plate clearly visible' },
+  { kind: 'vinPlate', label: 'Chassis / VIN plate — close-up, numbers readable' },
+  { kind: 'registrationCert', label: 'Vehicle Registration Certificate (DVLA)' },
+];
 
 const TYPES = ['SEDAN', 'SUV', 'PICKUP', 'MINIBUS', 'BUS', 'TRUCK', 'MOTORCYCLE', 'TRICYCLE', 'OTHER'];
 const FUELS = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'LPG'];
@@ -17,7 +25,7 @@ const MODELS = [
   { value: 'DRIVING_ON', label: 'DriveOn' },
   { value: 'RENTAL', label: 'Rental' },
 ];
-const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), color: '', region: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '' };
+const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), color: '', chassisNumber: '', engineNumber: '', region: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '' };
 
 function ChipRow({ label, options, value, onChange, colors }) {
   return (
@@ -86,6 +94,8 @@ export default function OwnerVehicles() {
         fuelType: form.fuelType,
         transmission: form.transmission,
         operatingModel: form.operatingModel,
+        chassisNumber: form.chassisNumber.trim() || undefined,
+        engineNumber: form.engineNumber.trim() || undefined,
         managingCompanyId: form.operatingModel === 'RENTAL' && form.managingCompanyId ? form.managingCompanyId : undefined,
         mileage: form.mileage ? Number(form.mileage) : undefined,
         estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
@@ -109,6 +119,10 @@ export default function OwnerVehicles() {
   const [modelMsg, setModelMsg]     = useState('');
   const [rentalCompanyId, setRentalCompanyId] = useState('');
   const [showRentalPicker, setShowRentalPicker] = useState(false);
+  const [vChassis, setVChassis]       = useState('');
+  const [vEngine, setVEngine]         = useState('');
+  const [verifyBusy, setVerifyBusy]   = useState('');
+  const [verifyMsg, setVerifyMsg]     = useState('');
 
   const loadPending = async (vehicleId) => {
     try {
@@ -175,9 +189,72 @@ export default function OwnerVehicles() {
   useEffect(() => { if (user) load(); }, [user, load]);
   const onRefresh = () => { setRefreshing(true); load(); };
 
+  const applyVehicleUpdate = (updated) => {
+    if (!updated?.id) return;
+    setVehicles((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
+    setSelected((s) => (s?.id === updated.id ? { ...s, ...updated } : s));
+  };
+
+  const saveIdentity = async () => {
+    if (!selected) return;
+    setVerifyBusy('identity');
+    setVerifyMsg('');
+    try {
+      const res = await vehiclesApi.updateDetails(selected.id, { chassisNumber: vChassis.trim(), engineNumber: vEngine.trim() });
+      applyVehicleUpdate(res.data?.data);
+      setVerifyMsg('Chassis and engine numbers saved.');
+    } catch (e) {
+      setVerifyMsg(e.response?.data?.message || 'Could not save those details.');
+    } finally {
+      setVerifyBusy('');
+    }
+  };
+
+  const pickEvidence = async (kind) => {
+    if (!selected) return;
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { setVerifyMsg('Photo access is needed to upload evidence images.'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const name = (asset.uri.split('/').pop() || 'evidence.jpg').split('?')[0];
+      const form = new FormData();
+      form.append('kind', kind);
+      form.append('file', { uri: asset.uri, name, type: name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg' });
+      setVerifyBusy(kind);
+      setVerifyMsg('');
+      const res = await vehiclesApi.uploadEvidence(selected.id, kind, form);
+      applyVehicleUpdate(res.data?.data);
+    } catch (e) {
+      setVerifyMsg(e.response?.data?.message || 'Evidence upload failed.');
+    } finally {
+      setVerifyBusy('');
+    }
+  };
+
+  const submitVerification = async () => {
+    if (!selected) return;
+    setVerifyBusy('submit');
+    setVerifyMsg('');
+    try {
+      const res = await vehiclesApi.submitVerification(selected.id);
+      applyVehicleUpdate(res.data?.data);
+      setVerifyMsg('Submitted. A Super Admin will check the details against your images; you will be notified of the outcome.');
+    } catch (e) {
+      const m = e.response?.data?.message || 'Could not submit for verification.';
+      setVerifyMsg(Array.isArray(m) ? m.join(' ') : m);
+    } finally {
+      setVerifyBusy('');
+    }
+  };
+
   const openVehicle = async (v) => {
     setSelected(v);
     setModelMsg('');
+    setVerifyMsg('');
+    setVChassis(v.chassisNumber || '');
+    setVEngine(v.engineNumber || '');
     setRentalCompanyId(v.managingCompanyId || '');
     setShowRentalPicker(false);
     loadPending(v.id);
@@ -250,6 +327,46 @@ export default function OwnerVehicles() {
             {modelMsg ? <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 8, lineHeight: 19 }}>{modelMsg}</Text> : null}
           </View>
 
+          <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14, marginBottom: 16, backgroundColor: colors.card }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>
+              Verification: {(selected.verificationStatus || 'NOT_SUBMITTED').replace(/_/g, ' ')}
+            </Text>
+            <Text style={{ fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginBottom: 8 }}>
+              Every vehicle is verified by a Super Admin before it can be published. They confirm the registration number, chassis and engine numbers, colour, type and year against your evidence images, as on the DVLA registration certificate.
+            </Text>
+            {selected.verificationStatus === 'REJECTED' && selected.verificationNote ? (
+              <Text style={{ fontSize: 13, color: colors.danger, lineHeight: 19, marginBottom: 8 }}>Reason: {selected.verificationNote}</Text>
+            ) : null}
+            {selected.verificationStatus === 'APPROVED' ? (
+              <Text style={{ fontSize: 13, color: colors.success, fontWeight: '600' }}>Verified — this vehicle can be published.</Text>
+            ) : selected.verificationStatus === 'PENDING_REVIEW' ? (
+              <Text style={{ fontSize: 13, color: colors.warning, lineHeight: 19 }}>Submitted — waiting for a Super Admin to verify this vehicle. You will be notified of the outcome.</Text>
+            ) : (
+              <>
+                <Field label="Chassis number *" placeholder="JTDBR32E862000111" value={vChassis} onChangeText={setVChassis} autoCapitalize="characters" />
+                <View style={{ height: 10 }} />
+                <Field label="Engine number *" placeholder="1ZR-1234567" value={vEngine} onChangeText={setVEngine} autoCapitalize="characters" />
+                <View style={{ height: 10 }} />
+                <PrimaryButton title="Save numbers" loading={verifyBusy === 'identity'} onPress={saveIdentity} />
+                <View style={{ height: 14 }} />
+                {EVIDENCE_SLOTS.map((slot) => {
+                  const url = selected.verificationEvidence?.[slot.kind];
+                  return (
+                    <View key={slot.kind} style={{ marginBottom: 12 }}>
+                      <Text style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 6 }}>{slot.label}</Text>
+                      {url ? <Image source={{ uri: resolveVehiclePhoto(url) }} style={{ width: '100%', height: 120, borderRadius: 10, marginBottom: 6 }} /> : null}
+                      <TouchableOpacity onPress={() => pickEvidence(slot.kind)} disabled={verifyBusy === slot.kind} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}>
+                        <Text style={{ color: colors.brand, fontWeight: '700', fontSize: 13 }}>{verifyBusy === slot.kind ? 'Uploading…' : url ? 'Replace image' : 'Upload image'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+                <PrimaryButton title={selected.verificationStatus === 'REJECTED' ? 'Resubmit for verification' : 'Submit for verification'} loading={verifyBusy === 'submit'} onPress={submitVerification} />
+              </>
+            )}
+            {verifyMsg ? <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 8, lineHeight: 19 }}>{verifyMsg}</Text> : null}
+          </View>
+
           <VehiclePhotos vehicle={selected} colors={colors} />
 
           {[
@@ -320,6 +437,9 @@ export default function OwnerVehicles() {
               <View style={{ flex: 1 }}><Field label="Colour" placeholder="White" value={form.color} onChangeText={(v) => set('color', v)} /></View>
             </View>
             <View style={{ height: 12 }} />
+            <Field label="Chassis number" placeholder="From the VIN plate / registration certificate" value={form.chassisNumber} onChangeText={(v) => set('chassisNumber', v)} autoCapitalize="characters" />
+            <View style={{ height: 12 }} />
+            <Field label="Engine number" placeholder="From the registration certificate" value={form.engineNumber} onChangeText={(v) => set('engineNumber', v)} autoCapitalize="characters" />
             <View style={{ height: 14 }} />
             <ChipRow label="Region" options={GHANA_REGIONS} value={form.region} onChange={(v) => set('region', v)} colors={colors} />
             <ChipRow label="Vehicle type" options={TYPES} value={form.type} onChange={(v) => set('type', v)} colors={colors} />
