@@ -47,7 +47,8 @@ export default function OwnerDashboardPage() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthPayments = payments.filter((p) => p.status === 'SUCCESSFUL' && new Date(p.createdAt) >= monthStart);
-  const collectedMonth = monthPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  // Payment amounts arrive as strings (Prisma Decimal) — convert before adding or they concatenate.
+  const collectedMonth = monthPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const overdueContracts = contracts.filter((c) => c.status === 'ACTIVE' && c.nextPaymentDue && new Date(c.nextPaymentDue) < now);
   const recentPayments = payments.slice(0, 5);
 

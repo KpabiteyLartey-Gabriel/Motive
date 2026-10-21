@@ -66,7 +66,7 @@ export default function CompanyDashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthRevenue = payments
     .filter((p) => p.status === 'SUCCESSFUL' && new Date(p.createdAt) >= monthStart)
-    .reduce((sum, p) => sum + (p.amount || 0), 0);
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const openMaintenance = maintenance.filter((m) => ['REQUESTED', 'APPROVED', 'IN_PROGRESS', 'SCHEDULED'].includes(m.status));
   const recentPayments  = payments.slice(0, 5);
 

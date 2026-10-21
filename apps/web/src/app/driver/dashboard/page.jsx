@@ -52,7 +52,7 @@ export default function DriverDashboardPage() {
 
   const activeContract = contracts.find((c) => c.status === 'ACTIVE') || null;
   const successfulPayments = payments.filter((p) => p.status === 'SUCCESSFUL');
-  const totalPaid = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const totalPaid = successfulPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const pendingPayments = payments.filter((p) => ['PENDING', 'PROCESSING'].includes(p.status));
   const balanceDue = activeContract?.outstandingBalance || activeContract?.remainingBalance || 0;
   const recentPayments = payments.slice(0, 5);
