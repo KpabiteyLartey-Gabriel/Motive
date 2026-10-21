@@ -18,12 +18,19 @@ async function bootstrap() {
   });
 
   // Uploaded vehicle photos (see VehiclesController) — served at /uploads/…
+  // Hosted uploads go to Cloudinary; the local folder is only a dev fallback.
+  // Serverless filesystems are read-only outside /tmp, so failing to create
+  // it must never stop the API from starting.
   const uploadsDir = join(process.cwd(), 'uploads');
-  mkdirSync(join(uploadsDir, 'vehicles'), { recursive: true });
-  app.useStaticAssets(uploadsDir, {
-    prefix: '/uploads',
-    setHeaders: (res: any) => res.set('Cross-Origin-Resource-Policy', 'cross-origin'),
-  });
+  try {
+    mkdirSync(join(uploadsDir, 'vehicles'), { recursive: true });
+    app.useStaticAssets(uploadsDir, {
+      prefix: '/uploads',
+      setHeaders: (res: any) => res.set('Cross-Origin-Resource-Policy', 'cross-origin'),
+    });
+  } catch (err: any) {
+    console.warn(`Uploads folder unavailable (${err?.message || err}) — continuing without local photo serving`);
+  }
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3001);
