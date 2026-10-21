@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { createHash } from 'crypto';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { AuditAction, ContractStatus, ContractType, UserRole } from '@prisma/client';
 
@@ -185,7 +186,7 @@ export class ContractsService {
   }
 
   // ── Accept / Sign ──────────────────────────────────────────
-  async acceptContract(contractId: string, userId: string) {
+  async acceptContract(contractId: string, userId: string, viaAccessCode = false) {
     const contract = await this.prisma.contract.findUnique({
       where: { id: contractId },
       include: { parties: true },
@@ -199,6 +200,15 @@ export class ContractsService {
     const party = contract.parties.find((p) => p.userId === userId);
     if (!party) throw new ForbiddenException('You are not a party to this contract');
     if (party.signedAt) throw new ConflictException('You have already accepted this contract');
+
+    // Contracts issued through Explore are confirmed with the owner's
+    // one-driver access code, not the plain accept button.
+    const activeCode = viaAccessCode ? null : await this.prisma.contractAccessCode.findFirst({
+      where: { contractId, driverUserId: userId, status: 'ACTIVE' },
+    });
+    if (activeCode) {
+      throw new BadRequestException('This contract is confirmed with the access code the owner sent you in chat. Enter the code to confirm your contract.');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       // Record signature
@@ -245,6 +255,49 @@ export class ContractsService {
     });
 
     return this.findById(contractId, userId, 'ANY');
+  }
+
+  // ── Confirm with Explore access code ───────────────────────
+  // The driver confirms (signs) the contract by entering the unique code
+  // the owner generated for them. Only a driver whose Explore interest was
+  // approved, and who was issued a code, can do this.
+  async confirmWithCode(contractId: string, userId: string, code: string) {
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      include: { parties: true },
+    });
+    if (!contract) throw new NotFoundException('Contract not found');
+    if (!contract.vehicleId) throw new BadRequestException('This contract is not linked to a vehicle');
+
+    const party = contract.parties.find((p) => p.userId === userId && p.role === UserRole.DRIVER);
+    if (!party) throw new ForbiddenException('Only the driver this contract was issued to can confirm it with a code');
+    if (party.signedAt) throw new ConflictException('You have already confirmed this contract');
+
+    const interest = await this.prisma.vehicleInterest.findFirst({
+      where: { vehicleId: contract.vehicleId, driverUserId: userId, status: 'APPROVED' },
+    });
+    if (!interest) {
+      throw new ForbiddenException('Your interest in this vehicle has not been approved by the owner');
+    }
+
+    const record = await this.prisma.contractAccessCode.findFirst({
+      where: { contractId, driverUserId: userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) {
+      throw new BadRequestException('No access code has been generated for you yet. Ask the owner to generate your code in Contracts and send it in chat.');
+    }
+    const given = createHash('sha256').update(String(code || '').trim()).digest('hex');
+    if (given !== record.codeHash) {
+      throw new BadRequestException('That code is not correct. Check the code the owner sent you in chat and try again.');
+    }
+
+    await this.prisma.contractAccessCode.update({
+      where: { id: record.id },
+      data: { status: 'USED', usedAt: new Date() },
+    });
+    // Code accepted — sign exactly like a normal acceptance.
+    return this.acceptContract(contractId, userId, true);
   }
 
   // ── Terminate ──────────────────────────────────────────────
@@ -319,6 +372,18 @@ export class ContractsService {
       this.prisma.contract.count({ where }),
     ]);
 
+    if (userRole === UserRole.DRIVER && contracts.length > 0) {
+      const codes = await this.prisma.contractAccessCode.findMany({
+        where: { contractId: { in: contracts.map((c) => c.id) }, driverUserId: userId, status: 'ACTIVE' },
+        select: { contractId: true },
+      });
+      const coded = new Set(codes.map((c) => c.contractId));
+      for (const c of contracts as any[]) {
+        const mine = c.parties?.find((p: any) => p.userId === userId);
+        c.requiresCode = coded.has(c.id) && !mine?.signedAt;
+      }
+    }
+
     return { contracts, pagination: { total, page, limit, totalPages: Math.ceil(total / (Math.max(1, Math.floor(Number(limit)) || 20))) } };
   }
 
@@ -350,6 +415,14 @@ export class ContractsService {
     if (!adminRoles.includes(userRole as UserRole) && userRole !== 'ANY') {
       const isParty = contract.parties.some((p) => p.userId === userId);
       if (!isParty) throw new ForbiddenException('Access denied to this contract');
+    }
+
+    if (userRole === UserRole.DRIVER) {
+      const mine = contract.parties.find((p) => p.userId === userId);
+      const active = await this.prisma.contractAccessCode.findFirst({
+        where: { contractId, driverUserId: userId, status: 'ACTIVE' },
+      });
+      (contract as any).requiresCode = !!active && !mine?.signedAt;
     }
 
     return contract;

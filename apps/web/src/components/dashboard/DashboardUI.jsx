@@ -101,3 +101,19 @@ export function StatusBadge({ status }) {
     </span>
   );
 }
+
+export function Modal({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/50" />
+      <div className="relative w-full sm:max-w-lg max-h-[88vh] overflow-y-auto rounded-t-2xl sm:rounded-card border border-line bg-white p-5 shadow-card dark:border-dark-border dark:bg-dark-card dark:shadow-none">
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <h3 className="text-base font-semibold tracking-tight text-ink dark:text-white">{title}</h3>
+          <button onClick={onClose} aria-label="Close dialog" className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 text-lg leading-none">×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}

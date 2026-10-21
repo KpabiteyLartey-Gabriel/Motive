@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme, palette } from '../../lib/theme';
@@ -21,6 +21,22 @@ export default function DriverContract() {
   const [contract, setContract] = useState(null);
   const [fetching, setFetching] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [code, setCode] = useState('');
+  const [confirming, setConfirming] = useState(false);
+
+  const confirmWithCode = async () => {
+    if (!code.trim()) { Alert.alert('Enter your code', 'Paste the access code the owner sent you in chat.'); return; }
+    setConfirming(true);
+    try {
+      await contractsApi.confirmCode(contract.id, code.trim());
+      Alert.alert('Contract confirmed', 'You have confirmed and signed your contract.');
+      setCode('');
+      load();
+    } catch (e) {
+      Alert.alert('Code not accepted', e.response?.data?.message || 'Check the code and try again.');
+    }
+    setConfirming(false);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -97,8 +113,28 @@ export default function DriverContract() {
           </View>
         </View>
 
+        {/* Confirm with Explore access code — only for approved drivers issued a code */}
+        {contract.requiresCode && (
+          <View style={[s.codeBox, { borderColor: colors.border, backgroundColor: colors.brandSoft }]}>
+            <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>Confirm with your access code</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 }}>The owner approved you for this vehicle and sent a unique code in your chat. Enter it here to confirm and sign this contract. This box only appears when a code has been generated for you.</Text>
+            <TextInput
+              style={[s.codeInput, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
+              placeholder="••••••"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="number-pad"
+              maxLength={6}
+              value={code}
+              onChangeText={(v) => setCode(v.replace(/[^0-9]/g, ''))}
+            />
+            <TouchableOpacity onPress={confirmWithCode} disabled={confirming} style={[s.acceptBtn, { backgroundColor: palette.brand, marginBottom: 0 }]}>
+              {confirming ? <ActivityIndicator color="#fff" /> : <Text style={[s.acceptBtnText, { color: '#fff' }]}>Confirm contract</Text>}
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Accept pending */}
-        {contract.status === 'PENDING_SIGNATURES' && (
+        {!contract.requiresCode && contract.status === 'PENDING_SIGNATURES' && (
           <TouchableOpacity
             style={[s.acceptBtn, { backgroundColor: palette.solarYellow }]}
             onPress={handleAccept}
@@ -179,6 +215,8 @@ const s = StyleSheet.create({
   infoRow:     { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1 },
   infoLabel:   { fontSize: 13 },
   infoValue:   { fontSize: 13, fontWeight: '500', flex: 1, textAlign: 'right' },
+  codeBox:     { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 16 },
+  codeInput:   { borderWidth: 1, borderRadius: 12, paddingVertical: 12, fontSize: 20, fontWeight: '800', letterSpacing: 8, textAlign: 'center', marginVertical: 12 },
   empty:       { margin: 20, borderWidth: 1, borderRadius: 16, padding: 40, alignItems: 'center' },
   emptyTitle:  { fontSize: 15, fontWeight: '600', marginBottom: 8 },
   emptyText:   { fontSize: 13, textAlign: 'center', lineHeight: 20 },

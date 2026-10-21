@@ -136,8 +136,24 @@ export const contractsApi = {
   list:      (params) => apiClient.get('/contracts', { params }),
   getById:   (id) => apiClient.get(`/contracts/${id}`),
   create:    (data) => apiClient.post('/contracts', data),
-  accept:    (id) => apiClient.patch(`/contracts/${id}/accept`),
+  accept:    (id) => apiClient.post(`/contracts/${id}/accept`),
+  confirmCode: (id, code) => apiClient.post(`/contracts/${id}/confirm-code`, { code }),
   terminate: (id, data) => apiClient.patch(`/contracts/${id}/terminate`, data),
+};
+
+export const marketplaceApi = {
+  explore: () => apiClient.get('/marketplace/explore'),
+  expressInterest: (vehicleId, message) => apiClient.post(`/marketplace/vehicles/${vehicleId}/interest`, { message: message || undefined }),
+  vehicleInterests: (vehicleId) => apiClient.get(`/marketplace/vehicles/${vehicleId}/interests`),
+  myInterests: () => apiClient.get('/marketplace/my-interests'),
+  approveInterest: (interestId) => apiClient.post(`/marketplace/interests/${interestId}/approve`),
+  declineInterest: (interestId) => apiClient.post(`/marketplace/interests/${interestId}/decline`),
+  releaseInterest: (interestId) => apiClient.post(`/marketplace/interests/${interestId}/release`),
+  threads: () => apiClient.get('/marketplace/threads'),
+  messages: (threadId) => apiClient.get(`/marketplace/threads/${threadId}/messages`),
+  sendMessage: (threadId, data) => apiClient.post(`/marketplace/threads/${threadId}/messages`, data),
+  uploadAttachment: (threadId, formData) => apiClient.post(`/marketplace/threads/${threadId}/attachments`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  generateAccessCode: (contractId) => apiClient.post(`/marketplace/contracts/${contractId}/access-code`),
 };
 
 // ── Payments ─────────────────────────────────────────────────

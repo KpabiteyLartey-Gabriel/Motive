@@ -491,6 +491,7 @@ model Driver {
   user             User              @relation(fields: [userId], references: [id])
   documents        DriverDocument[]
   assignments      DriverAssignment[]
+  interests        VehicleInterest[]
   contracts        ContractParty[]   @relation("DriverContractParties")
   currentVehicles  Vehicle[]         // vehicles where this driver is the active operator
 
@@ -685,6 +686,9 @@ model Vehicle {
   assignments        DriverAssignment[]
   modelChangeRequests VehicleOperatingModelChange[]
   contracts          Contract[]
+  interests          VehicleInterest[]
+  chatThreads        ChatThread[]
+  accessCodes        ContractAccessCode[]
   trackingDevice     TrackingDevice?
   ownershipTransfers OwnershipTransfer[]
 
@@ -724,6 +728,104 @@ model VehicleOperatingModelChange {
   @@index([driverId])
   @@index([status])
   @@map("vehicle_operating_model_changes")
+}
+
+// ── Explore marketplace: driver interest, chat, contract codes ──
+// A driver shows interest in a verified, published (AVAILABLE) vehicle.
+// The owner chats with each interested driver in-app; approving one driver
+// closes the vehicle on Explore. The owner then creates the contract and
+// generates a one-driver access code; the driver confirms (signs) the
+// contract by entering that code.
+enum VehicleInterestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  RELEASED
+}
+
+model VehicleInterest {
+  id           String                @id @default(cuid())
+  vehicleId    String
+  driverId     String
+  driverUserId String
+  status       VehicleInterestStatus @default(PENDING)
+  message      String?
+  createdAt    DateTime              @default(now())
+  decidedAt    DateTime?
+  decidedById  String?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  thread  ChatThread?
+
+  @@unique([vehicleId, driverId])
+  @@index([vehicleId])
+  @@index([driverUserId])
+  @@index([status])
+  @@map("vehicle_interests")
+}
+
+model ChatThread {
+  id           String   @id @default(cuid())
+  vehicleId    String
+  interestId   String   @unique
+  ownerUserId  String
+  driverUserId String
+  lastMessageAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vehicle  Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  interest VehicleInterest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([ownerUserId])
+  @@index([driverUserId])
+  @@index([vehicleId])
+  @@map("chat_threads")
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  threadId       String
+  senderUserId   String
+  body           String?
+  attachmentUrl  String?
+  attachmentName String?
+  createdAt      DateTime @default(now())
+  readAt         DateTime?
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([senderUserId])
+  @@map("chat_messages")
+}
+
+enum ContractAccessCodeStatus {
+  ACTIVE
+  USED
+  REVOKED
+}
+
+model ContractAccessCode {
+  id            String                   @id @default(cuid())
+  contractId    String
+  vehicleId     String
+  driverUserId  String
+  codeHash      String
+  status        ContractAccessCodeStatus @default(ACTIVE)
+  createdById   String
+  createdAt     DateTime                 @default(now())
+  usedAt        DateTime?
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([driverUserId])
+  @@index([vehicleId])
+  @@map("contract_access_codes")
 }
 
 model VehicleDocument {
@@ -797,6 +899,7 @@ model Contract {
   parentContract      Contract?       @relation("ContractAmendments", fields: [parentContractId], references: [id])
   amendments          Contract[]      @relation("ContractAmendments")
   parties             ContractParty[]
+  accessCodes         ContractAccessCode[]
   workAndPayTerms     WorkAndPayTerms?
   rentalTerms         RentalTerms?
   drivingOnTerms      DrivingOnTerms?

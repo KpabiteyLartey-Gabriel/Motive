@@ -5,7 +5,8 @@ import { useAuth } from '@/lib/useAuth';
 import DashboardShell from '@/components/dashboard/DashboardShell';
 import { OWNER_NAV } from '@/lib/ownerNav';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
-import { vehiclesApi, complianceApi, companiesApi, resolveVehiclePhoto } from '@/lib/api';
+import Link from 'next/link';
+import { vehiclesApi, complianceApi, companiesApi, marketplaceApi, resolveVehiclePhoto } from '@/lib/api';
 import VehiclePhotos from '@/components/vehicles/VehiclePhotos';
 
 const NAV = OWNER_NAV;
@@ -169,6 +170,32 @@ export default function OwnerVehiclesPage() {
     loadVehicles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const [interests, setInterests] = useState([]);
+  const [interestBusy, setInterestBusy] = useState('');
+  useEffect(() => {
+    if (!selected?.id) { setInterests([]); return; }
+    marketplaceApi.vehicleInterests(selected.id)
+      .then((r) => setInterests(r.data?.data || []))
+      .catch(() => setInterests([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  const actOnInterest = async (interest, action) => {
+    setInterestBusy(`${action}-${interest.id}`);
+    try {
+      if (action === 'approve') await marketplaceApi.approveInterest(interest.id);
+      if (action === 'decline') await marketplaceApi.declineInterest(interest.id);
+      if (action === 'release') await marketplaceApi.releaseInterest(interest.id);
+      const r = await marketplaceApi.vehicleInterests(interest.vehicleId);
+      setInterests(r.data?.data || []);
+      loadVehicles();
+    } catch (e) {
+      window.alert(e.response?.data?.message || 'Action failed.');
+    } finally {
+      setInterestBusy('');
+    }
+  };
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -346,6 +373,34 @@ export default function OwnerVehiclesPage() {
                       </div>
                     )}
                     {modelMsg && <p className="mt-2 text-neutral-500">{modelMsg}</p>}
+                  </div>
+                  <div className="col-span-2 border-t border-neutral-200 dark:border-dark-border pt-4">
+                    <p className="text-neutral-500 mb-1">Explore &amp; driver interest: <span className="font-semibold text-neutral-800 dark:text-neutral-100">{interests.filter((i) => ['PENDING', 'APPROVED'].includes(i.status)).length} driver{interests.filter((i) => ['PENDING', 'APPROVED'].includes(i.status)).length === 1 ? '' : 's'} interested</span></p>
+                    <p className="text-neutral-400 mb-3">Verified, published vehicles appear on Explore for drivers. Approving one driver removes this vehicle from Explore — chat with everyone first, and release the driver later if you want it listed again.</p>
+                    {interests.length === 0 ? (
+                      <p className="text-neutral-400">No drivers have shown interest yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {interests.map((i) => (
+                          <div key={i.id} className="flex items-center gap-3 flex-wrap border border-neutral-200 dark:border-dark-border rounded-lg px-3 py-2.5">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-neutral-800 dark:text-neutral-100 font-medium">{i.driverUser ? `${i.driverUser.firstName || ''} ${i.driverUser.lastName || ''}`.trim() : 'Driver'} <span className={`ml-1 text-[11px] font-semibold ${i.status === 'APPROVED' ? 'text-green-600' : i.status === 'DECLINED' ? 'text-red-500' : i.status === 'RELEASED' ? 'text-neutral-400' : 'text-amber-600'}`}>{i.status}</span></p>
+                              {i.message && <p className="text-neutral-400 truncate">&ldquo;{i.message}&rdquo;</p>}
+                            </div>
+                            {i.threadId && <Link href={`/owner/messages?thread=${i.threadId}`} className="btn-graphite text-xs">Open chat</Link>}
+                            {i.status === 'PENDING' && (
+                              <>
+                                <button onClick={() => actOnInterest(i, 'approve')} disabled={!!interestBusy} className="btn-primary text-xs disabled:opacity-40">Approve driver</button>
+                                <button onClick={() => actOnInterest(i, 'decline')} disabled={!!interestBusy} className="btn-graphite text-xs disabled:opacity-40">Decline</button>
+                              </>
+                            )}
+                            {i.status === 'APPROVED' && (
+                              <button onClick={() => actOnInterest(i, 'release')} disabled={!!interestBusy} className="btn-graphite text-xs disabled:opacity-40">Release &amp; relist</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-2 border-t border-neutral-200 dark:border-dark-border pt-4">
                     <p className="text-neutral-500 mb-1">Verification before publishing: <span className="font-semibold text-neutral-800 dark:text-neutral-100">{(v.verificationStatus || 'NOT_SUBMITTED').replace(/_/g, ' ')}</span></p>

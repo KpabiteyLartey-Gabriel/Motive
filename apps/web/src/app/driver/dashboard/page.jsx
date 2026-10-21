@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
@@ -9,8 +9,10 @@ import { contractsApi, paymentsApi, vehiclesApi } from '@/lib/api';
 
 const NAV = [
   { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
   { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
   { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
+  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
   { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
   { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
   { href: '/driver/documents', icon: 'documents', label: 'Documents' },
@@ -18,12 +20,12 @@ const NAV = [
 ];
 
 function fmtGHS(amount) {
-  if (!amount && amount !== 0) return 'â€”';
+  if (!amount && amount !== 0) return '—';
   return `GHS ${Number(amount).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function fmtDate(d) {
-  if (!d) return 'â€”';
+  if (!d) return '—';
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -73,7 +75,7 @@ export default function DriverDashboardPage() {
       <div className="mb-6 flex items-center gap-3">
         <span className="text-xs text-neutral-500">Account status:</span>
         <StatusBadge status={user?.status} />
-        {fetching && <span className="text-xs text-neutral-600">Refreshingâ€¦</span>}
+        {fetching && <span className="text-xs text-neutral-600">Refreshing…</span>}
       </div>
 
       {/* Stats */}
@@ -87,7 +89,7 @@ export default function DriverDashboardPage() {
       {/* Assigned vehicle */}
       <SectionHeader title="My Vehicle" description="Vehicle currently assigned to you" />
       {!vehicle ? (
-        <EmptyState icon="ðŸš—" title="No vehicle assigned" description="An owner or company will assign you a vehicle once a contract is created." action={null} />
+        <EmptyState icon="🚗" title="No vehicle assigned" description="An owner or company will assign you a vehicle once a contract is created." action={null} />
       ) : (
         <Link href="/driver/vehicle" className="block bg-white dark:bg-dark-card border border-line dark:border-dark-border rounded-card shadow-card dark:shadow-none p-5 hover:border-neutral-600 transition-colors mb-8">
           <div className="flex items-start justify-between gap-4">
@@ -103,7 +105,7 @@ export default function DriverDashboardPage() {
       {/* Active contract */}
       <SectionHeader title="Active Contract" description="Your current vehicle arrangement" />
       {!activeContract ? (
-        <EmptyState icon="ðŸ“„" title="No active contract" description="You don't have an active contract yet. An owner or company will invite you once a vehicle is assigned." action={null} />
+        <EmptyState icon="📄" title="No active contract" description="You don't have an active contract yet. An owner or company will invite you once a vehicle is assigned." action={null} />
       ) : (
         <Link href="/driver/contracts" className="block bg-white dark:bg-dark-card border border-line dark:border-dark-border rounded-card shadow-card dark:shadow-none p-5 hover:border-neutral-600 transition-colors mb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -131,10 +133,10 @@ export default function DriverDashboardPage() {
       <div className="mt-2">
         <div className="flex items-center justify-between mb-3">
           <SectionHeader title="Recent Payments" description="Your latest payment transactions" />
-          <Link href="/driver/payments" className="text-xs text-neutral-500 hover:text-brand-700 dark:hover:text-brand-300 transition-colors font-semibold">View all â†’</Link>
+          <Link href="/driver/payments" className="text-xs text-neutral-500 hover:text-brand-700 dark:hover:text-brand-300 transition-colors font-semibold">View all →</Link>
         </div>
         {recentPayments.length === 0 ? (
-          <EmptyState icon="ðŸ’³" title="No payments yet" description="Your payment history will appear here once you have an active contract." action={null} />
+          <EmptyState icon="💳" title="No payments yet" description="Your payment history will appear here once you have an active contract." action={null} />
         ) : (
           <div className="bg-white dark:bg-dark-card border border-line dark:border-dark-border rounded-card shadow-card dark:shadow-none overflow-hidden mb-8">
             <table className="w-full text-sm">

@@ -6,6 +6,7 @@ import { IsString, IsOptional } from 'class-validator';
 import { ContractStatus, ContractType } from '@prisma/client';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from './dto/create-contract.dto';
+import { ConfirmCodeDto } from '../marketplace/dto/marketplace.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -63,6 +64,13 @@ export class ContractsController {
   @ApiOperation({ summary: 'Accept / sign a contract' })
   async accept(@Param('id') id: string, @CurrentUser() user: any) {
     return this.contractsService.acceptContract(id, user.id);
+  }
+
+  @Post(':id/confirm-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Driver confirms (signs) an Explore contract with the owner-issued access code' })
+  async confirmCode(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: ConfirmCodeDto) {
+    return this.contractsService.confirmWithCode(id, user.id, dto.code);
   }
 
   @Patch(':id/status')

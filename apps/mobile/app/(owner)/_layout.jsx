@@ -1,4 +1,4 @@
-﻿import { Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { useTheme } from '../../lib/theme';
 import { TabIcon } from '../../components/TabIcon';
@@ -57,7 +57,15 @@ export default function OwnerLayout() {
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="payments" color={color} size={size} focused={focused} />,
         }}
       />
-      <Tabs.Screen
+            <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarLabel: 'Messages',
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="messages" color={color} size={size} focused={focused} />,
+        }}
+      />
+<Tabs.Screen
         name="notifications"
         options={{
           title: 'Notifications',
@@ -76,7 +84,8 @@ export default function OwnerLayout() {
       {/* Hidden screens — reachable from other tabs, not shown in tab bar */}
       <Tabs.Screen name="maintenance"   options={{ href: null, title: 'Maintenance' }} />
       <Tabs.Screen name="disputes"      options={{ href: null, title: 'Disputes' }} />
-      <Tabs.Screen name="tracking"      options={{ href: null, title: 'Tracking' }} />
+            <Tabs.Screen name="contracts"   options={{ href: null, title: 'Contracts & Codes' }} />
+<Tabs.Screen name="tracking"      options={{ href: null, title: 'Tracking' }} />
     </Tabs>
   );
 }

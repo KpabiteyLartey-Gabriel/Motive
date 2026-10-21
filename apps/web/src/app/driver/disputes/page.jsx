@@ -8,8 +8,10 @@ import { disputesApi } from '@/lib/api';
 
 const NAV = [
   { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
   { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
   { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
+  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
   { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
   { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
   { href: '/driver/documents', icon: 'documents', label: 'Documents' },

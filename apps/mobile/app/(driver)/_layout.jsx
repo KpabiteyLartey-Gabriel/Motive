@@ -1,4 +1,4 @@
-﻿import { Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { useTheme } from '../../lib/theme';
 import { TabIcon } from '../../components/TabIcon';
@@ -33,7 +33,15 @@ export default function DriverLayout() {
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="home" color={color} size={size} focused={focused} />,
         }}
       />
-      <Tabs.Screen
+            <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore Vehicles',
+          tabBarLabel: 'Explore',
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="explore" color={color} size={size} focused={focused} />,
+        }}
+      />
+<Tabs.Screen
         name="payments"
         options={{
           title: 'Payments',
@@ -57,7 +65,15 @@ export default function DriverLayout() {
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="vehicle" color={color} size={size} focused={focused} />,
         }}
       />
-      <Tabs.Screen
+            <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarLabel: 'Messages',
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="messages" color={color} size={size} focused={focused} />,
+        }}
+      />
+<Tabs.Screen
         name="notifications"
         options={{
           title: 'Notifications',

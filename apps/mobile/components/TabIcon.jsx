@@ -22,6 +22,8 @@ const ICONS = {
   reports: { active: 'bar-chart', inactive: 'bar-chart-outline' },
   fleet: { active: 'car-sport', inactive: 'car-sport-outline' },
   tracking: { active: 'navigate', inactive: 'navigate-outline' },
+  explore: { active: 'compass', inactive: 'compass-outline' },
+  messages: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
 };
 
 export function TabIcon({ name, color, size = 23, focused = false }) {

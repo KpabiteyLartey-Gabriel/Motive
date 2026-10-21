@@ -8,8 +8,10 @@ import { contractsApi } from '@/lib/api';
 
 const NAV = [
   { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
   { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
   { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
+  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
   { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
   { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
   { href: '/driver/documents', icon: 'documents', label: 'Documents' },
@@ -52,6 +54,23 @@ export default function DriverContractsPage() {
     setAccepting(null);
   };
 
+  const [codeInputs, setCodeInputs] = useState({});
+  const [confirming, setConfirming] = useState(null);
+  const [codeMsg, setCodeMsg] = useState('');
+  const confirmWithCode = async (id) => {
+    const code = (codeInputs[id] || '').trim();
+    if (!code) { setCodeMsg('Enter the access code the owner sent you in chat.'); return; }
+    setConfirming(id);
+    setCodeMsg('');
+    try {
+      await contractsApi.confirmCode(id, code);
+      setCodeMsg('Contract confirmed and signed. Welcome aboard!');
+      load();
+    } catch (e) {
+      setCodeMsg(e.response?.data?.message || 'That code did not work. Check it and try again.');
+    } finally { setConfirming(null); }
+  };
+
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
@@ -78,7 +97,9 @@ export default function DriverContractsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {c.status === 'PENDING_ACCEPTANCE' && (
+                  {c.requiresCode ? (
+                    <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 dark:bg-dark-card border border-amber-200 dark:border-dark-border rounded-full px-2.5 py-1">Access code required — open to confirm</span>
+                  ) : c.status === 'PENDING_ACCEPTANCE' && (
                     <button
                       onClick={(e) => { e.stopPropagation(); accept(c.id); }}
                       disabled={accepting === c.id}
@@ -117,6 +138,24 @@ export default function DriverContractsPage() {
                     <p className="text-neutral-500">Frequency</p>
                     <p className="text-neutral-900 dark:text-white mt-0.5">{c.paymentFrequency || '—'}</p>
                   </div>
+                  {c.requiresCode && (
+                    <div className="col-span-2 border-t border-neutral-200 dark:border-dark-border pt-3" onClick={(e) => e.stopPropagation()}>
+                      <p className="text-neutral-800 dark:text-neutral-100 font-semibold text-sm">Confirm this contract with your access code</p>
+                      <p className="text-neutral-500 mt-1 leading-relaxed">The owner approved you for this vehicle and sent a unique code in your chat. Paste it here to confirm and sign your contract. This code box only appears for approved drivers who have been issued a code.</p>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <input
+                          className="input !w-44 text-center tracking-[0.35em] font-bold"
+                          placeholder="••••••"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={codeInputs[c.id] || ''}
+                          onChange={(e) => setCodeInputs((p) => ({ ...p, [c.id]: e.target.value.replace(/[^0-9]/g, '') }))}
+                        />
+                        <button onClick={() => confirmWithCode(c.id)} disabled={confirming === c.id} className="btn-primary text-xs disabled:opacity-40">{confirming === c.id ? 'Confirming…' : 'Confirm contract'}</button>
+                      </div>
+                      {codeMsg && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{codeMsg}</p>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
