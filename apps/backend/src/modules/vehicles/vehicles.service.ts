@@ -210,7 +210,7 @@ export class VehiclesService {
       if (vehicle.verificationStatus === VehicleVerificationStatus.REJECTED) {
         throw new BadRequestException(`This vehicle was not verified${vehicle.verificationNote ? `: ${vehicle.verificationNote}` : ''}. Fix the issues, resubmit for verification, and publish after approval.`);
       }
-      throw new BadRequestException('This vehicle has not been verified yet. Add its chassis and engine numbers, upload the required evidence images, and submit it for verification by a Super Admin.');
+      throw new BadRequestException('This vehicle has not been verified yet. Add its chassis number, upload the required evidence images, and submit it for verification by a Super Admin.');
     }
 
     return this.prisma.vehicle.update({
@@ -375,7 +375,7 @@ export class VehiclesService {
 
   // ── Vehicle verification (Super Admin, before publishing) ───
   // The reviewer confirms the DVLA identity of the vehicle: registration
-  // number, chassis number, engine number, make/model, year, colour, type
+  // number, chassis number, make/model, year, colour, type
   // and fuel — against clear evidence images the owner must provide:
   // front and rear photos showing the number plate, a close-up of the
   // chassis/VIN plate, and the Vehicle Registration Certificate.
@@ -386,7 +386,7 @@ export class VehiclesService {
     vinPlate: 'close-up of the chassis/VIN plate',
     registrationCert: 'Vehicle Registration Certificate (DVLA)',
   };
-  private static readonly IDENTITY_FIELDS = ['registrationNumber', 'chassisNumber', 'engineNumber', 'vin', 'make', 'model', 'year', 'color', 'type', 'fuelType'];
+  private static readonly IDENTITY_FIELDS = ['registrationNumber', 'chassisNumber', 'vin', 'make', 'model', 'year', 'color', 'type', 'fuelType'];
 
   private invalidateVerificationIfNeeded(vehicle: any, changedKeys: string[]) {
     const identityChanged = changedKeys.some((k) => VehiclesService.IDENTITY_FIELDS.includes(k));
@@ -464,7 +464,6 @@ export class VehiclesService {
 
     const missing: string[] = [];
     if (!vehicle.chassisNumber) missing.push('chassis number');
-    if (!vehicle.engineNumber) missing.push('engine number');
     if (!vehicle.color) missing.push('vehicle colour');
     for (const kind of VehiclesService.EVIDENCE_KINDS) {
       if (!evidence[kind]) missing.push(VehiclesService.EVIDENCE_LABELS[kind]);

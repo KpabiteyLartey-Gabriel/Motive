@@ -65,7 +65,7 @@ export class VehiclesController {
   }
 
   @Patch(':id/details')
-  @ApiOperation({ summary: 'Update vehicle details (chassis/engine numbers etc). Changing identity details after verification requires re-verification.' })
+  @ApiOperation({ summary: 'Update vehicle details (chassis number etc). Changing identity details after verification requires re-verification.' })
   async updateDetails(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateVehicleDto) {
     return this.vehiclesService.updateDetails(id, dto as any, user.id, user.primaryRole);
   }
@@ -93,7 +93,7 @@ export class VehiclesController {
 
   @Post(':id/verification/submit')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Submit the vehicle for Super Admin verification. Requires chassis + engine numbers, colour, and all four evidence images.' })
+  @ApiOperation({ summary: 'Submit the vehicle for Super Admin verification. Requires a chassis number, colour, and all four evidence images.' })
   async submitVerification(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: SubmitVerificationDto) {
     return this.vehiclesService.submitVerification(id, dto?.evidence as any, user.id, user.primaryRole);
   }

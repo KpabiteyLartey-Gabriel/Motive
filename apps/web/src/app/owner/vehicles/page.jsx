@@ -26,7 +26,7 @@ const OPERATING_MODELS = [
   { value: 'DRIVING_ON', label: 'Driving On (DriveOn)' },
   { value: 'RENTAL', label: 'Rental' },
 ];
-const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: new Date().getFullYear(), color: '', chassisNumber: '', engineNumber: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '', region: '' };
+const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: new Date().getFullYear(), color: '', chassisNumber: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '', region: '' };
 const EVIDENCE_SLOTS = [
   { kind: 'frontPlate', label: 'Front of vehicle — number plate clearly visible' },
   { kind: 'rearPlate', label: 'Rear of vehicle — number plate clearly visible' },
@@ -57,7 +57,6 @@ export default function OwnerVehiclesPage() {
   const [companies, setCompanies]     = useState([]);
   const [rentalCompanyId, setRentalCompanyId] = useState('');
   const [vChassis, setVChassis]       = useState('');
-  const [vEngine, setVEngine]         = useState('');
   const [verifyBusy, setVerifyBusy]   = useState('');
   const [verifyMsg, setVerifyMsg]     = useState('');
 
@@ -73,7 +72,6 @@ export default function OwnerVehiclesPage() {
     setNewModel(selected.operatingModel || 'WORK_AND_PAY');
     setRentalCompanyId(selected.managingCompanyId || '');
     setVChassis(selected.chassisNumber || '');
-    setVEngine(selected.engineNumber || '');
     setVerifyMsg('');
     setModelMsg('');
     vehiclesApi.getPendingModelChange(selected.id)
@@ -120,9 +118,9 @@ export default function OwnerVehiclesPage() {
     setVerifyBusy('identity');
     setVerifyMsg('');
     try {
-      const res = await vehiclesApi.updateDetails(vehicle.id, { chassisNumber: vChassis.trim(), engineNumber: vEngine.trim() });
+      const res = await vehiclesApi.updateDetails(vehicle.id, { chassisNumber: vChassis.trim() });
       applyVehicleUpdate(res.data?.data);
-      setVerifyMsg('Chassis and engine numbers saved.');
+      setVerifyMsg('Chassis number saved.');
     } catch (e) {
       setVerifyMsg(e.response?.data?.message || 'Could not save those details.');
     } finally {
@@ -197,7 +195,6 @@ export default function OwnerVehiclesPage() {
         transmission: form.transmission,
         operatingModel: form.operatingModel,
         chassisNumber: form.chassisNumber.trim() || undefined,
-        engineNumber: form.engineNumber.trim() || undefined,
         managingCompanyId: form.operatingModel === 'RENTAL' && form.managingCompanyId ? form.managingCompanyId : undefined,
         mileage: form.mileage ? Number(form.mileage) : undefined,
         estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
@@ -256,7 +253,6 @@ export default function OwnerVehiclesPage() {
             <label className="text-xs text-neutral-400">Year *<input className="input mt-1" type="number" min="1980" max="2100" value={form.year} onChange={(e) => set('year', e.target.value)} /></label>
             <label className="text-xs text-neutral-400">Colour<input className="input mt-1" placeholder="White" value={form.color} onChange={(e) => set('color', e.target.value)} /></label>
             <label className="text-xs text-neutral-400">Chassis number<input className="input mt-1" placeholder="From the VIN plate / registration certificate" value={form.chassisNumber} onChange={(e) => set('chassisNumber', e.target.value)} /></label>
-            <label className="text-xs text-neutral-400">Engine number<input className="input mt-1" placeholder="From the registration certificate" value={form.engineNumber} onChange={(e) => set('engineNumber', e.target.value)} /></label>
             <label className="text-xs text-neutral-400">Region
               <select className="input mt-1" value={form.region} onChange={(e) => set('region', e.target.value)}>
                 <option value="">Select region…</option>
@@ -362,8 +358,7 @@ export default function OwnerVehiclesPage() {
                         <p className="text-neutral-400 mb-3">A Super Admin confirms these against your evidence: registration <b>{v.registrationNumber}</b>, make/model/year, colour, type and fuel — exactly as on the DVLA registration certificate.</p>
                         <div className="flex items-end gap-2 flex-wrap mb-3">
                           <label className="text-xs text-neutral-400">Chassis number *<input className="input mt-1" placeholder="JTDBR32E862000111" value={vChassis} onChange={(e) => setVChassis(e.target.value)} /></label>
-                          <label className="text-xs text-neutral-400">Engine number *<input className="input mt-1" placeholder="1ZR-1234567" value={vEngine} onChange={(e) => setVEngine(e.target.value)} /></label>
-                          <button onClick={() => saveIdentity(v)} disabled={verifyBusy === 'identity'} className="btn-graphite text-xs disabled:opacity-40">{verifyBusy === 'identity' ? 'Saving…' : 'Save numbers'}</button>
+                          <button onClick={() => saveIdentity(v)} disabled={verifyBusy === 'identity'} className="btn-graphite text-xs disabled:opacity-40">{verifyBusy === 'identity' ? 'Saving…' : 'Save chassis number'}</button>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                           {EVIDENCE_SLOTS.map((slot) => {

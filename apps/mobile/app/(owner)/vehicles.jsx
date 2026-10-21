@@ -25,7 +25,7 @@ const MODELS = [
   { value: 'DRIVING_ON', label: 'DriveOn' },
   { value: 'RENTAL', label: 'Rental' },
 ];
-const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), color: '', chassisNumber: '', engineNumber: '', region: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '' };
+const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), color: '', chassisNumber: '', region: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '' };
 
 function ChipRow({ label, options, value, onChange, colors }) {
   return (
@@ -95,7 +95,6 @@ export default function OwnerVehicles() {
         transmission: form.transmission,
         operatingModel: form.operatingModel,
         chassisNumber: form.chassisNumber.trim() || undefined,
-        engineNumber: form.engineNumber.trim() || undefined,
         managingCompanyId: form.operatingModel === 'RENTAL' && form.managingCompanyId ? form.managingCompanyId : undefined,
         mileage: form.mileage ? Number(form.mileage) : undefined,
         estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
@@ -120,7 +119,6 @@ export default function OwnerVehicles() {
   const [rentalCompanyId, setRentalCompanyId] = useState('');
   const [showRentalPicker, setShowRentalPicker] = useState(false);
   const [vChassis, setVChassis]       = useState('');
-  const [vEngine, setVEngine]         = useState('');
   const [verifyBusy, setVerifyBusy]   = useState('');
   const [verifyMsg, setVerifyMsg]     = useState('');
 
@@ -200,9 +198,9 @@ export default function OwnerVehicles() {
     setVerifyBusy('identity');
     setVerifyMsg('');
     try {
-      const res = await vehiclesApi.updateDetails(selected.id, { chassisNumber: vChassis.trim(), engineNumber: vEngine.trim() });
+      const res = await vehiclesApi.updateDetails(selected.id, { chassisNumber: vChassis.trim() });
       applyVehicleUpdate(res.data?.data);
-      setVerifyMsg('Chassis and engine numbers saved.');
+      setVerifyMsg('Chassis number saved.');
     } catch (e) {
       setVerifyMsg(e.response?.data?.message || 'Could not save those details.');
     } finally {
@@ -254,7 +252,6 @@ export default function OwnerVehicles() {
     setModelMsg('');
     setVerifyMsg('');
     setVChassis(v.chassisNumber || '');
-    setVEngine(v.engineNumber || '');
     setRentalCompanyId(v.managingCompanyId || '');
     setShowRentalPicker(false);
     loadPending(v.id);
@@ -332,7 +329,7 @@ export default function OwnerVehicles() {
               Verification: {(selected.verificationStatus || 'NOT_SUBMITTED').replace(/_/g, ' ')}
             </Text>
             <Text style={{ fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginBottom: 8 }}>
-              Every vehicle is verified by a Super Admin before it can be published. They confirm the registration number, chassis and engine numbers, colour, type and year against your evidence images, as on the DVLA registration certificate.
+              Every vehicle is verified by a Super Admin before it can be published. They confirm the registration number, chassis number, colour, type and year against your evidence images, as on the DVLA registration certificate.
             </Text>
             {selected.verificationStatus === 'REJECTED' && selected.verificationNote ? (
               <Text style={{ fontSize: 13, color: colors.danger, lineHeight: 19, marginBottom: 8 }}>Reason: {selected.verificationNote}</Text>
@@ -345,9 +342,7 @@ export default function OwnerVehicles() {
               <>
                 <Field label="Chassis number *" placeholder="JTDBR32E862000111" value={vChassis} onChangeText={setVChassis} autoCapitalize="characters" />
                 <View style={{ height: 10 }} />
-                <Field label="Engine number *" placeholder="1ZR-1234567" value={vEngine} onChangeText={setVEngine} autoCapitalize="characters" />
-                <View style={{ height: 10 }} />
-                <PrimaryButton title="Save numbers" loading={verifyBusy === 'identity'} onPress={saveIdentity} />
+                <PrimaryButton title="Save chassis number" loading={verifyBusy === 'identity'} onPress={saveIdentity} />
                 <View style={{ height: 14 }} />
                 {EVIDENCE_SLOTS.map((slot) => {
                   const url = selected.verificationEvidence?.[slot.kind];
@@ -439,7 +434,6 @@ export default function OwnerVehicles() {
             <View style={{ height: 12 }} />
             <Field label="Chassis number" placeholder="From the VIN plate / registration certificate" value={form.chassisNumber} onChangeText={(v) => set('chassisNumber', v)} autoCapitalize="characters" />
             <View style={{ height: 12 }} />
-            <Field label="Engine number" placeholder="From the registration certificate" value={form.engineNumber} onChangeText={(v) => set('engineNumber', v)} autoCapitalize="characters" />
             <View style={{ height: 14 }} />
             <ChipRow label="Region" options={GHANA_REGIONS} value={form.region} onChange={(v) => set('region', v)} colors={colors} />
             <ChipRow label="Vehicle type" options={TYPES} value={form.type} onChange={(v) => set('type', v)} colors={colors} />

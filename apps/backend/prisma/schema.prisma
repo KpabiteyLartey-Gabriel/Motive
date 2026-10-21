@@ -654,7 +654,6 @@ model Vehicle {
   fuelType           FuelType
   transmission       TransmissionType
   mileage            Int?
-  engineNumber       String?
   chassisNumber      String?
   location           String?
   region             String?

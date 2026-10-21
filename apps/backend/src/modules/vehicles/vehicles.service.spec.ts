@@ -216,7 +216,7 @@ describe('VehiclesService verification before publishing', () => {
     operatingModel: 'WORK_AND_PAY', currentDriverId: null,
     registrationNumber: 'GR-1-26', make: 'Toyota', model: 'Corolla', year: 2020,
     color: 'Silver', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC',
-    chassisNumber: 'JTDBR32E862000111', engineNumber: '1ZR-1234567',
+    chassisNumber: 'JTDBR32E862000111',
     verificationStatus: 'NOT_SUBMITTED', verificationEvidence: null, verificationNote: null,
   };
   const evidence = {
@@ -245,7 +245,7 @@ describe('VehiclesService verification before publishing', () => {
     await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/has not been verified yet/);
   });
 
-  it('submit requires chassis, engine, colour and all four evidence images', async () => {
+  it('submit requires chassis, colour and all four evidence images', async () => {
     const { svc } = makeSvc();
     await expect(svc.submitVerification('veh-1', undefined, 'user-1', 'OWNER')).rejects.toThrow(/front photo showing the number plate/);
     await expect(svc.submitVerification('veh-1', undefined, 'user-1', 'OWNER')).rejects.toThrow(/Vehicle Registration Certificate/);

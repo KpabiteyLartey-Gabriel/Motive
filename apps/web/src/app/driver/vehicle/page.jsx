@@ -81,10 +81,6 @@ export default function DriverVehiclePage() {
                 <p className="text-neutral-900 dark:text-white mt-0.5">{vehicle.color || '—'}</p>
               </div>
               <div>
-                <p className="text-neutral-500">Engine</p>
-                <p className="text-neutral-900 dark:text-white mt-0.5">{vehicle.engineNumber || '—'}</p>
-              </div>
-              <div>
                 <p className="text-neutral-500">Fuel</p>
                 <p className="text-neutral-900 dark:text-white mt-0.5">{vehicle.fuelType || '—'}</p>
               </div>

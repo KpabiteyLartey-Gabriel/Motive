@@ -19,10 +19,6 @@ export class CreateVehicleDto {
   @IsOptional()
   chassisNumber?: string;
 
-  @ApiPropertyOptional({ description: 'Engine number from the registration certificate. Required for verification.' })
-  @IsString()
-  @IsOptional()
-  engineNumber?: string;
 
   @ApiProperty({ example: 'Toyota' })
   @IsString()
@@ -124,7 +120,6 @@ export class DecideModelChangeDto {
 export class UpdateVehicleDto {
   @ApiPropertyOptional() @IsString() @IsOptional() registrationNumber?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() chassisNumber?: string;
-  @ApiPropertyOptional() @IsString() @IsOptional() engineNumber?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() vin?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() make?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() model?: string;

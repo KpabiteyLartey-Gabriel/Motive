@@ -142,7 +142,6 @@ export default function DriverVehicle() {
           <InfoRow label="Fuel"        value={vehicle.fuelType} colors={colors} />
           <InfoRow label="Transmission"value={vehicle.transmission} colors={colors} />
           <InfoRow label="VIN"         value={vehicle.vin} colors={colors} />
-          <InfoRow label="Engine No."  value={vehicle.engineNumber} colors={colors} />
           <InfoRow label="Operating"   value={vehicle.operatingModel?.replace(/_/g, ' ')} colors={colors} />
         </View>
 

@@ -36,7 +36,6 @@ function VerificationReview({ vehicle, onClose, onDecided }) {
   const rows = [
     ['Registration number', vehicle.registrationNumber],
     ['Chassis number', vehicle.chassisNumber],
-    ['Engine number', vehicle.engineNumber],
     ['Make / Model', `${vehicle.make || ''} ${vehicle.model || ''}`],
     ['Year', vehicle.year],
     ['Colour', vehicle.color],
@@ -308,7 +307,7 @@ export default function AdminVehiclesPage() {
       {isSuperAdmin && (
         <div className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-4 mb-5">
           <p className="text-sm font-semibold text-graphite dark:text-paper mb-1">Verification queue ({queue.length})</p>
-          <p className="text-xs text-neutral-500 mb-3">Vehicles cannot be published until you confirm the submitted registration, chassis and engine numbers, colour, type and year against the owner&apos;s evidence images.</p>
+          <p className="text-xs text-neutral-500 mb-3">Vehicles cannot be published until you confirm the submitted registration and chassis numbers, colour, type and year against the owner&apos;s evidence images.</p>
           {queue.length === 0 ? (
             <p className="text-xs text-neutral-500">Nothing waiting for verification.</p>
           ) : (
