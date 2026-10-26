@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { ADMIN_NAV } from '@/components/dashboard/AdminHelpers';
+
 import { adminApi } from '@/lib/api';
 
 const PROVIDER_INFO = {
@@ -103,7 +102,7 @@ function ProviderCard({ name, info, isActive, isBlocked, onSwitch, switching }) 
 }
 
 export default function AdminSettingsPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['ADMIN', 'SUPER_ADMIN'] });
+  const { user } = useAuth({ requiredRoles: ['ADMIN', 'SUPER_ADMIN'] });
   const [providerStatus, setProviderStatus] = useState(null);
   const [fetching, setFetching]             = useState(false);
   const [switching, setSwitching]           = useState(false);
@@ -141,7 +140,7 @@ export default function AdminSettingsPage() {
   const available      = providerStatus?.available || [];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Settings">
+    <>
       <div className="mb-8">
         <h2 className="font-medium text-graphite dark:text-paper mb-1" style={{ fontSize: "1.25rem", letterSpacing: "-0.02em" }}>Platform Settings</h2>
         <p className="text-sm text-steel dark:text-neutral-500">Manage platform configuration. Changes take effect immediately — no restart required.</p>
@@ -217,6 +216,6 @@ export default function AdminSettingsPage() {
           </>
         )}
       </section>
-    </DashboardShell>
+    </>
   );
 }

@@ -48,27 +48,6 @@ export function EmptyState({ icon = 'documents', title, description, action }) {
   );
 }
 
-export function ProgressBar({ value = 0, label }) {
-  const pct = Math.max(0, Math.min(100, Number(value) || 0));
-  return (
-    <div>
-      {label && (
-        <div className="mb-1.5 flex items-center justify-between text-[13px]">
-          <span className="font-medium text-steel dark:text-neutral-400">{label}</span>
-          <span className="money font-semibold text-ink dark:text-white">{Math.round(pct)}%</span>
-        </div>
-      )}
-      <div className="h-2.5 overflow-hidden rounded-full bg-mist-deep dark:bg-dark-elevated" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-full rounded-full bg-brand-500 transition-[width] duration-500" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-export function Skeleton({ className = 'h-24' }) {
-  return <div className={`skeleton ${className}`} aria-hidden="true" />;
-}
-
 const STATUS = {
   ACTIVE: ['bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-300', 'Active'],
   AVAILABLE: ['bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-300', 'Available'],
@@ -100,6 +79,16 @@ export function StatusBadge({ status }) {
       {label}
     </span>
   );
+}
+
+export function fmtDate(d) {
+  if (!d) return '-';
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+export function fmtGHS(n) {
+  if (n == null) return '-';
+  return `GHS ${Number(n).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function Modal({ open, onClose, title, children }) {

@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { maintenanceApi, vehiclesApi } from '@/lib/api';
-import { FLEET_NAV, FLEET_ROLES } from '@/lib/fleetNav';
+import { FLEET_ROLES } from '@/lib/fleetNav';
 
 const STATUSES = ['REQUESTED', 'APPROVED', 'SCHEDULED', 'IN_PROGRESS', 'WAITING_FOR_PARTS', 'COMPLETED', 'CANCELLED'];
 const TYPES = ['ROUTINE', 'BREAKDOWN', 'ACCIDENT', 'INSPECTION'];
@@ -60,7 +59,7 @@ export default function FleetMaintenancePage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={FLEET_NAV} title="Maintenance">
+    <>
       <SectionHeader title="Maintenance" description="Raise and progress service, repair and inspection requests" />
       {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-lg mb-4">{Array.isArray(error) ? error.join(', ') : error}</div>}
 
@@ -106,6 +105,6 @@ export default function FleetMaintenancePage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

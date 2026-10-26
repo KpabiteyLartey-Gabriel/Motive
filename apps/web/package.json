@@ -11,9 +11,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@gh-motive/api-client": "*",
-    "@gh-motive/constants": "*",
-    "@gh-motive/shared": "*",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",

@@ -162,6 +162,12 @@ async function main() {
       isSystem: true,
       permissions: allPermissions.map((p) => p.name),
     },
+    {
+      name: 'PENDING',
+      description: 'Account created, account type not chosen yet (onboarding step 2)',
+      isSystem: true,
+      permissions: [],
+    },
   ];
 
   for (const roleData of roles) {

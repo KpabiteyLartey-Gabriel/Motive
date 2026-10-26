@@ -93,7 +93,7 @@ export class IncidentsService {
     if (type) where.type = type;
     if (vehicleId) where.vehicleId = vehicleId;
 
-    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.LEGAL_PROFESSIONAL];
+    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER];
     if (!adminRoles.includes(userRole as UserRole)) {
       // Drivers see their own incidents; owners see incidents on their vehicles
       const driver = await this.prisma.driver.findUnique({ where: { userId }, select: { id: true } });
@@ -129,7 +129,7 @@ export class IncidentsService {
     });
     if (!incident) throw new NotFoundException('Incident not found');
 
-    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.LEGAL_PROFESSIONAL];
+    const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER];
     if (!adminRoles.includes(userRole as UserRole)) {
       const driver = await this.prisma.driver.findUnique({ where: { userId }, select: { id: true } });
       const owner = await this.prisma.owner.findUnique({ where: { userId }, select: { id: true } });

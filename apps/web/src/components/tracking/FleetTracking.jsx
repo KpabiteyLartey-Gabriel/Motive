@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState } from '@/components/dashboard/DashboardUI';
 import { vehiclesApi, trackingApi } from '@/lib/api';
 import { FLEET_MANAGER_ROLES } from '@/lib/companyNav';
@@ -12,8 +11,8 @@ function fmtDate(d) {
   return new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export default function FleetTracking({ navItems, requiredRoles }) {
-  const { user, loading, logout } = useAuth({ requiredRoles });
+export default function FleetTracking() {
+  const { user } = useAuth();
   const canManage = FLEET_MANAGER_ROLES.includes(user?.primaryRole || '');
   const [vehicles, setVehicles] = useState([]);
   const [selectedId, setSelectedId] = useState('');
@@ -77,10 +76,8 @@ export default function FleetTracking({ navItems, requiredRoles }) {
     finally { setBusy(false); }
   };
 
-  if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
-
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={navItems} title="Tracking & Remote Control">
+    <>
       <SectionHeader title="Fleet Tracking" description="Live location, speed monitoring, tracker devices and remote engine control" />
       {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-lg mb-4">{Array.isArray(error) ? error.join(', ') : error}</div>}
 
@@ -165,6 +162,6 @@ export default function FleetTracking({ navItems, requiredRoles }) {
           )}
         </>
       )}
-    </DashboardShell>
+    </>
   );
 }

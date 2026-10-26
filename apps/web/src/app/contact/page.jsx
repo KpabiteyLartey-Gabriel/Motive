@@ -4,7 +4,7 @@ import Footer from '@/components/layout/Footer';
 
 export const metadata = {
   title: 'Contact — +Motive',
-  description: 'Talk to the +Motive team — drivers, vehicle owners, transport companies, fleet managers, maintenance providers and legal professionals.',
+  description: 'Talk to the +Motive team — drivers, vehicle owners, transport companies, fleet managers, maintenance providers.',
 };
 
 const routes = [
@@ -13,7 +13,6 @@ const routes = [
   { who: 'Transport Companies', detail: 'Registering your company, inviting staff and drivers, and running mixed fleets.', href: '/companies', cta: 'For Companies' },
   { who: 'Fleet Managers', detail: 'You join through your company\u2019s invite — your admin sends you the link to onboard into your portal.', href: '/how-it-works#fleet-managers', cta: 'See Fleet Managers' },
   { who: 'Maintenance Providers', detail: 'Listing your services, per-service and subscription work, and getting jobs with live locations.', href: '/how-it-works#maintenance-providers', cta: 'See Maintenance Providers' },
-  { who: 'Legal Professionals', detail: 'Witnessing contracts, facilitating deals and monitoring vehicle paperwork for clients.', href: '/how-it-works#legal-professionals', cta: 'See Legal Professionals' },
 ];
 
 export default function ContactPage() {

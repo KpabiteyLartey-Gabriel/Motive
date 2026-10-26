@@ -29,16 +29,24 @@ describe('UsersService verification codes', () => {
     svc = new UsersService(prisma, messaging);
   });
 
-  it('sends a hashed 6-digit email code that expires in 10 minutes', async () => {
+  it('sends a hashed 6-digit email code that expires in 5 minutes with the styled verification email', async () => {
     const res = await svc.sendVerificationCode('user-1', 'email');
     expect(res.success).toBe(true);
     const created = prisma.verificationCode.create.mock.calls[0][0].data;
     expect(created.type).toBe('EMAIL_VERIFY');
     expect(created.code).toMatch(/^[a-f0-9]{64}$/); // SHA-256 hash, never the raw code
     expect(created.code).not.toMatch(/^\d{6}$/);
-    expect(created.expiresAt.getTime()).toBeGreaterThan(Date.now() + 9 * 60 * 1000);
-    expect(created.expiresAt.getTime()).toBeLessThan(Date.now() + 11 * 60 * 1000);
-    expect(messaging.sendEmail).toHaveBeenCalledWith('ama@test.com', expect.any(String), expect.stringContaining('verification code'));
+    expect(created.expiresAt.getTime()).toBeGreaterThan(Date.now() + 4 * 60 * 1000);
+    expect(created.expiresAt.getTime()).toBeLessThan(Date.now() + 6 * 60 * 1000);
+    expect(messaging.sendEmail).toHaveBeenCalledWith(
+      'ama@test.com',
+      'Verify your +Motive account',
+      expect.stringContaining('expires in 5 minutes'),
+      expect.stringContaining('ACCOUNT VERIFICATION'),
+    );
+    const html = messaging.sendEmail.mock.calls[0][3];
+    expect(html).toMatch(/One-time code/);
+    expect(html).toMatch(/Warm regards/);
     expect(messaging.sendSms).not.toHaveBeenCalled();
   });
 

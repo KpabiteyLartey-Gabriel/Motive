@@ -22,6 +22,8 @@ export default function DriverLayout() {
     headerShadowVisible: false,
   };
 
+  // Only four tabs: Home, Explore, Messages, Profile. Everything else is a
+  // hidden screen reached from Home Quick Links or the notification bell.
   return (
     <Tabs screenOptions={screenOpts}>
       <Tabs.Screen
@@ -33,7 +35,7 @@ export default function DriverLayout() {
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="home" color={color} size={size} focused={focused} />,
         }}
       />
-            <Tabs.Screen
+      <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore Vehicles',
@@ -41,44 +43,12 @@ export default function DriverLayout() {
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="explore" color={color} size={size} focused={focused} />,
         }}
       />
-<Tabs.Screen
-        name="payments"
-        options={{
-          title: 'Payments',
-          tabBarLabel: 'Payments',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="payments" color={color} size={size} focused={focused} />,
-        }}
-      />
       <Tabs.Screen
-        name="contract"
-        options={{
-          title: 'My Contract',
-          tabBarLabel: 'Contract',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="contract" color={color} size={size} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="vehicle"
-        options={{
-          title: 'My Vehicle',
-          tabBarLabel: 'Vehicle',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="vehicle" color={color} size={size} focused={focused} />,
-        }}
-      />
-            <Tabs.Screen
         name="messages"
         options={{
           title: 'Messages',
           tabBarLabel: 'Messages',
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="messages" color={color} size={size} focused={focused} />,
-        }}
-      />
-<Tabs.Screen
-        name="notifications"
-        options={{
-          title: 'Notifications',
-          tabBarLabel: 'Alerts',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="notifications" color={color} size={size} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -89,15 +59,15 @@ export default function DriverLayout() {
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="profile" color={color} size={size} focused={focused} />,
         }}
       />
-      {/* Hidden screens â€” accessible via push, not shown in tab bar */}
-      <Tabs.Screen name="maintenance" options={{ href: null, title: 'Maintenance' }} />
-      <Tabs.Screen name="disputes"    options={{ href: null, title: 'Disputes' }} />
-      <Tabs.Screen name="incidents"   options={{ href: null, title: 'Incidents' }} />
+      {/* Hidden screens — reached via Home Quick Links / bell, not the tab bar */}
+      <Tabs.Screen name="payments"      options={{ href: null, title: 'Payments' }} />
+      <Tabs.Screen name="contract"      options={{ href: null, title: 'My Contract' }} />
+      <Tabs.Screen name="vehicle"       options={{ href: null, title: 'My Vehicle' }} />
+      <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
+      <Tabs.Screen name="maintenance"   options={{ href: null, title: 'Maintenance' }} />
+      <Tabs.Screen name="disputes"      options={{ href: null, title: 'Disputes' }} />
+      <Tabs.Screen name="incidents"     options={{ href: null, title: 'Incidents' }} />
       {/* No tracking for drivers — live vehicle tracking is owner-only. */}
     </Tabs>
   );
 }
-
-
-
-

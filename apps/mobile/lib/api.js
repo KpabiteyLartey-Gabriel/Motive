@@ -72,16 +72,12 @@ export default apiClient;
 export const authApi = {
   register: (data) => apiClient.post('/auth/register', data),
   login:    (data) => apiClient.post('/auth/login', data),
-  refresh:  (token) => apiClient.post('/auth/refresh', { refreshToken: token }),
-  logout:   () => apiClient.post('/auth/logout'),
-  me:       () => apiClient.get('/auth/me'),
   forgotPassword: (identifier) => apiClient.post('/auth/forgot-password', { identifier }),
   resetPassword:  (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword }),
 };
 
 // ── Drivers ──────────────────────────────────────────────────
 export const driversApi = {
-  createProfile: (data) => apiClient.post('/drivers/profile', data),
   getMyProfile:  () => apiClient.get('/drivers/profile'),
   updateProfile: (data) => apiClient.patch('/drivers/profile', data),
   uploadDocument: (uri, type, expiryDate) => {
@@ -93,15 +89,12 @@ export const driversApi = {
     if (expiryDate) form.append('expiryDate', expiryDate);
     return apiClient.post('/drivers/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
-  getById:       (id) => apiClient.get(`/drivers/${id}`),
 };
 
 // ── Owners ───────────────────────────────────────────────────
 export const ownersApi = {
-  createProfile: (data) => apiClient.post('/owners/profile', data),
   getMyProfile:  () => apiClient.get('/owners/profile'),
   updateProfile: (data) => apiClient.patch('/owners/profile', data),
-  getById:       (id) => apiClient.get(`/owners/${id}`),
 };
 
 // ── Vehicles ─────────────────────────────────────────────────
@@ -114,14 +107,24 @@ export function resolveVehiclePhoto(url) {
 
 export const companiesApi = {
   list: (params) => apiClient.get('/companies', { params }),
-  mine: () => apiClient.get('/companies/mine'),
 };
 
 export const vehiclesApi = {
   list:    (params) => apiClient.get('/vehicles', { params }),
-  getById: (id) => apiClient.get(`/vehicles/${id}`),
   create:  (data) => apiClient.post('/vehicles', data),
-  setPhotos: (id, imageUrls) => apiClient.patch(`/vehicles/${id}/photos`, { imageUrls }),
+  uploadPhotos: async (id, uri) => {
+    const form = new FormData();
+    const name = (uri || '').split('/').pop() || 'vehicle.jpg';
+    if (/^(blob:|data:)/.test(uri || '')) {
+      // Web pickers hand back blob:/data: URIs — they must become a real File.
+      const blob = await (await fetch(uri)).blob();
+      form.append('files', new File([blob], name === 'vehicle.jpg' ? 'vehicle.png' : name, { type: blob.type || 'image/png' }));
+    } else {
+      const type = name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+      form.append('files', { uri, name, type });
+    }
+    return apiClient.post(`/vehicles/${id}/photos`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
   updateStatus: (id, status) => apiClient.patch(`/vehicles/${id}/status`, { status }),
   changeOperatingModel: (id, operatingModel, managingCompanyId) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel, ...(managingCompanyId ? { managingCompanyId } : {}) }),
   getPendingModelChange: (id) => apiClient.get(`/vehicles/${id}/operating-model-request`),
@@ -134,11 +137,11 @@ export const vehiclesApi = {
 // ── Contracts ────────────────────────────────────────────────
 export const contractsApi = {
   list:      (params) => apiClient.get('/contracts', { params }),
-  getById:   (id) => apiClient.get(`/contracts/${id}`),
   create:    (data) => apiClient.post('/contracts', data),
   accept:    (id) => apiClient.post(`/contracts/${id}/accept`),
   confirmCode: (id, code) => apiClient.post(`/contracts/${id}/confirm-code`, { code }),
-  terminate: (id, data) => apiClient.patch(`/contracts/${id}/terminate`, data),
+  share:     (id, chatUsername) => apiClient.post(`/contracts/${id}/share`, { chatUsername }),
+  getSchedule: (id) => apiClient.get(`/contracts/${id}/schedule`),
 };
 
 export const marketplaceApi = {
@@ -154,13 +157,16 @@ export const marketplaceApi = {
   sendMessage: (threadId, data) => apiClient.post(`/marketplace/threads/${threadId}/messages`, data),
   uploadAttachment: (threadId, formData) => apiClient.post(`/marketplace/threads/${threadId}/attachments`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   generateAccessCode: (contractId) => apiClient.post(`/marketplace/contracts/${contractId}/access-code`),
+  chatUsername: () => apiClient.get('/marketplace/chat/username'),
+  setChatUsername: (chatUsername) => apiClient.post('/marketplace/chat/username', { chatUsername }),
+  searchChatUsers: (q) => apiClient.get('/marketplace/chat/search', { params: { q } }),
+  startDirectThread: (chatUsername) => apiClient.post('/marketplace/chat/direct-thread', { chatUsername }),
 };
 
 // ── Payments ─────────────────────────────────────────────────
 export const paymentsApi = {
   list:     (params) => apiClient.get('/payments', { params }),
-  getById:  (id) => apiClient.get(`/payments/${id}`),
-  initiate: (data) => apiClient.post('/payments/initiate', data),
+  initiate: (data) => apiClient.post('/payments', data),
 };
 
 // ── Notifications ────────────────────────────────────────────
@@ -194,34 +200,28 @@ export const usersApi = {
 export const maintenanceApi = {
   list:   (params) => apiClient.get('/maintenance', { params }),
   create: (data) => apiClient.post('/maintenance', data),
-  getById:(id) => apiClient.get(`/maintenance/${id}`),
 };
 
 // ── Disputes ─────────────────────────────────────────────────
 export const disputesApi = {
   list:   (params) => apiClient.get('/disputes', { params }),
   create: (data) => apiClient.post('/disputes', data),
-  getById:(id) => apiClient.get(`/disputes/${id}`),
-  addMessage: (id, data) => apiClient.post(`/disputes/${id}/messages`, data),
 };
 
 // ── Incidents ────────────────────────────────────────────────
 export const incidentsApi = {
   list:   (params) => apiClient.get('/incidents', { params }),
   create: (data) => apiClient.post('/incidents', data),
-  getById:(id) => apiClient.get(`/incidents/${id}`),
 };
 
 // ── Compliance ───────────────────────────────────────────────
 export const complianceApi = {
   listForVehicle: (vehicleId) => apiClient.get(`/compliance/vehicle/${vehicleId}`),
-  listForDriver:  (driverId) => apiClient.get(`/compliance/driver/${driverId}`),
 };
 
 // ── Tracking ─────────────────────────────────────────────────
 export const trackingApi = {
   getLastLocation: (vehicleId)         => apiClient.get(`/tracking/vehicles/${vehicleId}/location`),
-  getHistory:      (vehicleId, params) => apiClient.get(`/tracking/vehicles/${vehicleId}/history`, { params }),
 };
 
 // ── Location share (owner only) ───────────────────────────────

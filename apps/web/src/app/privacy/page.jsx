@@ -9,11 +9,11 @@ export const metadata = {
 const sections = [
   {
     title: 'Information we collect',
-    body: 'Account details (name, email, phone), identity and driving-licence details for drivers, vehicle and document details for owners and companies, contract and payment records, vehicle location and tracker data, maintenance and legal-service records, and messages or recordings you submit when raising an incident or witnessing a contract.',
+    body: 'Account details (name, email, phone), identity and driving-licence details for drivers, vehicle and document details for owners and companies, contract and payment records, vehicle location and tracker data, maintenance records, and messages or recordings you submit when raising an incident.',
   },
   {
     title: 'Why we use it',
-    body: 'To verify participants, create and enforce contracts, collect and split payments, monitor licences and vehicle documents, provide tracking and remote-control features, dispatch maintenance and legal help, resolve disputes, and keep a complete audit trail for everyone involved in a deal.',
+    body: 'To verify participants, create and enforce contracts, collect and split payments, monitor licences and vehicle documents, provide tracking and remote-control features, dispatch maintenance help, resolve disputes, and keep a complete audit trail for everyone involved in a deal.',
   },
   {
     title: 'Location and recordings',
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
             <p className="section-label">Legal</p>
             <h1 className="mt-3 text-4xl font-semibold leading-[1.08] tracking-tight text-ink sm:text-5xl dark:text-white">Privacy Policy</h1>
             <p className="mt-5 text-lg leading-relaxed text-steel dark:text-neutral-400">
-              How +Motive collects, uses and protects information for drivers, owners, companies, fleet managers, maintenance providers and legal professionals.
+              How +Motive collects, uses and protects information for drivers, owners, companies, fleet managers, maintenance providers.
             </p>
             <div className="mt-10 space-y-8">
               {sections.map((s) => (

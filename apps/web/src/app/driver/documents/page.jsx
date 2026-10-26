@@ -2,21 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState } from '@/components/dashboard/DashboardUI';
 import { complianceApi } from '@/lib/api';
-
-const NAV = [
-  { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
-  { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
-  { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
-  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
-  { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
-  { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
-  { href: '/driver/documents', icon: 'documents', label: 'Documents' },
-  { href: '/driver/disputes',  icon: 'disputes', label: 'Disputes' },
-];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -46,7 +33,7 @@ export default function DriverDocumentsPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Documents">
+    <>
       <SectionHeader title="Compliance &amp; Documents" description="Your licence, insurance and roadworthiness status" />
 
       {fetching ? (
@@ -78,7 +65,7 @@ export default function DriverDocumentsPage() {
             </tbody>
           </table>
         </div>
-      )}
-    </DashboardShell>
+      )}
+    </>
   );
 }

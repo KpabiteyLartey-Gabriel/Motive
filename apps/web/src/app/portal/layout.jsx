@@ -1,0 +1,23 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+import DashboardShell from '@/components/dashboard/DashboardShell';
+import { getPortalNav } from '@/lib/portalNav';
+import { useAuth } from '@/lib/useAuth';
+
+// Persistent portal shell: mounts once; only page content swaps on navigation.
+export default function PortalLayout({ children }) {
+  const { user, loading, logout } = useAuth();
+  const pathname = usePathname();
+  const navItems = getPortalNav(user);
+
+  const current = navItems.find((item) =>
+    item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
+
+  return (
+    <DashboardShell user={user} loading={loading} logout={logout} navItems={navItems} title={current?.label || 'Portal'}>
+      {children}
+    </DashboardShell>
+  );
+}

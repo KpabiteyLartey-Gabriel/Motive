@@ -206,6 +206,56 @@ export class UsersService {
     return createHash('sha256').update(code).digest('hex');
   }
 
+  // Databank-style verification email: banner, greeting, one-time code
+  // box, 5-minute expiry, sign-off and a dark footer.
+  private buildVerificationEmail(user: any, code: string) {
+    const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'there';
+    const supportEmail = process.env.SUPPORT_EMAIL || process.env.SMTP_USER || 'support@positivemotive.com';
+    const supportPhone = process.env.SUPPORT_PHONE || '';
+    const text = [
+      `Dear ${name},`,
+      '',
+      'ACCOUNT VERIFICATION',
+      `One-time code: ${code}`,
+      '',
+      'Use the one-time code above to complete your sign-up to Positive Motive (+Motive).',
+      'This code expires in 5 minutes.',
+      "If you didn't create this account, please ignore this email and contact us immediately.",
+      '',
+      'Warm regards,',
+      'The +Motive Team',
+      '',
+      `© +Motive. All rights reserved.${supportPhone ? `\n${supportPhone} • ` : '\n'}${supportEmail}`,
+    ].join('\n');
+    const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#EEF3EC;font-family:Arial,Helvetica,sans-serif;color:#14201A">
+<div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:6px;overflow:hidden">
+  <div style="background:#005C33;padding:26px 32px">
+    <div style="font-size:26px;font-weight:800;letter-spacing:.5px;color:#ffffff">+MOTIVE</div>
+    <div style="margin-top:4px;font-size:13px;color:#BFE8D2">Drive. Earn. Own it.</div>
+  </div>
+  <div style="height:4px;background:#017A4A"></div>
+  <div style="padding:32px">
+    <p style="margin:0 0 22px;font-size:17px">Dear <strong>${name}</strong>,</p>
+    <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:1.2px;color:#017A4A">ACCOUNT VERIFICATION</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 22px">
+      <tr>
+        <td style="background:#F4F4F4;padding:14px 16px;font-size:15px;color:#333333">One-time code</td>
+        <td style="background:#EDF7F0;padding:14px 16px;font-size:18px;font-weight:800;letter-spacing:2px;color:#017A4A;text-align:left">${code}</td>
+      </tr>
+    </table>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6">Use the one-time code above to complete your sign-up to Positive Motive (+Motive).</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6">This code expires in 5 minutes.</p>
+    <p style="margin:0 0 28px;font-size:15px;line-height:1.6">If you didn&rsquo;t create this account, please ignore this email and contact us immediately.</p>
+    <p style="margin:0;font-size:15px;line-height:1.6">Warm regards,<br/><strong>The +Motive Team</strong></p>
+  </div>
+  <div style="background:#15181A;padding:20px 32px;text-align:center;color:#C9CED1;font-size:13px;line-height:1.7">
+    &copy; +Motive. All rights reserved.<br/>${supportPhone ? `${supportPhone} &bull; ` : ''}${supportEmail}
+  </div>
+</div>
+</body></html>`;
+    return { text, html, subject: 'Verify your +Motive account' };
+  }
+
   async sendVerificationCode(userId: string, channel: 'email' | 'phone') {
     const user: any = await this.getUserOrThrow(userId);
     const isEmail = channel === 'email';
@@ -224,13 +274,14 @@ export class UsersService {
 
     const code = String(randomInt(100000, 1000000));
     await this.prisma.verificationCode.create({
-      data: { userId, type, code: this.hashCode(code), expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+      data: { userId, type, code: this.hashCode(code), expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
     });
 
-    const text = `Your +Motive verification code is ${code}. It expires in 10 minutes. Do not share it with anyone.`;
+    const text = `Your +Motive verification code is ${code}. It expires in 5 minutes. Do not share it with anyone.`;
     if (this.messaging) {
       if (isEmail) {
-        await this.messaging.sendEmail(target, 'Verify your +Motive email', text).catch((e) => this.logger.warn(`Verify email failed: ${e?.message}`));
+        const mail = this.buildVerificationEmail(user, code);
+        await this.messaging.sendEmail(target, mail.subject, mail.text, mail.html).catch((e) => this.logger.warn(`Verify email failed: ${e?.message}`));
       } else {
         await this.messaging.sendSms(target, text).catch((e) => this.logger.warn(`Verify SMS failed: ${e?.message}`));
       }
@@ -238,7 +289,7 @@ export class UsersService {
       this.logger.warn(`Messaging unavailable — verification code for user ${userId} not sent`);
     }
 
-    return { success: true, alreadyVerified: false, message: `We sent a 6-digit code to your ${channel}. It expires in 10 minutes.` };
+    return { success: true, alreadyVerified: false, message: `We sent a 6-digit code to your ${channel}. It expires in 5 minutes.` };
   }
 
   async confirmVerificationCode(userId: string, channel: 'email' | 'phone', code: string) {
@@ -291,18 +342,5 @@ export class UsersService {
     });
     await this.revokeRefreshTokens(id);
     return user;
-  }
-
-  async ensureOwnership(resourceUserId: string, requestingUserId: string, allowedRoles: string[]) {
-    if (resourceUserId === requestingUserId) return;
-
-    const requestingUser = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { primaryRole: true },
-    });
-
-    if (!requestingUser || !allowedRoles.includes(requestingUser.primaryRole)) {
-      throw new ForbiddenException('Access denied to this resource');
-    }
   }
 }

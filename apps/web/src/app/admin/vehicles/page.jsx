@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi, vehiclesApi, resolveVehiclePhoto } from '@/lib/api';
 import VehiclePhotos from '@/components/vehicles/VehiclePhotos';
 
@@ -308,7 +307,7 @@ export default function AdminVehiclesPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Vehicles">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Vehicles</h2>
@@ -379,6 +378,6 @@ export default function AdminVehiclesPage() {
           onDecided={handleDecided}
         />
       )}
-    </DashboardShell>
+    </>
   );
 }

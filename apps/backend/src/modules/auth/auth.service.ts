@@ -49,12 +49,17 @@ export class AuthService {
       throw new BadRequestException('Email or phone number is required');
     }
 
+    // New onboarding creates the account first (step 1) and picks
+    // Driver/Owner in step 2, so role is optional. Without a role the
+    // account is PENDING with no role assignment and no profile yet.
+    const requestedRole = (dto.role as UserRole | undefined) || UserRole.PENDING;
+
     // Run the independent lookups together — sequential round-trips to the
     // hosted database made signup take several seconds.
     const [existingEmail, existingPhone, role] = await Promise.all([
       dto.email ? this.prisma.user.findUnique({ where: { email: dto.email } }) : Promise.resolve(null),
       dto.phone ? this.prisma.user.findUnique({ where: { phone: dto.phone } }) : Promise.resolve(null),
-      this.prisma.role.findUnique({ where: { name: dto.role } }),
+      this.prisma.role.findUnique({ where: { name: requestedRole } }),
     ]);
     if (existingEmail) {
       throw new ConflictException('Email address is already registered');
@@ -62,7 +67,7 @@ export class AuthService {
     if (existingPhone) {
       throw new ConflictException('Phone number is already registered');
     }
-    if (!role) {
+    if (dto.role && !role) {
       throw new BadRequestException(`Invalid role: ${dto.role}`);
     }
 
@@ -76,17 +81,13 @@ export class AuthService {
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        primaryRole: dto.role as any,
-        roles: {
-          create: {
-            roleId: role.id,
-          },
-        },
+        primaryRole: requestedRole as any,
+        ...(role ? { roles: { create: { roleId: role.id } } } : {}),
         // Provision the role profile with the account: an OWNER/DRIVER
         // user without a profile cannot own vehicles, be assigned, or
         // pass resource-level access checks.
-        ...(dto.role === UserRole.OWNER ? { owner: { create: {} } } : {}),
-        ...(dto.role === UserRole.DRIVER ? { driver: { create: {} } } : {}),
+        ...(requestedRole === UserRole.OWNER ? { owner: { create: {} } } : {}),
+        ...(requestedRole === UserRole.DRIVER ? { driver: { create: {} } } : {}),
       },
       select: {
         id: true,
@@ -96,20 +97,23 @@ export class AuthService {
         lastName: true,
         primaryRole: true,
         status: true,
+        emailVerifiedAt: true,
+        authProvider: true,
         createdAt: true,
       },
     });
 
     this.logger.log(`New user registered: ${user.id} (${user.email || user.phone})`);
 
-    // Welcome email + SMS run in the background: gateways can take many
-    // seconds and must never hold up signup (a slow welcome message made
-    // registration look like it failed after the account was created).
-    void this.notifyUser(user.id, {
-      subject: 'Welcome to +Motive',
-      body: `Hello ${user.firstName}, welcome to +Motive. Your ${user.primaryRole.toLowerCase().replace(/_/g, ' ')} account is ready — sign in to get started.`,
-      type: 'WELCOME',
-    }).catch((err) => this.logger.warn(`Welcome notification failed: ${err?.message}`));
+    // Account creation is followed by email verification: send the
+    // one-time code in the background so signup stays fast. The web app
+    // routes unverified accounts to the verify-email page.
+    if (user.email) {
+      void Promise.resolve(this.usersService.sendVerificationCode?.(user.id, 'email'))
+        .catch((err) => this.logger.warn(`Signup verification email failed: ${err?.message}`));
+    }
+
+    this.sendWelcome(user);
 
     const tokens = await this.generateTokens(user.id, user.email, user.phone, user.primaryRole);
 
@@ -117,6 +121,85 @@ export class AuthService {
       user,
       ...tokens,
     };
+  }
+
+  // ── Continue with Google (step 1 alternative) ──────────────
+  // Verifies the Google ID token with Google, then finds or creates the
+  // account. New Google accounts start as PENDING, exactly like a fresh
+  // password signup, so account-type selection stays step 2 for everyone.
+  async verifyGoogleIdToken(idToken: string): Promise<any> {
+    if (!idToken) throw new UnauthorizedException('Google sign-in failed. Please try again.');
+    let res: any;
+    try {
+      res = await (globalThis as any).fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+    } catch {
+      throw new UnauthorizedException('Could not reach Google to verify sign-in. Please try again.');
+    }
+    if (!res?.ok) throw new UnauthorizedException('Google sign-in could not be verified. Please try again.');
+    const profile = await res.json();
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID;
+    if (clientId && profile.aud !== clientId) {
+      throw new UnauthorizedException('Google sign-in was issued for a different app.');
+    }
+    if (!['accounts.google.com', 'https://accounts.google.com'].includes(profile.iss)) {
+      throw new UnauthorizedException('Google sign-in could not be verified. Please try again.');
+    }
+    if (profile.email_verified !== 'true' && profile.email_verified !== true) {
+      throw new UnauthorizedException('Your Google email is not verified. Please use a verified Google account.');
+    }
+    if (!profile.sub || !profile.email) throw new UnauthorizedException('Google did not return an account email.');
+    return profile;
+  }
+
+  async googleLogin(idToken: string) {
+    const profile = await this.verifyGoogleIdToken(idToken);
+    const email = String(profile.email).toLowerCase();
+
+    let user = await this.prisma.user.findUnique({ where: { googleId: profile.sub } });
+    if (!user) user = await this.prisma.user.findUnique({ where: { email } });
+
+    let isNewUser = false;
+    if (user) {
+      if (user.status === 'SUSPENDED') throw new UnauthorizedException('Your account has been suspended. Please contact support.');
+      if (user.status === 'DEACTIVATED') throw new UnauthorizedException('Account is deactivated');
+      if (!user.googleId || user.email !== email) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: profile.sub,
+            email,
+            emailVerifiedAt: user.emailVerifiedAt || new Date(),
+            ...(profile.picture && !user.profilePhotoUrl ? { profilePhotoUrl: profile.picture } : {}),
+          },
+        });
+      }
+    } else {
+      isNewUser = true;
+      const firstName = profile.given_name || String(profile.name || 'User').split(' ')[0] || 'User';
+      const lastName = profile.family_name || String(profile.name || '').split(' ').slice(1).join(' ') || 'Account';
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          googleId: profile.sub,
+          authProvider: 'GOOGLE',
+          passwordHash: null,
+          firstName,
+          lastName,
+          profilePhotoUrl: profile.picture || null,
+          emailVerifiedAt: new Date(),
+          primaryRole: UserRole.PENDING as any,
+        },
+      });
+      this.logger.log(`New Google user registered: ${user.id} (${email})`);
+      // Same welcome as a manual signup. No verification code is sent:
+      // Google has already verified this email address.
+      this.sendWelcome(user);
+    }
+
+    await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: 0, lastLoginAt: new Date(), lockedUntil: null } });
+    const tokens = await this.generateTokens(user.id, user.email, user.phone, user.primaryRole);
+    const { passwordHash, ...safeUser } = user;
+    return { user: safeUser, ...tokens, isNewUser };
   }
 
   async login(dto: LoginDto) {
@@ -239,6 +322,18 @@ export class AuthService {
 
   private hashResetToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  // Welcome email + SMS + in-app run in the background: gateways can
+  // take many seconds and must never hold up signup (a slow welcome
+  // message made registration look like it failed after the account was
+  // created). Used by both manual and Google signups for new accounts.
+  private sendWelcome(user: { id: string; firstName: string; primaryRole: string }) {
+    void this.notifyUser(user.id, {
+      subject: 'Welcome to +Motive',
+      body: `Hello ${user.firstName}, welcome to +Motive. Your ${user.primaryRole.toLowerCase().replace(/_/g, ' ')} account is ready — sign in to get started.`,
+      type: 'WELCOME',
+    }).catch((err) => this.logger.warn(`Welcome notification failed: ${err?.message}`));
   }
 
   private async notifyUser(userId: string, opts: { subject: string; body: string; type: string; html?: string }) {

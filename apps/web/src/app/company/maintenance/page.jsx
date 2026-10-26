@@ -2,22 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { maintenanceApi } from '@/lib/api';
-
-const NAV = [
-  { href: '/company/dashboard',    icon: 'dashboard', label: 'Dashboard' },
-  { href: '/company/vehicles',     icon: 'vehicle', label: 'Fleet' },
-  { href: '/company/drivers',      icon: 'drivers', label: 'Drivers' },
-  { href: '/company/contracts',    icon: 'contract', label: 'Contracts' },
-  { href: '/company/payments',     icon: 'payments', label: 'Payments' },
-  { href: '/company/maintenance',  icon: 'maintenance', label: 'Maintenance' },
-  { href: '/company/tracking',     icon: 'tracking', label: 'Tracking' },
-  { href: '/company/reports',      icon: 'reports', label: 'Reports' },
-  { href: '/company/team',         icon: 'users', label: 'Team' },
-  { href: '/company/disputes',     icon: 'disputes', label: 'Disputes' },
-];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -53,7 +39,7 @@ export default function CompanyMaintenancePage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Maintenance">
+    <>
       <SectionHeader title="Maintenance Requests" description="Service and repair requests for your fleet" />
 
       {fetching ? (
@@ -99,6 +85,6 @@ export default function CompanyMaintenancePage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

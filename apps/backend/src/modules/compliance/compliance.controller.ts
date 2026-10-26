@@ -32,8 +32,8 @@ export class ComplianceController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.LEGAL_PROFESSIONAL)
-  @ApiOperation({ summary: 'List all compliance records (Admin/Fleet/Legal)' })
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER)
+  @ApiOperation({ summary: 'List all compliance records (Admin/Fleet)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'documentType', required: false })
@@ -70,7 +70,7 @@ export class ComplianceController {
 
   @Patch(':id/status')
   @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER, UserRole.LEGAL_PROFESSIONAL)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER)
   @ApiOperation({ summary: 'Update compliance record status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateComplianceStatusDto, @CurrentUser() user: any) {
     return this.complianceService.updateStatus(id, user.id, dto, user.primaryRole);
@@ -78,7 +78,7 @@ export class ComplianceController {
 
   @Post(':id/file')
   @HttpCode(HttpStatus.CREATED)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER, UserRole.LEGAL_PROFESSIONAL)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.FLEET_MANAGER, UserRole.SERVICE_PROVIDER)
   @ApiOperation({ summary: 'Upload the document file for a compliance record (PDF or image, max 10MB)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })

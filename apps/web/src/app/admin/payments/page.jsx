@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const PAYMENT_STATUSES = ['INITIATED', 'PENDING', 'PROCESSING', 'SUCCESSFUL', 'FAILED', 'REVERSED', 'REFUNDED'];
@@ -125,7 +124,7 @@ export default function AdminPaymentsPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Payments">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Payments</h2>
@@ -160,6 +159,6 @@ export default function AdminPaymentsPage() {
           onClose={() => setSelected(null)}
         />
       )}
-    </DashboardShell>
+    </>
   );
 }

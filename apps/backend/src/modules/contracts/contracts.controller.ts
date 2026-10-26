@@ -5,7 +5,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { IsString, IsOptional } from 'class-validator';
 import { ContractStatus, ContractType } from '@prisma/client';
 import { ContractsService } from './contracts.service';
-import { CreateContractDto } from './dto/create-contract.dto';
+import { CreateContractDto, ShareContractDto } from './dto/create-contract.dto';
 import { ConfirmCodeDto } from '../marketplace/dto/marketplace.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -64,6 +64,13 @@ export class ContractsController {
   @ApiOperation({ summary: 'Accept / sign a contract' })
   async accept(@Param('id') id: string, @CurrentUser() user: any) {
     return this.contractsService.acceptContract(id, user.id);
+  }
+
+  @Post(':id/share')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Owner shares a draft contract with a driver by chat username (posts a contract card in chat, returns the confirmation code once)' })
+  async share(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: ShareContractDto) {
+    return this.contractsService.shareContract(id, user.id, dto.chatUsername);
   }
 
   @Post(':id/confirm-code')

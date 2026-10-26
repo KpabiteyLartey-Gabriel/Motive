@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const COMPANY_TYPES = [
@@ -12,7 +11,6 @@ const COMPANY_TYPES = [
   'FLEET_MANAGEMENT',
   'VEHICLE_PLACEMENT',
   'MAINTENANCE',
-  'LEGAL_DISPUTE_RESOLUTION',
 ];
 
 const COMPANY_STATUSES = ['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED'];
@@ -22,7 +20,6 @@ const TYPE_LABELS = {
   FLEET_MANAGEMENT:          'Fleet Management',
   VEHICLE_PLACEMENT:         'Vehicle Placement',
   MAINTENANCE:               'Maintenance',
-  LEGAL_DISPUTE_RESOLUTION:  'Legal / Dispute',
 };
 
 function TypeBadge({ type }) {
@@ -192,7 +189,7 @@ export default function AdminCompaniesPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Companies">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Companies</h2>
@@ -244,6 +241,6 @@ export default function AdminCompaniesPage() {
           onStatusChange={handleStatusChange}
         />
       )}
-    </DashboardShell>
+    </>
   );
 }

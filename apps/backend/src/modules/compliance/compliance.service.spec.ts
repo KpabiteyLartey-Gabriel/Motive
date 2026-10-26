@@ -1,6 +1,6 @@
 import { ComplianceService } from './compliance.service';
 
-describe('ComplianceService legal paperwork access', () => {
+describe('ComplianceService admin paperwork access', () => {
   const update = jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'rec-1', ...data }));
   const prisma: any = {
     complianceRecord: {
@@ -14,14 +14,14 @@ describe('ComplianceService legal paperwork access', () => {
   const svc = new ComplianceService(prisma, audit);
   beforeEach(() => jest.clearAllMocks());
 
-  it('legal can list paperwork for any vehicle', async () => {
-    const res = await svc.listForVehicle('v-1', 'legal-1', 'LEGAL_PROFESSIONAL');
+  it('platform admin can list paperwork for any vehicle', async () => {
+    const res = await svc.listForVehicle('v-1', 'admin-1', 'SUPER_ADMIN');
     expect(Array.isArray(res)).toBe(true);
     expect(prisma.complianceRecord.findMany).toHaveBeenCalled();
   });
 
-  it('legal can update a document status (e.g. mark renewed)', async () => {
-    const res: any = await svc.updateStatus('rec-1', 'legal-1', { expiryDate: '2028-01-01' } as any, 'LEGAL_PROFESSIONAL');
+  it('platform admin can update a document status (e.g. mark renewed)', async () => {
+    const res: any = await svc.updateStatus('rec-1', 'legal-1', { expiryDate: '2028-01-01' } as any, 'SUPER_ADMIN');
     expect(update).toHaveBeenCalled();
     expect(res.id).toBe('rec-1');
   });

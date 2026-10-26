@@ -108,4 +108,92 @@ describe('MarketplaceService (Explore, interest, chat, codes)', () => {
     expect(stored.codeHash).not.toBe(res.code);
     expect(stored.codeHash).toBe(MarketplaceService.hashCode(res.code));
   });
+
+  it('access code also works for a directly shared contract — no Explore approval needed', async () => {
+    const contract: any = {
+      id: 'c-2', vehicleId: 'veh-1', createdBy: 'owner-user',
+      parties: [{ userId: 'owner-user', role: 'OWNER' }, { userId: 'driver-user', role: 'DRIVER', driverId: 'driver-1' }],
+    };
+    const { svc, prisma } = makeSvc();
+    prisma.contract.findUnique.mockResolvedValue(contract);
+    prisma.chatThread.findFirst = jest.fn().mockResolvedValue({ id: 'thread-direct', contractId: 'c-2', driverUserId: 'driver-user', interestId: null });
+    const res: any = await svc.generateAccessCode('owner-user', 'c-2');
+    expect(res.code).toMatch(/^\d{6}$/);
+    expect(res.threadId).toBe('thread-direct');
+    const stored = prisma.contractAccessCode.create.mock.calls[0][0].data;
+    expect(stored.codeHash).toBe(MarketplaceService.hashCode(res.code));
+  });
+});
+
+describe('MarketplaceService chat usernames and direct threads', () => {
+  function makeChatSvc() {
+    const prisma: any = {
+      user: {
+        findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve(
+          where.chatUsername === 'kwame.drives'
+            ? { id: 'driver-user', firstName: 'Kwame', lastName: 'Mensah', chatUsername: 'kwame.drives', primaryRole: 'DRIVER' }
+            : { id: 'owner-user', firstName: 'Lartey', lastName: 'Owner', chatUsername: null, primaryRole: 'OWNER' },
+        )),
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'driver-user', firstName: 'Kwame', lastName: 'Mensah', chatUsername: 'kwame.drives', primaryRole: 'DRIVER', profilePhotoUrl: '/uploads/profiles/kwame.jpg',
+            driver: { id: 'driver-1', status: 'VERIFIED', nationalIdVerifiedAt: new Date(), licenceVerifiedAt: new Date() },
+            owner: { id: 'owner-9', status: 'VERIFIED', nationalIdVerifiedAt: new Date() },
+            serviceProvider: { id: 'sp-1', businessName: 'Kwame Auto Works', serviceType: 'MECHANIC', status: 'ACTIVE' },
+            companyMembers: [{ id: 'cm-1', role: 'FLEET_MANAGER', title: null, isActive: true, company: { id: 'co-1', name: 'Lartey Company' } }],
+          },
+        ]),
+        update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'owner-user', chatUsername: data.chatUsername, primaryRole: 'OWNER' })),
+      },
+      driver: { findUnique: jest.fn().mockResolvedValue({ id: 'driver-1' }) },
+      chatThread: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'thread-direct', ...data })),
+      },
+    };
+    return { svc: new MarketplaceService(prisma), prisma };
+  }
+
+  it('normalizes and validates usernames, and refuses a taken one', async () => {
+    const { svc, prisma } = makeChatSvc();
+    const res: any = await svc.setChatUsername('owner-user', '@Lartey.Owner');
+    expect(res.chatUsername).toBe('lartey.owner');
+    await expect(svc.setChatUsername('owner-user', 'ab')).rejects.toThrow(/3-20 characters/);
+    prisma.user.findFirst.mockResolvedValue({ id: 'someone-else' });
+    await expect(svc.setChatUsername('owner-user', 'kwame.drives')).rejects.toThrow(/already taken/);
+  });
+
+  it('search comes with the profile picture and every account the user holds — no phone or email', async () => {
+    const { svc } = makeChatSvc();
+    const res: any[] = await svc.searchChatUsers('owner-user', '@Kwa');
+    expect(res[0].chatUsername).toBe('kwame.drives');
+    expect(res[0].profilePhotoUrl).toContain('kwame.jpg');
+    expect(res[0].isDriver).toBe(true);
+    const types = res[0].accounts.map((a: any) => a.type);
+    expect(types).toEqual(expect.arrayContaining(['DRIVER', 'OWNER', 'SERVICE_PROVIDER', 'COMPANY']));
+    expect(res[0].accounts.find((a: any) => a.type === 'DRIVER').verified).toBe(true);
+    expect(res[0].accounts.find((a: any) => a.type === 'COMPANY').label).toBe('Lartey Company');
+    expect(res[0].accounts.find((a: any) => a.type === 'SERVICE_PROVIDER').label).toBe('Kwame Auto Works');
+    expect(res[0]).not.toHaveProperty('phone');
+    expect(res[0]).not.toHaveProperty('email');
+    expect(JSON.stringify(res[0])).not.toContain('ghanaCard');
+    expect(await svc.searchChatUsers('owner-user', 'k')).toEqual([]);
+  });
+
+  it('direct thread needs my username first, then opens a vehicle-free thread', async () => {
+    const { svc, prisma } = makeChatSvc();
+    await expect(svc.startDirectThread('owner-user', 'kwame.drives')).rejects.toThrow(/Create your chat username first/);
+    prisma.user.findUnique.mockImplementation(({ where }: any) => Promise.resolve(
+      where.id
+        ? { id: 'owner-user', chatUsername: 'lartey.owner', primaryRole: 'OWNER' }
+        : where.chatUsername === 'kwame.drives'
+          ? { id: 'driver-user', chatUsername: 'kwame.drives', primaryRole: 'DRIVER' }
+          : null,
+    ));
+    const res: any = await svc.startDirectThread('owner-user', '@kwame.drives');
+    expect(res.thread.vehicleId).toBeNull();
+    expect(res.thread.driverUserId).toBe('driver-user');
+    await expect(svc.startDirectThread('owner-user', 'ghost.user')).rejects.toThrow(/No user found with username/);
+  });
 });

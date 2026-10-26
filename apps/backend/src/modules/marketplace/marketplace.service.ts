@@ -13,6 +13,150 @@ export class MarketplaceService {
     return createHash('sha256').update(String(code).trim()).digest('hex');
   }
 
+  /** Chat usernames are stored lowercase, without the @. */
+  static normalizeChatUsername(raw: string): string {
+    return String(raw || '').trim().replace(/^@+/, '').toLowerCase();
+  }
+
+  static assertValidChatUsername(username: string) {
+    if (!/^[a-z0-9][a-z0-9._]{2,19}$/.test(username) || username.includes('..')) {
+      throw new BadRequestException('Choose a username of 3-20 characters: lowercase letters, numbers, dots or underscores, starting with a letter or number.');
+    }
+  }
+
+  // ── Chat username (created on first visit to Chat) ─────────
+  async getChatUsername(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, chatUsername: true, primaryRole: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return { chatUsername: user.chatUsername || null, hasChatUsername: !!user.chatUsername, user };
+  }
+
+  async setChatUsername(userId: string, raw: string) {
+    const chatUsername = MarketplaceService.normalizeChatUsername(raw);
+    MarketplaceService.assertValidChatUsername(chatUsername);
+    const taken = await this.prisma.user.findFirst({
+      where: { chatUsername, id: { not: userId } },
+      select: { id: true },
+    });
+    if (taken) throw new ConflictException(`@${chatUsername} is already taken. Try another username.`);
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: { chatUsername },
+        select: { id: true, firstName: true, lastName: true, chatUsername: true, primaryRole: true },
+      });
+      return { chatUsername: user.chatUsername, hasChatUsername: true, user };
+    } catch (e: any) {
+      if (e?.code === 'P2002') throw new ConflictException(`@${chatUsername} is already taken. Try another username.`);
+      throw e;
+    }
+  }
+
+  /**
+   * Every account a person holds, for chat profiles: a user may be a Driver
+   * and an Owner and a Service Provider and belong to companies at once.
+   * Only public identity facts — never phone, email or ID numbers.
+   */
+  static chatAccounts(u: any) {
+    const accounts: any[] = [];
+    if (u.driver) {
+      accounts.push({
+        type: 'DRIVER', label: 'Driver', status: u.driver.status || null,
+        verified: !!(u.driver.nationalIdVerifiedAt || ['VERIFIED', 'ACTIVE'].includes(u.driver.status)),
+      });
+    }
+    if (u.owner) {
+      accounts.push({
+        type: 'OWNER', label: 'Vehicle Owner', status: u.owner.status || null,
+        verified: !!(u.owner.nationalIdVerifiedAt || u.owner.status === 'VERIFIED'),
+      });
+    }
+    if (u.serviceProvider) {
+      accounts.push({
+        type: 'SERVICE_PROVIDER', label: u.serviceProvider.businessName || 'Service Provider',
+        detail: u.serviceProvider.serviceType || null, status: u.serviceProvider.status || null,
+      });
+    }
+    for (const m of u.companyMembers || []) {
+      if (m.isActive === false) continue;
+      accounts.push({
+        type: 'COMPANY', label: m.company?.name || 'Company',
+        detail: m.title || null, role: m.role || null,
+      });
+    }
+    if (!accounts.length) {
+      const role = String(u.primaryRole || 'PENDING');
+      accounts.push({ type: role, label: role === 'PENDING' ? 'User' : role.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) });
+    }
+    return accounts;
+  }
+
+  private chatProfileSelect = {
+    id: true, firstName: true, lastName: true, chatUsername: true, primaryRole: true, profilePhotoUrl: true,
+    driver: { select: { id: true, status: true, nationalIdVerifiedAt: true, licenceVerifiedAt: true } },
+    owner: { select: { id: true, status: true, nationalIdVerifiedAt: true } },
+    serviceProvider: { select: { id: true, businessName: true, serviceType: true, status: true } },
+    companyMembers: {
+      where: { isActive: true },
+      select: { id: true, role: true, title: true, isActive: true, company: { select: { id: true, name: true } } },
+    },
+  } as const;
+
+  /** Find people by chat username, with their profile and all their accounts. */
+  async searchChatUsers(userId: string, query: string) {
+    const q = MarketplaceService.normalizeChatUsername(query || '');
+    if (q.length < 2) return [];
+    const users = await this.prisma.user.findMany({
+      where: { chatUsername: { contains: q, mode: 'insensitive' }, id: { not: userId } },
+      select: this.chatProfileSelect,
+      take: 10,
+      orderBy: { chatUsername: 'asc' },
+    });
+    return users.map((u: any) => ({
+      id: u.id, firstName: u.firstName, lastName: u.lastName, chatUsername: u.chatUsername,
+      primaryRole: u.primaryRole, profilePhotoUrl: u.profilePhotoUrl,
+      isDriver: !!u.driver, isOwner: !!u.owner,
+      accounts: MarketplaceService.chatAccounts(u),
+    }));
+  }
+
+  /** Open (or reuse) a direct chat with a person found by username. */
+  async startDirectThread(userId: string, rawUsername: string) {
+    const me = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, chatUsername: true } });
+    if (!me?.chatUsername) throw new BadRequestException('Create your chat username first, then you can message people by username.');
+    const chatUsername = MarketplaceService.normalizeChatUsername(rawUsername);
+    const target = await this.prisma.user.findUnique({
+      where: { chatUsername },
+      select: { id: true, firstName: true, lastName: true, chatUsername: true, primaryRole: true },
+    });
+    if (!target) throw new NotFoundException(`No user found with username @${chatUsername}. Check the spelling and try again.`);
+    if (target.id === userId) throw new BadRequestException('That is your own username.');
+    const existing = await this.prisma.chatThread.findFirst({
+      where: {
+        interestId: null, contractId: null,
+        OR: [
+          { ownerUserId: userId, driverUserId: target.id },
+          { ownerUserId: target.id, driverUserId: userId },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (existing) return { thread: existing, otherParty: target, created: false };
+    const targetDriver = await this.prisma.driver.findUnique({ where: { userId: target.id }, select: { id: true } });
+    const myDriver = targetDriver ? null : await this.prisma.driver.findUnique({ where: { userId }, select: { id: true } });
+    const thread = await this.prisma.chatThread.create({
+      data: {
+        vehicleId: null, interestId: null, contractId: null,
+        ownerUserId: targetDriver || !myDriver ? userId : target.id,
+        driverUserId: targetDriver || !myDriver ? target.id : userId,
+      },
+    });
+    return { thread, otherParty: target, created: true };
+  }
+
   private async notify(userId: string | null | undefined, type: string, subject: string, body: string, data: any) {
     if (!userId) return;
     try {
@@ -244,9 +388,9 @@ export class MarketplaceService {
     const otherIds: string[] = [...new Set(threads.map((t) => (t.ownerUserId === userId ? t.driverUserId : t.ownerUserId)))];
     const users = await this.prisma.user.findMany({
       where: { id: { in: otherIds } },
-      select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true, primaryRole: true },
+      select: this.chatProfileSelect,
     });
-    const byId = new Map(users.map((u) => [u.id, u]));
+    const byId = new Map(users.map((u: any) => [u.id, { ...u, accounts: MarketplaceService.chatAccounts(u) }]));
     const unreadCounts = await this.prisma.chatMessage.groupBy({
       by: ['threadId'],
       where: { threadId: { in: threads.map((t) => t.id) }, senderUserId: { not: userId }, readAt: null },
@@ -286,6 +430,12 @@ export class MarketplaceService {
   }
 
   async sendMessage(userId: string, threadId: string, dto: { body?: string; attachmentUrl?: string; attachmentName?: string }) {
+    const me = typeof this.prisma.user.findUnique === 'function'
+      ? await this.prisma.user.findUnique({ where: { id: userId }, select: { chatUsername: true } })
+      : null;
+    if (me && !me.chatUsername) {
+      throw new BadRequestException('Create your chat username first — open Chat and choose your unique username before sending messages.');
+    }
     const thread = await this.assertThreadParticipant(userId, threadId);
     const body = dto.body?.trim() || null;
     if (!body && !dto.attachmentUrl) throw new BadRequestException('Write a message or attach a document');
@@ -294,7 +444,7 @@ export class MarketplaceService {
     });
     await this.prisma.chatThread.update({ where: { id: threadId }, data: { lastMessageAt: new Date() } });
     const otherUserId = thread.ownerUserId === userId ? thread.driverUserId : thread.ownerUserId;
-    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: thread.vehicleId } });
+    const vehicle = thread.vehicleId ? await this.prisma.vehicle.findUnique({ where: { id: thread.vehicleId } }) : null;
     await this.notify(otherUserId, 'CHAT_MESSAGE', `New message about ${vehicle?.registrationNumber || 'a vehicle'}`,
       body ? body.slice(0, 160) : 'You received a document in your chat.',
       { vehicleId: thread.vehicleId, threadId, messageId: message.id });
@@ -317,8 +467,17 @@ export class MarketplaceService {
     const interest = await this.prisma.vehicleInterest.findFirst({
       where: { vehicleId: contract.vehicleId, driverUserId: driverParty.userId, status: VehicleInterestStatus.APPROVED },
     });
-    if (!interest) {
-      throw new BadRequestException('Access codes can only be generated for a driver you approved on Explore for this vehicle.');
+    // Direct contracts (agreed in person, shared by chat username) do not
+    // depend on Explore approval: the shared contract thread/card for this
+    // driver is their approval record.
+    const directThread = !interest && typeof this.prisma.chatThread?.findFirst === 'function'
+      ? await this.prisma.chatThread.findFirst({ where: { contractId, driverUserId: driverParty.userId } })
+      : null;
+    const directCard = !interest && !directThread && typeof this.prisma.chatMessage?.findFirst === 'function'
+      ? await this.prisma.chatMessage.findFirst({ where: { contractId, kind: 'CONTRACT' } })
+      : null;
+    if (!interest && !directThread && !directCard) {
+      throw new BadRequestException('Access codes can only be generated for a driver you approved on Explore for this vehicle, or one you shared this contract with directly by chat username.');
     }
 
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
@@ -329,7 +488,9 @@ export class MarketplaceService {
     const record = await this.prisma.contractAccessCode.create({
       data: { contractId, vehicleId: contract.vehicleId, driverUserId: driverParty.userId, codeHash: MarketplaceService.hashCode(code), createdById: userId },
     });
-    const thread = await this.prisma.chatThread.findUnique({ where: { interestId: interest.id } });
+    const thread = interest
+      ? await this.prisma.chatThread.findUnique({ where: { interestId: interest.id } })
+      : directThread;
     // The code itself is returned once to the owner to share in chat.
     return { code, accessCodeId: record.id, contractId, vehicleId: contract.vehicleId, driverUserId: driverParty.userId, threadId: thread?.id || null };
   }

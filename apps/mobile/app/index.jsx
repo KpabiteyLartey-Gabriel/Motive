@@ -20,7 +20,7 @@ const SLIDES = [
   },
   {
     title: 'Built for Ghana’s transport sector.',
-    text: 'For drivers, vehicle owners, transport companies, fleet managers and legal professionals.',
+    text: 'For drivers, vehicle owners, transport companies and fleet managers.',
   },
 ];
 

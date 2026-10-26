@@ -26,11 +26,6 @@ const userTypes = [
     features: ['List services and coverage', 'Per-service or subscription work', 'Jobs recorded per vehicle', 'Payments on record'],
     cta: 'See Maintenance Providers', href: '/how-it-works#maintenance-providers', featured: false,
   },
-  {
-    role: 'Legal Professional', description: 'Witness and facilitate contracts on recorded calls, sign digitally, and keep copies for every party.',
-    features: ['Invited per deal or retained', 'Contracts per vehicle monitored', 'Insurance & paperwork oversight', 'Paid per service'],
-    cta: 'See Legal Professionals', href: '/how-it-works#legal-professionals', featured: false,
-  },
 ];
 
 function Check({ featured }) {

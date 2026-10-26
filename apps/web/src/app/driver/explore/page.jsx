@@ -3,21 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, Modal } from '@/components/dashboard/DashboardUI';
 import { marketplaceApi, resolveVehiclePhoto } from '@/lib/api';
-
-const NAV = [
-  { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
-  { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
-  { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
-  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
-  { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
-  { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
-  { href: '/driver/documents', icon: 'documents', label: 'Documents' },
-  { href: '/driver/disputes',  icon: 'disputes', label: 'Disputes' },
-];
 
 const MODEL_LABEL = { WORK_AND_PAY: 'Work & Pay', DRIVING_ON: 'DriveOn', RENTAL: 'Rental' };
 
@@ -59,7 +46,7 @@ export default function DriverExplore() {
   };
 
   return (
-    <DashboardShell user={user} navItems={NAV} title="Explore vehicles" subtitle="Verified and published vehicles you can take on.">
+    <>
       {notice && <div className="mb-4 rounded-btn bg-brand-50 dark:bg-dark-card border border-brand-100 dark:border-dark-border px-4 py-3 text-sm text-brand-800 dark:text-brand-300 flex items-start justify-between gap-4"><span>{notice}</span><button onClick={() => setNotice('')} className="font-semibold">×</button></div>}
       <SectionHeader title="Available now" action={<span className="text-xs text-neutral-500">Only vehicles verified by +Motive and published by their owner appear here.</span>} />
       {loading ? <p className="text-sm text-neutral-500">Loading vehicles…</p> : vehicles.length === 0 ? (
@@ -111,7 +98,7 @@ export default function DriverExplore() {
           <button onClick={() => setNoteFor(null)} className="btn-graphite flex-1 justify-center">Cancel</button>
           <button onClick={() => noteFor && express(noteFor)} disabled={busyId === noteFor?.id} className="btn-primary flex-1 justify-center disabled:opacity-40">{busyId === noteFor?.id ? 'Sending…' : 'Send interest'}</button>
         </div>
-      </Modal>
-    </DashboardShell>
+      </Modal>
+    </>
   );
 }

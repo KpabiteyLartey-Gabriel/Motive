@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const DISPUTE_STATUSES = ['OPEN', 'AWAITING_RESPONSE', 'UNDER_REVIEW', 'MEDIATION', 'DECISION_PENDING', 'RESOLVED', 'REJECTED', 'ESCALATED', 'CLOSED', 'APPEALED'];
@@ -146,7 +145,7 @@ export default function AdminDisputesPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Disputes">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Disputes</h2>
@@ -191,6 +190,6 @@ export default function AdminDisputesPage() {
           onClose={() => setSelected(null)}
         />
       )}
-    </DashboardShell>
+    </>
   );
 }

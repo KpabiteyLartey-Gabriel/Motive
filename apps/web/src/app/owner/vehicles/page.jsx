@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import Link from 'next/link';
 import { vehiclesApi, complianceApi, companiesApi, marketplaceApi, resolveVehiclePhoto } from '@/lib/api';
 import VehiclePhotos from '@/components/vehicles/VehiclePhotos';
-
-const NAV = OWNER_NAV;
 
 const STATUS_COLORS = {
   AVAILABLE: 'text-green-400',
@@ -81,14 +78,10 @@ export default function OwnerVehiclesPage() {
   }, [selected?.id]);
 
   const changeModel = async (vehicle) => {
-    if (newModel === 'RENTAL' && !rentalCompanyId && !vehicle.managingCompanyId) {
-      setModelMsg('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out.');
-      return;
-    }
     setModelBusy(true);
     setModelMsg('');
     try {
-      const res = await vehiclesApi.changeOperatingModel(vehicle.id, newModel, newModel === 'RENTAL' ? (rentalCompanyId || undefined) : undefined);
+      const res = await vehiclesApi.changeOperatingModel(vehicle.id, newModel, rentalCompanyId || undefined);
       const d = res.data?.data || {};
       if (d.approvalRequired) {
         setPendingReq(d.request);
@@ -100,7 +93,7 @@ export default function OwnerVehiclesPage() {
       } else if (d.vehicle) {
         setVehicles((prev) => prev.map((x) => (x.id === d.vehicle.id ? { ...x, ...d.vehicle } : x)));
         setSelected((s) => (s?.id === d.vehicle.id ? { ...s, ...d.vehicle } : s));
-        setModelMsg(d.companyUpdated ? 'Rental company saved. You can publish this vehicle now.' : 'Contract type updated.');
+        setModelMsg(d.companyUpdated ? 'Company saved. This vehicle can now be listed by that company.' : 'Contract type updated.');
       }
     } catch (e) {
       setModelMsg(e.response?.data?.message || 'Could not change the contract type.');
@@ -205,8 +198,8 @@ export default function OwnerVehiclesPage() {
       setFormError('Registration number, make, model and year are required.');
       return;
     }
-    if (publish && form.operatingModel === 'RENTAL' && !form.managingCompanyId) {
-      setFormError('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out, or save it as a draft and choose later.');
+    if (publish && !form.managingCompanyId) {
+      setFormError('Only companies can list vehicles for hiring. Choose the company that will list this vehicle, or save it as a draft and choose later.');
       return;
     }
     setSaving(true);
@@ -222,7 +215,7 @@ export default function OwnerVehiclesPage() {
         transmission: form.transmission,
         operatingModel: form.operatingModel,
         chassisNumber: form.chassisNumber.trim() || undefined,
-        managingCompanyId: form.operatingModel === 'RENTAL' && form.managingCompanyId ? form.managingCompanyId : undefined,
+        managingCompanyId: form.managingCompanyId ? form.managingCompanyId : undefined,
         mileage: form.mileage ? Number(form.mileage) : undefined,
         estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
         region: form.region.trim() || undefined,
@@ -259,7 +252,7 @@ export default function OwnerVehiclesPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="My Vehicles">
+    <>
       <SectionHeader title="Registered Vehicles" description="Vehicles registered under your account" />
 
       <div className="flex justify-end mb-4">
@@ -298,15 +291,13 @@ export default function OwnerVehiclesPage() {
             <label className="text-xs text-neutral-400">How it will earn
               <select className="input mt-1" value={form.operatingModel} onChange={(e) => set('operatingModel', e.target.value)}>{OPERATING_MODELS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select>
             </label>
-            {form.operatingModel === 'RENTAL' && (
-              <label className="text-xs text-neutral-400">Company that will rent it out *
-                <select className="input mt-1" value={form.managingCompanyId} onChange={(e) => set('managingCompanyId', e.target.value)}>
-                  <option value="">Choose a company…</option>
-                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ''}</option>)}
-                </select>
-                <span className="block mt-1 text-neutral-500">Only companies publish rentals. This company will manage and rent out the vehicle.</span>
-              </label>
-            )}
+            <label className="text-xs text-neutral-400">Company that will list it for hiring *
+              <select className="input mt-1" value={form.managingCompanyId} onChange={(e) => set('managingCompanyId', e.target.value)}>
+                <option value="">Choose a company…</option>
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ''}</option>)}
+              </select>
+              <span className="block mt-1 text-neutral-500">Only companies can list vehicles for hiring. Join a company first if you have not — this company will list and give out the vehicle.</span>
+            </label>
             <label className="text-xs text-neutral-400">Mileage (km)<input className="input mt-1" type="number" min="0" placeholder="85000" value={form.mileage} onChange={(e) => set('mileage', e.target.value)} /></label>
             <label className="text-xs text-neutral-400">Estimated value (GHS)<input className="input mt-1" type="number" min="0" placeholder="95000" value={form.estimatedValue} onChange={(e) => set('estimatedValue', e.target.value)} /></label>
           </div>
@@ -362,14 +353,12 @@ export default function OwnerVehiclesPage() {
                         <select className="input !w-auto text-xs" value={newModel} onChange={(e) => setNewModel(e.target.value)}>
                           {OPERATING_MODELS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </select>
-                        {newModel === 'RENTAL' && (
-                          <select className="input !w-auto text-xs" value={rentalCompanyId} onChange={(e) => setRentalCompanyId(e.target.value)}>
-                            <option value="">Choose the company that will rent it out…</option>
-                            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ''}</option>)}
-                          </select>
-                        )}
-                        <button onClick={() => changeModel(v)} disabled={modelBusy || (newModel === v.operatingModel && !(newModel === 'RENTAL' && !v.managingCompanyId && rentalCompanyId))} className="btn-primary text-xs disabled:opacity-40">{modelBusy ? 'Saving…' : newModel === v.operatingModel && newModel === 'RENTAL' ? 'Save rental company' : 'Change contract type'}</button>
-                        <span className="text-neutral-400">Work & Pay changes with a driver assigned need the driver&apos;s approval. DriveOn can be changed any time. Rental is published through a company you choose.</span>
+                        <select className="input !w-auto text-xs" value={rentalCompanyId} onChange={(e) => setRentalCompanyId(e.target.value)}>
+                          <option value="">Choose the company that will list it…</option>
+                          {companies.map((c) => <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ''}</option>)}
+                        </select>
+                        <button onClick={() => changeModel(v)} disabled={modelBusy || (newModel === v.operatingModel && !(!v.managingCompanyId && rentalCompanyId))} className="btn-primary text-xs disabled:opacity-40">{modelBusy ? 'Saving…' : newModel === v.operatingModel ? 'Save company' : 'Change contract type'}</button>
+                        <span className="text-neutral-400">Work & Pay changes with a driver assigned need the driver&apos;s approval. Only companies can list vehicles for hiring — place this vehicle with a company to publish it.</span>
                       </div>
                     )}
                     {modelMsg && <p className="mt-2 text-neutral-500">{modelMsg}</p>}
@@ -462,6 +451,6 @@ export default function OwnerVehiclesPage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

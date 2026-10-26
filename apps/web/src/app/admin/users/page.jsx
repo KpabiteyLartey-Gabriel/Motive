@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, fmt } from '@/components/dashboard/AdminHelpers';
+import { fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const ROLE_META = {
@@ -14,7 +13,6 @@ const ROLE_META = {
   COMPANY_MEMBER:     { label: 'Company Member',    bg: 'bg-solar-yellow/10', text: 'text-solar-yellow' },
   FLEET_MANAGER:      { label: 'Fleet Manager',     bg: 'bg-success/10',     text: 'text-success' },
   SERVICE_PROVIDER:   { label: 'Service Provider',  bg: 'bg-warning/10',     text: 'text-warning' },
-  LEGAL_PROFESSIONAL: { label: 'Legal',             bg: 'bg-neutral-800',    text: 'text-neutral-400' },
   ADMIN:              { label: 'Admin',             bg: 'bg-danger/10',      text: 'text-danger' },
   SUPER_ADMIN:        { label: 'Super Admin',       bg: 'bg-danger/10',      text: 'text-danger' },
 };
@@ -224,7 +222,7 @@ function UserDrawer({ user, onClose, onStatusChange, onRoleChange, isSuperAdmin 
 
 // ── Main Page ──────────────────────────────────────────────────
 export default function AdminUsersPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['ADMIN', 'SUPER_ADMIN'] });
+  const { user } = useAuth({ requiredRoles: ['ADMIN', 'SUPER_ADMIN'] });
   const isSuperAdmin = user?.primaryRole === 'SUPER_ADMIN';
 
   const [users, setUsers]           = useState([]);
@@ -268,7 +266,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Users">
+    <>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -399,6 +397,6 @@ export default function AdminUsersPage() {
           isSuperAdmin={isSuperAdmin}
         />
       )}
-    </DashboardShell>
+    </>
   );
 }

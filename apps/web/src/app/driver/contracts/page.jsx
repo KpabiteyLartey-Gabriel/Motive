@@ -2,21 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
-import { contractsApi } from '@/lib/api';
-
-const NAV = [
-  { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
-  { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
-  { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
-  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
-  { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
-  { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
-  { href: '/driver/documents', icon: 'documents', label: 'Documents' },
-  { href: '/driver/disputes',  icon: 'disputes', label: 'Disputes' },
-];
+import { contractsApi, resolveVehiclePhoto } from '@/lib/api';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -28,6 +15,24 @@ function fmtGHS(n) {
 }
 
 const TYPE_LABEL = { WORK_AND_PAY: 'Work & Pay', RENTAL: 'Rental', DRIVING_ON: 'Driving On' };
+
+/** Plain-words Work & Pay summary a driver can understand before signing. */
+function plainSummary(c) {
+  const w = c.workAndPayTerms;
+  if (!w) return null;
+  const freqWord = { DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month' }[w.installmentFrequency] || 'week';
+  const total = Number(w.totalPayable); const inst = Number(w.installmentAmount); const count = Number(w.totalInstallments);
+  const last = total - inst * (count - 1);
+  const grace = Math.max(0, Math.round(Number(w.gracePeriodDays) || 0));
+  const countingStart = new Date(); countingStart.setDate(countingStart.getDate() + grace);
+  const firstDue = new Date(countingStart);
+  const finish = new Date(countingStart);
+  if (w.installmentFrequency === 'MONTHLY') { firstDue.setMonth(firstDue.getMonth() + 1); finish.setMonth(finish.getMonth() + count); }
+  else if (w.installmentFrequency === 'DAILY') { firstDue.setDate(firstDue.getDate() + 1); finish.setDate(finish.getDate() + count); }
+  else { firstDue.setDate(firstDue.getDate() + 7); finish.setDate(finish.getDate() + count * 7); }
+  const started = c.status === 'ACTIVE' && c.startDate;
+  return `You pay ${fmtGHS(w.depositAmount)} deposit upfront, then ${fmtGHS(inst)} every ${freqWord} for ${count} payments — ${fmtGHS(total)} in total${last !== inst ? `, with the last payment ${fmtGHS(last)}` : ''}. Grace period: ${grace} day${grace === 1 ? '' : 's'}. ${started ? `Counting started on ${fmtDate(c.startDate)} (after your grace period), and the last payment is due around ${fmtDate(c.endDate || finish)}.` : `When you confirm with your access code, your ${grace}-day grace period runs first. Counting starts on ${fmtDate(countingStart)} if you confirm today, your first payment is due ${fmtDate(firstDue)}, and the last around ${fmtDate(finish)}.`}`;
+}
 
 export default function DriverContractsPage() {
   const { user, loading, logout } = useAuth({ requiredRoles: ['DRIVER'] });
@@ -57,6 +62,16 @@ export default function DriverContractsPage() {
   const [codeInputs, setCodeInputs] = useState({});
   const [confirming, setConfirming] = useState(null);
   const [codeMsg, setCodeMsg] = useState('');
+  const [seenVehicle, setSeenVehicle] = useState({});
+
+  // A shared link (/driver/contracts?contract=<id>) opens that contract.
+  useEffect(() => {
+    if (!contracts.length) return;
+    const wanted = new URLSearchParams(window.location.search).get('contract');
+    if (!wanted) return;
+    const found = contracts.find((c) => c.id === wanted);
+    if (found) setSelected(found);
+  }, [contracts]);
   const confirmWithCode = async (id) => {
     const code = (codeInputs[id] || '').trim();
     if (!code) { setCodeMsg('Enter the access code the owner sent you in chat.'); return; }
@@ -74,7 +89,7 @@ export default function DriverContractsPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="My Contracts">
+    <>
       <SectionHeader title="Contracts" description="Your current and past vehicle arrangements" />
 
       {fetching ? (
@@ -116,32 +131,80 @@ export default function DriverContractsPage() {
                 <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-dark-border grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <p className="text-neutral-500">Total Amount</p>
-                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.totalAmount)}</p>
+                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.workAndPayTerms?.totalPayable ?? c.totalAmount)}</p>
                   </div>
                   <div>
                     <p className="text-neutral-500">Amount Paid</p>
-                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.amountPaid)}</p>
+                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.workAndPayTerms?.totalPaid ?? c.amountPaid)}</p>
                   </div>
                   <div>
                     <p className="text-neutral-500">Remaining</p>
-                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS((c.totalAmount || 0) - (c.amountPaid || 0))}</p>
+                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.workAndPayTerms?.remainingBalance ?? ((c.totalAmount || 0) - (c.amountPaid || 0)))}</p>
                   </div>
                   <div>
                     <p className="text-neutral-500">Installment</p>
-                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.installmentAmount)}</p>
+                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.workAndPayTerms?.installmentAmount ?? c.drivingOnTerms?.dailySalesAmount ?? c.installmentAmount)}</p>
                   </div>
                   <div>
                     <p className="text-neutral-500">Deposit</p>
-                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.depositAmount)}</p>
+                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.workAndPayTerms?.depositAmount ?? c.depositAmount)}</p>
                   </div>
                   <div>
                     <p className="text-neutral-500">Frequency</p>
-                    <p className="text-neutral-900 dark:text-white mt-0.5">{c.paymentFrequency || '—'}</p>
+                    <p className="text-neutral-900 dark:text-white mt-0.5">{c.workAndPayTerms?.installmentFrequency || c.drivingOnTerms?.paymentFrequency || c.paymentFrequency || '—'}</p>
                   </div>
+                  {plainSummary(c) && (
+                    <div className="col-span-2 rounded-lg bg-brand-50 dark:bg-dark-bg border border-brand-100 dark:border-dark-border px-3 py-2.5">
+                      <p className="text-neutral-500">Your contract in plain words</p>
+                      {c.vehicle?.imageUrls?.[0] && <img src={resolveVehiclePhoto(c.vehicle.imageUrls[0])} alt={`${c.vehicle.make || ''} ${c.vehicle.model || ''}`} className="w-full max-h-44 object-cover rounded-lg mt-2" />}
+                      {(c.vehicle?.color || c.vehicle?.region || c.vehicle?.location) && (
+                        <p className="text-neutral-800 dark:text-neutral-100 mt-2 leading-relaxed">
+                          {[c.vehicle.color, c.vehicle.region, c.vehicle.location].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                      <p className="text-neutral-800 dark:text-neutral-100 mt-1 leading-relaxed">{plainSummary(c)}</p>
+                      {(c.terms?.offDays || c.responsibilityMatrix?.maintenance) && (
+                        <p className="text-neutral-800 dark:text-neutral-100 mt-1.5 leading-relaxed">
+                          {c.terms?.offDays ? `Off days: ${c.terms.offDays}. ` : ''}
+                          {c.responsibilityMatrix?.maintenance ? `Maintenance: ${String(c.responsibilityMatrix.maintenance).toLowerCase()} takes care of it.` : ''}
+                        </p>
+                      )}
+                      <p className="text-neutral-500 mt-1.5 leading-relaxed">+Motive records your agreement and processes your payments. It does not verify the vehicle — confirm the vehicle's documents in person before accepting.</p>
+                    </div>
+                  )}
+                  {c.drivingOnTerms && (
+                    <div className="col-span-2 rounded-lg bg-brand-50 dark:bg-dark-bg border border-brand-100 dark:border-dark-border px-3 py-2.5">
+                      <p className="text-neutral-500">Your DriveOn contract in plain words</p>
+                      {c.vehicle?.imageUrls?.[0] && <img src={resolveVehiclePhoto(c.vehicle.imageUrls[0])} alt={`${c.vehicle.make || ''} ${c.vehicle.model || ''}`} className="w-full max-h-44 object-cover rounded-lg mt-2" />}
+                      {(c.vehicle?.color || c.vehicle?.region || c.vehicle?.location) && (
+                        <p className="text-neutral-800 dark:text-neutral-100 mt-2 leading-relaxed">
+                          {[c.vehicle.color, c.vehicle.region, c.vehicle.location].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                      <p className="text-neutral-800 dark:text-neutral-100 mt-1 leading-relaxed">
+                        You bring {fmtGHS(c.drivingOnTerms.dailySalesAmount)} sales every day, paid {String(c.drivingOnTerms.paymentFrequency || 'DAILY').toLowerCase()}
+                        {c.terms?.duration?.value ? `, for ${c.terms.duration.value} ${String(c.terms.duration.unit || '').toLowerCase()}` : ''}.
+                        You keep everything you make above the sales amount. Grace period: {c.terms?.gracePeriodDays ?? 0} days from the day you confirm.
+                        {c.terms?.offDays ? ` Off days: ${c.terms.offDays}.` : ''}
+                        {c.responsibilityMatrix?.maintenance ? ` Maintenance: ${String(c.responsibilityMatrix.maintenance).toLowerCase()} takes care of it.` : ''}
+                        {c.responsibilityMatrix?.fuel ? ` Fuel: ${String(c.responsibilityMatrix.fuel).toLowerCase()} pays.` : ''}
+                      </p>
+                      <p className="text-neutral-500 mt-1.5 leading-relaxed">+Motive records your agreement and processes your payments. It does not verify the vehicle — confirm the vehicle's documents in person before accepting.</p>
+                    </div>
+                  )}
                   {c.requiresCode && (
                     <div className="col-span-2 border-t border-neutral-200 dark:border-dark-border pt-3" onClick={(e) => e.stopPropagation()}>
                       <p className="text-neutral-800 dark:text-neutral-100 font-semibold text-sm">Confirm this contract with your access code</p>
                       <p className="text-neutral-500 mt-1 leading-relaxed">The owner approved you for this vehicle and sent a unique code in your chat. Paste it here to confirm and sign your contract. This code box only appears for approved drivers who have been issued a code.</p>
+                      <label className="flex items-start gap-2 mt-3 text-neutral-700 dark:text-neutral-200 leading-relaxed cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={!!seenVehicle[c.id]}
+                          onChange={(e) => setSeenVehicle((p) => ({ ...p, [c.id]: e.target.checked }))}
+                        />
+                        <span>I have physically seen this vehicle, and I have confirmed its documents are in the owner's name.</span>
+                      </label>
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <input
                           className="input !w-44 text-center tracking-[0.35em] font-bold"
@@ -151,7 +214,7 @@ export default function DriverContractsPage() {
                           value={codeInputs[c.id] || ''}
                           onChange={(e) => setCodeInputs((p) => ({ ...p, [c.id]: e.target.value.replace(/[^0-9]/g, '') }))}
                         />
-                        <button onClick={() => confirmWithCode(c.id)} disabled={confirming === c.id} className="btn-primary text-xs disabled:opacity-40">{confirming === c.id ? 'Confirming…' : 'Confirm contract'}</button>
+                        <button onClick={() => confirmWithCode(c.id)} disabled={confirming === c.id || !seenVehicle[c.id]} className="btn-primary text-xs disabled:opacity-40">{confirming === c.id ? 'Confirming…' : 'Confirm contract'}</button>
                       </div>
                       {codeMsg && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{codeMsg}</p>}
                     </div>
@@ -161,7 +224,7 @@ export default function DriverContractsPage() {
             </div>
           ))}
         </div>
-      )}
-    </DashboardShell>
+      )}
+    </>
   );
 }

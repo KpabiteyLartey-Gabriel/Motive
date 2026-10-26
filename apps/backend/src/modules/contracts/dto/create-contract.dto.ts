@@ -7,14 +7,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ContractType, OperatingModel } from '@prisma/client';
 
 export class WorkAndPayTermsDto {
-  @IsNumber() @IsPositive() vehicleValue: number;
+  // Owner's private purchase price. Optional for direct (physically agreed)
+  // contracts, where only the total payable is contracted on.
+  @IsNumber() @IsPositive() @IsOptional() vehicleValue?: number;
   @IsNumber() @IsPositive() depositAmount: number;
   @IsNumber() @IsPositive() totalPayable: number;
   @IsNumber() @IsPositive() installmentAmount: number;
   @IsString() installmentFrequency: string; // DAILY, WEEKLY, MONTHLY
   @IsInt() @IsPositive() totalInstallments: number;
   @IsNumber() @IsOptional() latePenaltyRate?: number;
-  @IsInt() @IsOptional() gracePeriodDays?: number;
+  @IsInt() @Min(0) @IsOptional() gracePeriodDays?: number;
 }
 
 export class RentalTermsDto {
@@ -94,4 +96,15 @@ export class CreateContractDto {
   @ApiPropertyOptional()
   @IsOptional()
   responsibilityMatrix?: Record<string, any>;
+
+  /** JSON object — extra agreed terms, e.g. { offDays: 'Sundays', source: 'DIRECT' } */
+  @ApiPropertyOptional()
+  @IsOptional()
+  terms?: Record<string, any>;
+}
+
+export class ShareContractDto {
+  @ApiProperty({ description: 'Chat username of the driver to share this contract with, with or without @' })
+  @IsString()
+  chatUsername: string;
 }

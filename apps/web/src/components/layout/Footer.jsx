@@ -9,7 +9,7 @@ const footerSections = [
       { label: 'For Drivers', href: '/drivers' },
       { label: 'For Owners', href: '/owners' },
       { label: 'For Companies', href: '/companies' },
-      { label: 'Fleet Managers, Maintenance & Legal', href: '/how-it-works#participants' },
+      { label: 'Fleet Managers & Maintenance', href: '/how-it-works#participants' },
     ],
   },
   {
@@ -36,7 +36,7 @@ export default function Footer() {
           <div className="col-span-2">
             <BrandMark />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-steel dark:text-neutral-400">
-              +Motive — vehicle operations, contracts, MoMo payments and fleet management for Ghana, connecting drivers, owners, companies, fleet managers, maintenance and legal professionals in one clear, auditable platform.
+              +Motive — vehicle operations, contracts, MoMo payments and fleet management for Ghana, connecting drivers, owners, companies, fleet managers, maintenance professionals in one clear, auditable platform.
             </p>
             <p className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 dark:bg-brand-950 dark:text-brand-300">
               <span className="h-2 w-2 rounded-full bg-brand-500" aria-hidden="true" />

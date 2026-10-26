@@ -80,6 +80,7 @@ export default apiClient;
 export const authApi = {
   register: (data) => apiClient.post('/auth/register', data),
   login: (data) => apiClient.post('/auth/login', data),
+  google: (idToken) => apiClient.post('/auth/google', { idToken }),
   refresh: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken }),
   logout: (refreshToken) => apiClient.post('/auth/logout', { refreshToken }),
   me: () => apiClient.get('/auth/me'),
@@ -106,17 +107,31 @@ export const usersApi = {
   confirmPhoneCode: (code) => apiClient.post('/users/me/verification/phone/confirm', { code }),
 };
 
+// ── Onboarding (account -> account type -> National ID -> licence) ──
+export const onboardingApi = {
+  me: () => apiClient.get('/onboarding/me'),
+  setAccountType: (accountType) => apiClient.post('/onboarding/account-type', { accountType }),
+  submitNationalId: (ghanaCardNumber) => apiClient.post('/onboarding/national-id', { ghanaCardNumber }),
+  submitDriverLicence: (data) => apiClient.post('/onboarding/driver-licence', data),
+};
+
 // ── Drivers ──────────────────────────────────────────────────
 export const driversApi = {
-  createProfile: (data) => apiClient.post('/drivers/profile', data),
   getMyProfile: () => apiClient.get('/drivers/profile'),
+  updateProfile: (data) => apiClient.patch('/drivers/profile', data),
+  uploadDocument: (file, type, expiryDate) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (type) form.append('type', type);
+    if (expiryDate) form.append('expiryDate', expiryDate);
+    return apiClient.post('/drivers/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
   getById: (id) => apiClient.get(`/drivers/${id}`),
   list: (params) => apiClient.get('/drivers', { params }),
 };
 
 // ── Owners ───────────────────────────────────────────────────
 export const ownersApi = {
-  createProfile: (data) => apiClient.post('/owners/profile', data),
   getMyProfile: () => apiClient.get('/owners/profile'),
   updateProfile: (data) => apiClient.patch('/owners/profile', data),
   getById: (id) => apiClient.get(`/owners/${id}`),
@@ -141,6 +156,40 @@ export const companiesApi = {
 export const invitesApi = {
   resolve: (token) => apiClient.get(`/invites/${token}`),
   accept: (token, data) => apiClient.post(`/invites/${token}/accept`, data),
+  acceptExisting: (token) => apiClient.post(`/invites/${token}/accept-existing`),
+};
+
+// Accounts (My Account): one user can hold Driver, Owner, Service
+// Provider and Company accounts, plus company memberships.
+export const accountsApi = {
+  me: () => apiClient.get('/accounts/me'),
+  createDriver: () => apiClient.post('/accounts/me/driver'),
+  createOwner: () => apiClient.post('/accounts/me/owner'),
+  createServiceProvider: (data) => apiClient.post('/accounts/me/service-provider', data),
+  createCompany: (data) => apiClient.post('/accounts/me/company', data),
+  submitIdentityVerification: (kind, { ghanaCardNumber, idFront, idBack, selfie, livenessChallenge, livenessPassed }) => {
+    const form = new FormData();
+    form.append('kind', kind);
+    form.append('ghanaCardNumber', ghanaCardNumber);
+    if (livenessChallenge) form.append('livenessChallenge', livenessChallenge);
+    form.append('livenessPassed', livenessPassed ? 'true' : 'false');
+    form.append('idFront', idFront);
+    form.append('idBack', idBack);
+    form.append('selfie', selfie);
+    return apiClient.post('/accounts/me/identity-verification', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  submitLicenceVerification: ({ licenseNumber, licenseClass, licenseExpiryDate, licenceFront, licenceBack }) => {
+    const form = new FormData();
+    form.append('licenseNumber', licenseNumber);
+    if (licenseClass) form.append('licenseClass', licenseClass);
+    if (licenseExpiryDate) form.append('licenseExpiryDate', licenseExpiryDate);
+    form.append('licenceFront', licenceFront);
+    form.append('licenceBack', licenceBack);
+    return apiClient.post('/accounts/me/driver/licence-verification', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  submitDriverNationalId: (ghanaCardNumber) => apiClient.post('/accounts/me/driver/national-id', { ghanaCardNumber }),
+  submitOwnerNationalId: (ghanaCardNumber) => apiClient.post('/accounts/me/owner/national-id', { ghanaCardNumber }),
+  submitDriverLicence: (data) => apiClient.post('/accounts/me/driver/licence', data),
 };
 
 // ── Vehicles ─────────────────────────────────────────────────
@@ -184,6 +233,7 @@ export const contractsApi = {
   create:  (data)   => apiClient.post('/contracts', data),
   accept:  (id)     => apiClient.post(`/contracts/${id}/accept`),
   confirmCode: (id, code) => apiClient.post(`/contracts/${id}/confirm-code`, { code }),
+  share:   (id, chatUsername) => apiClient.post(`/contracts/${id}/share`, { chatUsername }),
   updateStatus: (id, status) => apiClient.patch(`/contracts/${id}/status`, { status }),
   terminate: (id, reason) => apiClient.patch(`/contracts/${id}/terminate`, { reason }),
   getSchedule: (id) => apiClient.get(`/contracts/${id}/schedule`),
@@ -206,19 +256,17 @@ export const marketplaceApi = {
     return apiClient.post(`/marketplace/threads/${threadId}/attachments`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   generateAccessCode: (contractId) => apiClient.post(`/marketplace/contracts/${contractId}/access-code`),
+  chatUsername: () => apiClient.get('/marketplace/chat/username'),
+  setChatUsername: (chatUsername) => apiClient.post('/marketplace/chat/username', { chatUsername }),
+  searchChatUsers: (q) => apiClient.get('/marketplace/chat/search', { params: { q } }),
+  startDirectThread: (chatUsername) => apiClient.post('/marketplace/chat/direct-thread', { chatUsername }),
 };
 
 // ── Payments ─────────────────────────────────────────────────
 export const paymentsApi = {
   list:    (params) => apiClient.get('/payments', { params }),
   getById: (id)     => apiClient.get(`/payments/${id}`),
-  initiate:(data)   => apiClient.post('/payments/initiate', data),
-};
-
-// ── Settlements ───────────────────────────────────────────────
-export const settlementsApi = {
-  list:    (params) => apiClient.get('/settlements', { params }),
-  getById: (id)     => apiClient.get(`/settlements/${id}`),
+  initiate:(data)   => apiClient.post('/payments', data),
 };
 
 // ── Maintenance ───────────────────────────────────────────────
@@ -302,9 +350,15 @@ export const adminApi = {
   // Stats
   getStats: () => apiClient.get('/admin/stats'),
 
+  // Manual verification (Super Admin only)
+  listVerifications: (params) => apiClient.get('/admin/verifications', { params }),
+  manualVerify: (userId, target, verified = true) => apiClient.patch(`/admin/verifications/${userId}`, { target, verified }),
+  requestResubmission: (userId, target, reason) => apiClient.post(`/admin/verifications/${userId}/request-resubmission`, { target, reason }),
+
   // Drivers (admin)
   listDrivers:        (params) => apiClient.get('/admin/drivers', { params }),
   updateDriverStatus: (id, status) => apiClient.patch(`/admin/drivers/${id}/status`, { status }),
+  provisionDriver:    (userId) => apiClient.post(`/admin/drivers/provision/${userId}`),
 
   // Owners (admin)
   listOwners:        (params) => apiClient.get('/admin/owners', { params }),
@@ -347,7 +401,3 @@ export const adminApi = {
   listAuditLogs: (params) => apiClient.get('/admin/audit', { params }),
 };
 
-// ── Health ───────────────────────────────────────────────────
-export const healthApi = {
-  check: () => apiClient.get('/health'),
-};

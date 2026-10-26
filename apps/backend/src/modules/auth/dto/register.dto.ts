@@ -26,7 +26,8 @@ export class RegisterDto {
   @MinLength(8)
   password: string;
 
-  @ApiProperty({ enum: UserRole, example: UserRole.DRIVER })
+  @ApiPropertyOptional({ enum: UserRole, example: UserRole.DRIVER, description: 'Optional. Omit during new onboarding: the account starts as PENDING and the user picks Driver or Owner in the next step.' })
   @IsEnum(UserRole)
-  role: UserRole;
+  @IsOptional()
+  role?: UserRole;
 }

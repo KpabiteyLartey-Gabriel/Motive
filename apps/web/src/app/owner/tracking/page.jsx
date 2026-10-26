@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { vehiclesApi, trackingApi, locationShareApi } from '@/lib/api';
 
@@ -12,8 +11,6 @@ const VehicleTrackingMap = dynamic(
   () => import('@/components/tracking/VehicleTrackingMap'),
   { ssr: false, loading: () => <div className="flex items-center justify-center h-80 text-neutral-500 text-sm">Loading map…</div> },
 );
-
-const NAV = OWNER_NAV;
 
 const DURATION_OPTIONS = [
   { label: '1 hour',   value: 1 },
@@ -218,7 +215,7 @@ export default function OwnerTrackingPage() {
   const activeShares = shares.filter((s) => !s.revokedAt && new Date(s.expiresAt) > new Date());
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Vehicle Tracking">
+    <>
       <div className="mb-6">
         <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: '-0.02em' }}>
           Vehicle Tracking
@@ -312,6 +309,6 @@ export default function OwnerTrackingPage() {
       {shareResult && (
         <ShareResultModal share={shareResult} onClose={() => setShareResult(null)} />
       )}
-    </DashboardShell>
+    </>
   );
 }

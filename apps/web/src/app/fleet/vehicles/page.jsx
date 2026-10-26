@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState } from '@/components/dashboard/DashboardUI';
 import { vehiclesApi } from '@/lib/api';
 import VehiclePhotos from '@/components/vehicles/VehiclePhotos';
 import VehicleDocuments from '@/components/vehicles/VehicleDocuments';
-import { FLEET_NAV, FLEET_ROLES } from '@/lib/fleetNav';
+import { FLEET_ROLES } from '@/lib/fleetNav';
 
 const STATUS_COLORS = {
   AVAILABLE: 'text-green-400',
@@ -33,7 +32,7 @@ export default function FleetVehiclesPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={FLEET_NAV} title="Fleet Vehicles">
+    <>
       <SectionHeader title="Fleet Vehicles" description="Vehicles you manage: details, photos and documents" />
       {fetching ? (
         <div className="text-neutral-500 text-sm py-8 text-center">Loading fleet…</div>
@@ -66,6 +65,6 @@ export default function FleetVehiclesPage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

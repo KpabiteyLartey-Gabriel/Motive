@@ -2,22 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { vehiclesApi, complianceApi } from '@/lib/api';
 import VehiclePhotos from '@/components/vehicles/VehiclePhotos';
-
-const NAV = [
-  { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
-  { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
-  { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
-  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
-  { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
-  { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
-  { href: '/driver/documents', icon: 'documents', label: 'Documents' },
-  { href: '/driver/disputes',  icon: 'disputes', label: 'Disputes' },
-];
 
 const COMPLIANCE_STATUS_COLORS = {
   VALID: 'text-green-400',
@@ -52,7 +39,7 @@ export default function DriverVehiclePage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="My Vehicle">
+    <>
       {fetching ? (
         <div className="text-neutral-500 text-sm py-8 text-center">Loading vehicle info…</div>
       ) : !vehicle ? (
@@ -120,7 +107,7 @@ export default function DriverVehiclePage() {
             </div>
           )}
         </>
-      )}
-    </DashboardShell>
+      )}
+    </>
   );
 }

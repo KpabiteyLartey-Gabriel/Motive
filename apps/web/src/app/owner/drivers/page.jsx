@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { contractsApi } from '@/lib/api';
-
-const NAV = OWNER_NAV;
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -40,7 +37,7 @@ export default function OwnerDriversPage() {
   });
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="My Drivers">
+    <>
       <SectionHeader title="Driver Relationships" description="Drivers assigned to your vehicles via active contracts" />
 
       {fetching ? (
@@ -81,6 +78,6 @@ export default function OwnerDriversPage() {
           </table>
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

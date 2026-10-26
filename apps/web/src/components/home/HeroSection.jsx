@@ -14,7 +14,7 @@ export default function HeroSection() {
             Run vehicle work without the <span className="text-brand-400">guesswork.</span>
           </h1>
           <p className="anim-fade-up mt-5 max-w-lg text-lg leading-relaxed text-brand-50/85" style={{ '--anim-delay': '180ms' }}>
-            +Motive turns parked cars into jobs and income: drivers, vehicle owners, transport companies, fleet managers, maintenance providers and legal professionals working from one transparent record — contracts, MoMo payments and a complete audit trail.
+            +Motive turns parked cars into jobs and income: drivers, vehicle owners, transport companies, fleet managers, maintenance providers working from one transparent record — contracts, MoMo payments and a complete audit trail.
           </p>
           <div className="anim-fade-up mt-8 flex flex-col gap-3 sm:flex-row" style={{ '--anim-delay': '270ms' }}>
             <Link href="/register" className="btn-primary px-6 text-[15px]">Create free account</Link>

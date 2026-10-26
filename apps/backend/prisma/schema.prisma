@@ -16,6 +16,7 @@ datasource db {
 // ─────────────────────────────────────────────────────────────
 
 enum UserRole {
+  PENDING
   DRIVER
   OWNER
   COMPANY_ADMIN
@@ -331,6 +332,10 @@ model User {
   dateOfBirth         DateTime?
   profilePhotoUrl     String?
   primaryRole         UserRole
+  googleId            String?    @unique
+  chatUsername        String?    @unique
+  authProvider        String     @default("LOCAL")
+  onboardingCompletedAt DateTime?
   status              UserStatus @default(PENDING_VERIFICATION)
   emailVerifiedAt     DateTime?
   phoneVerifiedAt     DateTime?
@@ -345,6 +350,9 @@ model User {
   roles            UserRoleAssignment[]
   driver           Driver?
   owner            Owner?
+  serviceProvider  ServiceProvider?
+  identityVerifications IdentityVerification[]
+  licenceVerification LicenceVerification?
   companyMembers   CompanyMember[]
   refreshTokens    RefreshToken[]
   passwordResets   PasswordReset[]
@@ -485,6 +493,10 @@ model Driver {
   status            DriverStatus @default(PENDING_VERIFICATION)
   verifiedAt        DateTime?
   verifiedBy        String?
+  nationalIdVerifiedAt DateTime?
+  nationalIdVerifiedBy String?
+  licenceVerifiedAt    DateTime?
+  licenceVerifiedBy    String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -541,6 +553,8 @@ model Owner {
   status          OwnerStatus @default(PENDING_VERIFICATION)
   verifiedAt      DateTime?
   verifiedBy      String?
+  nationalIdVerifiedAt DateTime?
+  nationalIdVerifiedBy String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -550,6 +564,92 @@ model Owner {
   @@index([userId])
   @@index([status])
   @@map("owners")
+}
+
+enum ServiceProviderStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model ServiceProvider {
+  id           String                @id @default(cuid())
+  userId       String                @unique
+  businessName String
+  serviceType  String
+  phone        String?
+  address      String?
+  city         String?
+  region       String?
+  status       ServiceProviderStatus @default(ACTIVE)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("service_providers")
+}
+
+enum IdentityVerificationStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+// One identity check per user per account kind (Driver / Owner): Ghana Card
+// number + front/back card images + a live camera capture. Nothing here is
+// auto-approved — a reviewer compares them before the account is verified.
+model IdentityVerification {
+  id                  String                     @id @default(cuid())
+  userId              String
+  accountKind         UserRole
+  ghanaCardNumber     String
+  idFrontUrl          String
+  idFrontFileName     String?
+  idBackUrl           String
+  idBackFileName      String?
+  livenessSelfieUrl   String
+  livenessChallenge   String?
+  livenessCapturedAt  DateTime?
+  livenessPassed      Boolean                    @default(false)
+  status              IdentityVerificationStatus @default(PENDING_REVIEW)
+  reviewNote          String?
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, accountKind])
+  @@index([userId])
+  @@index([status])
+  @@map("identity_verifications")
+}
+
+// Driver phase 2, unlocked only after the Ghana Card + live face check:
+// licence details + front/back of the Driver's Licence. Also human-reviewed.
+model LicenceVerification {
+  id               String                     @id @default(cuid())
+  userId           String                     @unique
+  licenseNumber    String
+  licenceFrontUrl  String
+  licenceFrontFileName String?
+  licenceBackUrl   String
+  licenceBackFileName String?
+  status           IdentityVerificationStatus @default(PENDING_REVIEW)
+  reviewNote       String?
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("licence_verifications")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -767,21 +867,23 @@ model VehicleInterest {
 
 model ChatThread {
   id           String   @id @default(cuid())
-  vehicleId    String
-  interestId   String   @unique
+  vehicleId    String?
+  interestId   String?  @unique
+  contractId   String?
   ownerUserId  String
   driverUserId String
   lastMessageAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  vehicle  Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  interest VehicleInterest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  interest VehicleInterest? @relation(fields: [interestId], references: [id], onDelete: Cascade)
   messages ChatMessage[]
 
   @@index([ownerUserId])
   @@index([driverUserId])
   @@index([vehicleId])
+  @@index([contractId])
   @@map("chat_threads")
 }
 
@@ -792,6 +894,8 @@ model ChatMessage {
   body           String?
   attachmentUrl  String?
   attachmentName String?
+  kind           String   @default("TEXT")
+  contractId     String?
   createdAt      DateTime @default(now())
   readAt         DateTime?
 

@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { usersApi, companiesApi, resolveVehiclePhoto } from '@/lib/api';
-import { FLEET_NAV, FLEET_ROLES } from '@/lib/fleetNav';
+import { FLEET_ROLES } from '@/lib/fleetNav';
 
 function syncStoredUser(updated) {
   try {
@@ -85,7 +84,7 @@ export default function FleetSettingsPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={FLEET_NAV} title="Settings">
+    <>
       <SectionHeader title="Settings" description="Your profile, security and account status" />
       {msg && <div className="bg-green-500/10 border border-green-500/30 text-green-600 text-sm px-4 py-3 rounded-lg mb-4">{msg}</div>}
       {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-lg mb-4">{error}</div>}
@@ -142,6 +141,6 @@ export default function FleetSettingsPage() {
           <button disabled={busy} onClick={deactivate} className="text-xs font-medium px-4 py-2 rounded-lg border border-red-300 text-red-600 disabled:opacity-40">Deactivate my account</button>
         </div>
       </div>
-    </DashboardShell>
+    </>
   );
 }

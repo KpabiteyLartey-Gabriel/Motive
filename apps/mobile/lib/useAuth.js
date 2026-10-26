@@ -32,10 +32,10 @@ export function useAuth() {
   return { user, loading, logout };
 }
 
-/** Format a GHS amount */
+/** Format an amount as a plain number (no currency label on mobile) */
 export function fmtGHS(amount) {
   if (amount == null) return '—';
-  return `GHS ${Number(amount).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return Number(amount).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /** Format a date string */

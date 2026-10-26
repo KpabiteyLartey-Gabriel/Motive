@@ -2,23 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatCard, SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import Link from 'next/link';
 import { vehiclesApi, driversApi, contractsApi, paymentsApi, maintenanceApi } from '@/lib/api';
-
-const NAV = [
-  { href: '/company/dashboard',   icon: 'dashboard', label: 'Dashboard' },
-  { href: '/company/vehicles',    icon: 'vehicle', label: 'Fleet' },
-  { href: '/company/drivers',     icon: 'drivers', label: 'Drivers' },
-  { href: '/company/contracts',   icon: 'contract', label: 'Contracts' },
-  { href: '/company/payments',    icon: 'payments', label: 'Payments' },
-  { href: '/company/maintenance', icon: 'maintenance', label: 'Maintenance' },
-  { href: '/company/tracking',    icon: 'tracking', label: 'Tracking' },
-  { href: '/company/reports',     icon: 'reports', label: 'Reports' },
-  { href: '/company/team',        icon: 'users', label: 'Team' },
-  { href: '/company/disputes',    icon: 'disputes', label: 'Disputes' },
-];
 
 function fmtGHS(amount) {
   if (!amount && amount !== 0) return 'â€”';
@@ -31,7 +17,7 @@ function fmtDate(d) {
 }
 
 export default function CompanyDashboardPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['COMPANY_ADMIN', 'COMPANY_MEMBER', 'FLEET_MANAGER'] });
+  const { user } = useAuth({ requiredRoles: ['COMPANY_ADMIN', 'COMPANY_MEMBER', 'FLEET_MANAGER'] });
 
   const [vehicles,     setVehicles]     = useState([]);
   const [drivers,      setDrivers]      = useState([]);
@@ -71,7 +57,7 @@ export default function CompanyDashboardPage() {
   const recentPayments  = payments.slice(0, 5);
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Company Dashboard">
+    <>
       {/* Welcome */}
       <div className="mb-8">
         <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>
@@ -212,7 +198,7 @@ export default function CompanyDashboardPage() {
           </div>
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }
 

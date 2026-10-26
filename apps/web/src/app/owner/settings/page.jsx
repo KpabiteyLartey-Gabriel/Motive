@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { SectionHeader, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { usersApi, ownersApi, resolveVehiclePhoto } from '@/lib/api';
+import { formatGhanaCardInput } from '@/lib/ghanaCard';
 
 function syncStoredUser(updated) {
   try {
@@ -161,7 +161,7 @@ export default function OwnerSettingsPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={OWNER_NAV} title="Settings">
+    <>
       <SectionHeader title="Settings" description="Your account configuration, verifications and security" />
       {msg && <div className="bg-green-500/10 border border-green-500/30 text-green-600 text-sm px-4 py-3 rounded-lg mb-4">{msg}</div>}
       {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-lg mb-4">{error}</div>}
@@ -219,7 +219,7 @@ export default function OwnerSettingsPage() {
         <p className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">Owner &amp; payout details</p>
         <p className="text-xs text-neutral-500 mb-4">Your MoMo number is where contract payments are settled. Keep it correct.</p>
         <div className="grid sm:grid-cols-2 gap-3">
-          <input className="input" placeholder="Ghana Card number (GHA-...)" value={ownerForm.ghanaCardNumber} onChange={(e) => setOwnerForm({ ...ownerForm, ghanaCardNumber: e.target.value })} />
+          <input className="input" placeholder="Ghana Card (GHA-123456789-0)" maxLength={15} value={ownerForm.ghanaCardNumber} onChange={(e) => setOwnerForm({ ...ownerForm, ghanaCardNumber: formatGhanaCardInput(e.target.value) })} />
           <input className="input" placeholder="MoMo number (+233...)" value={ownerForm.momoNumber} onChange={(e) => setOwnerForm({ ...ownerForm, momoNumber: e.target.value })} />
           <input className="input" placeholder="MoMo provider (MTN, Telecel, AirtelTigo)" value={ownerForm.momoProvider} onChange={(e) => setOwnerForm({ ...ownerForm, momoProvider: e.target.value })} />
           <input className="input" placeholder="Residential address" value={ownerForm.address} onChange={(e) => setOwnerForm({ ...ownerForm, address: e.target.value })} />
@@ -256,6 +256,6 @@ export default function OwnerSettingsPage() {
           <button disabled={busy} onClick={deactivate} className="text-xs font-medium px-4 py-2 rounded-lg border border-red-300 text-red-600 disabled:opacity-40">Deactivate my account</button>
         </div>
       </div>
-    </DashboardShell>
+    </>
   );
 }

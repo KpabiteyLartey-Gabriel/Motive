@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { maintenanceApi } from '@/lib/api';
-
-const NAV = OWNER_NAV;
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -43,7 +40,7 @@ export default function OwnerMaintenancePage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Maintenance">
+    <>
       <SectionHeader title="Maintenance Requests" description="Service and repair requests for your vehicles" />
 
       {fetching ? (
@@ -89,6 +86,6 @@ export default function OwnerMaintenancePage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

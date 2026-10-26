@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const DRIVER_STATUSES = ['PENDING_VERIFICATION', 'VERIFIED', 'ACTIVE', 'INACTIVE', 'SUSPENDED'];
@@ -148,6 +147,23 @@ export default function AdminDriversPage() {
       .catch(() => {});
   }, [user, drivers]);
 
+  const [provisioning, setProvisioning] = useState('');
+  const provision = async (u) => {
+    setProvisioning(u.id);
+    try {
+      const res = await adminApi.provisionDriver(u.id);
+      const driver = res.data.data;
+      setMissingProfiles((prev) => prev.filter((x) => x.id !== u.id));
+      setDrivers((prev) => [driver, ...prev.filter((d) => d.id !== driver.id)]);
+      setSelected(driver);
+      load();
+    } catch (e) {
+      window.alert(e.response?.data?.message || 'Could not create the driver profile.');
+    } finally {
+      setProvisioning('');
+    }
+  };
+
   const handleStatusChange = (updated) => {
     setDrivers((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
     setSelected((prev) => prev?.id === updated.id ? updated : prev);
@@ -181,7 +197,7 @@ export default function AdminDriversPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Drivers">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Drivers</h2>
@@ -197,14 +213,23 @@ export default function AdminDriversPage() {
             {missingProfiles.length} driver account{missingProfiles.length !== 1 ? 's' : ''} without a driver profile yet
           </p>
           <p className="text-xs text-steel dark:text-neutral-400 leading-relaxed mb-3">
-            These people registered with the Driver role but have not completed driver setup (licence and KYC), so they have no driver profile and cannot be verified here yet. They appear under Users until they finish setup in the app.
+            These accounts have the Driver role but no driver profile (for example, they registered before driver profiles were created automatically, or have not finished driver setup). Create the profile here so the driver appears in the table below with full details and can be verified. Licence and KYC details still come from the driver in the app.
           </p>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {missingProfiles.map((u) => (
-              <p key={u.id} className="text-xs text-steel dark:text-neutral-300">
-                <span className="font-medium text-graphite dark:text-paper">{u.firstName} {u.lastName}</span>
-                {' — '}{u.email || u.phone || '—'}{' · '}{(u.status || '').replace(/_/g, ' ')}
-              </p>
+              <div key={u.id} className="flex items-center gap-3 flex-wrap">
+                <p className="text-xs text-steel dark:text-neutral-300 flex-1 min-w-0">
+                  <span className="font-medium text-graphite dark:text-paper">{u.firstName} {u.lastName}</span>
+                  {' — '}{u.email || u.phone || '—'}{' · '}{(u.status || '').replace(/_/g, ' ')}
+                </p>
+                <button
+                  onClick={() => provision(u)}
+                  disabled={provisioning === u.id}
+                  className="px-3 py-1.5 rounded-lg border border-success/40 text-success text-xs font-medium hover:bg-success/10 disabled:opacity-40"
+                >
+                  {provisioning === u.id ? 'Creating…' : 'Create driver profile'}
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -243,6 +268,6 @@ export default function AdminDriversPage() {
           onStatusChange={handleStatusChange}
         />
       )}
-    </DashboardShell>
+    </>
   );
 }

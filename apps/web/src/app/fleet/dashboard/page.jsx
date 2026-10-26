@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatCard, SectionHeader, EmptyState } from '@/components/dashboard/DashboardUI';
 import { vehiclesApi, maintenanceApi, contractsApi, trackingApi, companiesApi } from '@/lib/api';
-import { FLEET_NAV, FLEET_ROLES } from '@/lib/fleetNav';
+import { FLEET_ROLES } from '@/lib/fleetNav';
 
 export default function FleetDashboardPage() {
   const { user, loading, logout } = useAuth({ requiredRoles: FLEET_ROLES });
@@ -40,7 +39,7 @@ export default function FleetDashboardPage() {
   const unreadAlerts = alerts.filter((a) => !a.isRead).length;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={FLEET_NAV} title="Fleet Manager">
+    <>
       <SectionHeader title={`Welcome, ${user?.firstName || 'Fleet Manager'}`} description={company ? `Fleet Manager · ${company.name}` : 'Fleet Manager'} />
       {fetching ? (
         <div className="text-neutral-500 text-sm py-8 text-center">Loading fleet overview…</div>
@@ -73,6 +72,6 @@ export default function FleetDashboardPage() {
           )}
         </>
       )}
-    </DashboardShell>
+    </>
   );
 }

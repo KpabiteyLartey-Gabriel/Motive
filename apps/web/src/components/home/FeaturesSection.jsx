@@ -1,7 +1,7 @@
 import { Icon } from '@/components/ui/Icon';
 
 const features = [
-  { icon: 'contract', title: 'Witnessed smart contracts', description: 'Work & Pay, DriveOn and company Rental contracts — facilitated and witnessed by legal professionals, signed digitally, with an identical copy for every party.' },
+  { icon: 'contract', title: 'Smart contracts on record', description: 'Work & Pay, DriveOn and company Rental contracts — signed digitally on the platform, with an identical copy for every party.' },
   { icon: 'payments', title: 'MoMo payments, split automatically', description: 'MTN MoMo collections with receipts and a ledger that splits every payment between owner, company and platform — no duplicates, no quiet edits.' },
   { icon: 'tracking', title: 'Tracking & remote control', description: 'Live location, trips and speed for every vehicle, a safe shareable location link, and remote lock or engine off/on when it matters.' },
   { icon: 'documents', title: 'Documents that stay current', description: 'Driving licences, insurance, roadworthiness and registration monitored in one place, with expiry alerts before they become a problem.' },

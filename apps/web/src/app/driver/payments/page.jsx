@@ -2,21 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState } from '@/components/dashboard/DashboardUI';
 import { paymentsApi } from '@/lib/api';
-
-const NAV = [
-  { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
-  { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
-  { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
-  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
-  { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
-  { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
-  { href: '/driver/documents', icon: 'documents', label: 'Documents' },
-  { href: '/driver/disputes',  icon: 'disputes', label: 'Disputes' },
-];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -58,7 +45,7 @@ export default function DriverPaymentsPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Payments">
+    <>
       {/* Summary */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-4">
@@ -114,7 +101,7 @@ export default function DriverPaymentsPage() {
             </tbody>
           </table>
         </div>
-      )}
-    </DashboardShell>
+      )}
+    </>
   );
 }

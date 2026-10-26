@@ -3,9 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi, trackingApi } from '@/lib/api';
 
 // Dynamic import — Leaflet requires window
@@ -193,7 +192,7 @@ export default function AdminTrackingPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Tracking">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Vehicle Tracking</h2>
@@ -256,6 +255,6 @@ export default function AdminTrackingPage() {
       )}
 
       {selected && <DeviceDrawer device={selected} onClose={() => setSelected(null)} />}
-    </DashboardShell>
+    </>
   );
 }

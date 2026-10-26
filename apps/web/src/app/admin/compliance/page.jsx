@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const COMPLIANCE_STATUSES  = ['VALID', 'EXPIRING_SOON', 'EXPIRED', 'PENDING_RENEWAL'];
@@ -141,7 +140,7 @@ export default function AdminCompliancePage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Compliance">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Compliance</h2>
@@ -168,6 +167,6 @@ export default function AdminCompliancePage() {
       <AdminPagination pagination={pagination} page={page} setPage={setPage} />
 
       {selected && <ComplianceDrawer record={selected} onClose={() => setSelected(null)} />}
-    </DashboardShell>
+    </>
   );
 }

@@ -155,10 +155,13 @@ export class NotificationsService {
   }
 
   // ── List (user's own) ──────────────────────────────────────
+  // Only IN_APP records belong in the notification list: send() also
+  // persists EMAIL/SMS delivery records for the same event, and showing
+  // those here would list every message two or three times.
   async findForUser(userId: string, params: { page?: number; limit?: number; unreadOnly?: boolean }) {
     const { page = 1, limit = 30, unreadOnly } = params;
     const skip = (Math.max(1, Math.floor(Number(page)) || 1) - 1) * (Math.max(1, Math.floor(Number(limit)) || 20));
-    const where: any = { userId };
+    const where: any = { userId, channel: NotificationChannel.IN_APP };
     if (unreadOnly) where.readAt = null;
 
     const [notifications, total] = await this.prisma.$transaction([
@@ -182,7 +185,7 @@ export class NotificationsService {
   // ── Mark all read ──────────────────────────────────────────
   async markAllRead(userId: string) {
     await this.prisma.notification.updateMany({
-      where: { userId, readAt: null },
+      where: { userId, channel: NotificationChannel.IN_APP, readAt: null },
       data: { readAt: new Date(), status: NotificationStatus.READ },
     });
   }

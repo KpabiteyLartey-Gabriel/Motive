@@ -26,7 +26,7 @@ export default function HomePage() {
         <UserTypesSection />
         <ParallaxWindow
           title="Built for everyone who keeps Ghana moving."
-          text="Drivers, owners, companies, fleet managers, maintenance providers and legal professionals — six participants, one connected platform."
+          text="Drivers, owners, companies, fleet managers, maintenance providers — five participants, one connected platform."
         />
         <CtaSection />
       </main>

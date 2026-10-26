@@ -22,10 +22,12 @@ function makeService(existing: any) {
 describe('DriversService KYC', () => {
   it('creates a profile when the driver saves KYC for the first time', async () => {
     const { svc, prisma } = makeService(null);
-    await svc.updateProfile('user-1', { licenseNumber: 'GH-111', licenseClass: 'Class B', ghanaCardNumber: 'GHA-1' } as any);
+    await svc.updateProfile('user-1', { licenseNumber: 'GH-111', licenseClass: 'Class B', ghanaCardNumber: 'gha1234567890' } as any);
     expect(prisma.driver.create).toHaveBeenCalled();
     const data = prisma.driver.create.mock.calls[0][0].data;
     expect(data.licenseNumber).toBe('GH-111');
+    expect(data.ghanaCardNumber).toBe('GHA-123456789-0');
+    await expect(svc.updateProfile('user-1', { ghanaCardNumber: 'GHA-1' } as any)).rejects.toThrow(/Ghana Card format/);
     expect(data.status).toBeUndefined(); // verification status is admin-only
   });
 

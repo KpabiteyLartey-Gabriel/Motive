@@ -2,22 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatCard, SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import Link from 'next/link';
-import { contractsApi, paymentsApi, vehiclesApi } from '@/lib/api';
-
-const NAV = [
-  { href: '/driver/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { href: '/driver/explore',   icon: 'explore', label: 'Explore' },
-  { href: '/driver/vehicle',   icon: 'vehicle', label: 'My Vehicle' },
-  { href: '/driver/contracts', icon: 'contract', label: 'Contracts' },
-  { href: '/driver/messages',  icon: 'messages', label: 'Messages' },
-  { href: '/driver/payments',  icon: 'payments', label: 'Payments' },
-  { href: '/driver/earnings',  icon: 'earnings', label: 'Earnings' },
-  { href: '/driver/documents', icon: 'documents', label: 'Documents' },
-  { href: '/driver/disputes',  icon: 'disputes', label: 'Disputes' },
-];
+import { contractsApi, paymentsApi, vehiclesApi, driversApi } from '@/lib/api';
 
 function fmtGHS(amount) {
   if (!amount && amount !== 0) return '—';
@@ -30,11 +17,12 @@ function fmtDate(d) {
 }
 
 export default function DriverDashboardPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['DRIVER'] });
+  const { user } = useAuth({ requiredRoles: ['DRIVER'] });
 
   const [contracts, setContracts] = useState([]);
   const [payments,  setPayments]  = useState([]);
   const [vehicle,   setVehicle]   = useState(null);
+  const [profile,   setProfile]   = useState(null);
   const [fetching,  setFetching]  = useState(true);
 
   const load = useCallback(() => {
@@ -43,12 +31,18 @@ export default function DriverDashboardPage() {
       contractsApi.list({ limit: 50 }),
       paymentsApi.list({ limit: 50 }),
       vehiclesApi.list({ limit: 1 }),
-    ]).then(([cRes, pRes, vRes]) => {
+      driversApi.getMyProfile(),
+    ]).then(([cRes, pRes, vRes, dRes]) => {
       if (cRes.status === 'fulfilled') setContracts(cRes.value.data?.data?.contracts || []);
       if (pRes.status === 'fulfilled') setPayments(pRes.value.data?.data?.payments || []);
       if (vRes.status === 'fulfilled') setVehicle(vRes.value.data?.data?.vehicles?.[0] || null);
+      if (dRes.status === 'fulfilled') setProfile(dRes.value.data?.data || null);
     }).finally(() => setFetching(false));
   }, [user]);
+
+  // Driver status is the profile status, not the login account status:
+  // Pending verification → Verified → Active (Active = on a live contract).
+  const driverStatus = profile?.status || 'PENDING_VERIFICATION';
 
   useEffect(() => { load(); }, [load]);
 
@@ -60,7 +54,7 @@ export default function DriverDashboardPage() {
   const recentPayments = payments.slice(0, 5);
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Driver Dashboard">
+    <>
       {/* Welcome */}
       <div className="mb-8">
         <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>
@@ -71,10 +65,16 @@ export default function DriverDashboardPage() {
         </p>
       </div>
 
-      {/* Account status */}
-      <div className="mb-6 flex items-center gap-3">
-        <span className="text-xs text-neutral-500">Account status:</span>
-        <StatusBadge status={user?.status} />
+      {/* Driver status (profile status — Active means on a live contract) */}
+      <div className="mb-6 flex items-center gap-3 flex-wrap">
+        <span className="text-xs text-neutral-500">Driver status:</span>
+        <StatusBadge status={driverStatus} />
+        <span className="text-xs text-neutral-400">
+          {driverStatus === 'ACTIVE' ? 'You are currently on a live contract.'
+            : driverStatus === 'VERIFIED' ? 'Verified — you are not on a contract right now. Explore vehicles to get started.'
+            : driverStatus === 'SUSPENDED' ? 'Your driver account has been suspended. Contact support.'
+            : 'Waiting for an admin to verify your licence and KYC.'}
+        </span>
         {fetching && <span className="text-xs text-neutral-600">Refreshing…</span>}
       </div>
 
@@ -161,8 +161,8 @@ export default function DriverDashboardPage() {
         )}
       </div>
 
-      {/* Profile completion */}
-      {user?.status !== 'VERIFIED' && (
+      {/* Profile completion — only while details or verification are outstanding */}
+      {(!profile || !profile.licenseNumber) ? (
         <div className="bg-white dark:bg-dark-card border border-line dark:border-dark-border rounded-card shadow-card dark:shadow-none p-5 flex items-start gap-4">
           <div className="w-8 h-8 rounded-lg bg-warning/10 border border-warning/20 flex items-center justify-center flex-shrink-0">
             <span className="text-warning text-sm">!</span>
@@ -170,12 +170,24 @@ export default function DriverDashboardPage() {
           <div>
             <p className="text-sm font-semibold text-ink dark:text-white mb-1">Complete your driver profile</p>
             <p className="text-xs text-neutral-500 leading-relaxed">
-              Add your licence number, Ghana Card number and emergency contact to get verified and matched with vehicles.
+              Add your licence number, Ghana Card number and emergency contact. Once your details are in, an admin verifies you and you can be matched with vehicles.
             </p>
           </div>
         </div>
-      )}
-    </DashboardShell>
+      ) : driverStatus === 'PENDING_VERIFICATION' ? (
+        <div className="bg-white dark:bg-dark-card border border-line dark:border-dark-border rounded-card shadow-card dark:shadow-none p-5 flex items-start gap-4">
+          <div className="w-8 h-8 rounded-lg bg-warning/10 border border-warning/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-warning text-sm">!</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink dark:text-white mb-1">Verification pending</p>
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              Your details are in. An admin is reviewing your licence and Ghana Card — you will be marked Verified once approved, and Active while you are on a contract.
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 

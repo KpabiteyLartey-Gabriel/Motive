@@ -63,15 +63,17 @@ describe('VehiclesService publish / unpublish', () => {
     expect(create.mock.calls[0][0].data.publish).toBeUndefined();
   });
 
-  it('creating with publish intent still starts as an unverified DRAFT (verification comes before publishing)', async () => {
-    const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'WORK_AND_PAY' });
+  it('creating with publish intent through a company still starts as an unverified DRAFT (verification comes before publishing)', async () => {
+    const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'WORK_AND_PAY', managingCompanyId: 'comp-1' });
     expect(res.status).toBe('DRAFT');
     expect(res.verificationStatus).toBe('NOT_SUBMITTED');
     expect(res.operatingModel).toBe('WORK_AND_PAY');
+    expect(res.managingCompanyId).toBe('comp-1');
   });
 
-  it('owner cannot publish a RENTAL vehicle without choosing a company', async () => {
-    await expect(svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL' })).rejects.toThrow(/Only companies can publish vehicles for rent/);
+  it('owner cannot list any vehicle for hiring without a company (Work & Pay, DriveOn, Rental)', async () => {
+    await expect(svc.create('user-1', { ...dto, publish: true, operatingModel: 'WORK_AND_PAY' })).rejects.toThrow(/Only companies can list vehicles for hiring/);
+    await expect(svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL' })).rejects.toThrow(/Only companies can list vehicles for hiring/);
   });
 
   it('owner can register a RENTAL vehicle through a chosen active company (publishes after verification)', async () => {
@@ -81,23 +83,26 @@ describe('VehiclesService publish / unpublish', () => {
     expect(create.mock.calls[create.mock.calls.length - 1][0].data.managingCompanyId).toBe('comp-1');
   });
 
-  it('owner can save a RENTAL draft before choosing a company, but not publish it after', async () => {
+  it('owner can save a draft before choosing a company, but cannot publish it after without one', async () => {
     const res: any = await svc.create('user-1', { ...dto, operatingModel: 'RENTAL' });
     expect(res.status).toBe('DRAFT');
-    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT', operatingModel: 'RENTAL' });
-    await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/Only companies can publish vehicles for rent/);
+    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'DRAFT', operatingModel: 'WORK_AND_PAY', verificationStatus: 'APPROVED' });
+    await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/Only companies can list vehicles for hiring/);
   });
 
-  it('a company member publishes a RENTAL vehicle under their own company', async () => {
-    prisma.companyMember.findFirst.mockResolvedValueOnce({ companyId: 'comp-9', userId: 'user-1' });
-    const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL' });
+  it('a company member can list a vehicle for hiring under their own company, for any contract type', async () => {
+    prisma.companyMember.findFirst.mockResolvedValue({ companyId: 'comp-9', userId: 'user-1' });
+    const res: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'WORK_AND_PAY' });
     expect(res.managingCompanyId).toBe('comp-9');
+    const res2: any = await svc.create('user-1', { ...dto, publish: true, operatingModel: 'RENTAL' });
+    expect(res2.managingCompanyId).toBe('comp-9');
   });
 
-  it('owner can publish a draft and unpublish an available vehicle', async () => {
+  it('a vehicle placed with a company can be published, and unpublished again', async () => {
+    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: 'comp-1', status: 'DRAFT', verificationStatus: 'APPROVED' });
     const pub: any = await svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER');
     expect(pub.status).toBe('AVAILABLE');
-    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: null, status: 'AVAILABLE' });
+    prisma.vehicle.findUnique.mockResolvedValueOnce({ id: 'veh-1', ownerId: 'owner-1', managingCompanyId: 'comp-1', status: 'AVAILABLE' });
     const unpub: any = await svc.updateStatus('veh-1', 'DRAFT' as any, 'user-1', 'OWNER');
     expect(unpub.status).toBe('DRAFT');
   });
@@ -200,13 +205,14 @@ describe('VehiclesService contract-type (operating model) changes', () => {
     expect(byDriver.changed).toBe(true);
   });
 
-  it('changing to RENTAL needs a company: blocked without one, works with a chosen active company', async () => {
+  it('changing contract type can place the vehicle with a chosen active company, for any type', async () => {
     const { svc } = makeSvc(freeVehicle, null);
-    await expect(svc.changeOperatingModel('veh-1', 'RENTAL', 'user-1', 'OWNER')).rejects.toThrow(/Only companies can publish vehicles for rent/);
-    const res: any = await svc.changeOperatingModel('veh-1', 'RENTAL', 'user-1', 'OWNER', 'comp-1');
-    expect(res.changed).toBe(true);
-    expect(res.vehicle.operatingModel).toBe('RENTAL');
-    expect(res.vehicle.managingCompanyId).toBe('comp-1');
+    const placed: any = await svc.changeOperatingModel('veh-1', 'RENTAL', 'user-1', 'OWNER', 'comp-1');
+    expect(placed.changed).toBe(true);
+    expect(placed.vehicle.operatingModel).toBe('RENTAL');
+    expect(placed.vehicle.managingCompanyId).toBe('comp-1');
+    const same: any = await svc.changeOperatingModel('veh-1', 'WORK_AND_PAY', 'user-1', 'OWNER', 'comp-1');
+    expect(same.vehicle.managingCompanyId).toBe('comp-1');
   });
 });
 
@@ -240,9 +246,11 @@ describe('VehiclesService verification before publishing', () => {
     return { svc: new VehiclesService(prisma), prisma };
   }
 
-  it('publishing is blocked until the vehicle is verified', async () => {
-    const { svc } = makeSvc();
+  it('publishing is blocked until the vehicle is verified (and placed with a company)', async () => {
+    const { svc } = makeSvc({ ...baseVehicle, managingCompanyId: 'comp-1' });
     await expect(svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/has not been verified yet/);
+    const { svc: svc2 } = makeSvc();
+    await expect(svc2.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER')).rejects.toThrow(/Only companies can list vehicles for hiring/);
   });
 
   it('submit requires chassis, colour and all four evidence images', async () => {
@@ -280,7 +288,7 @@ describe('VehiclesService verification before publishing', () => {
     expect(approved.verificationStatus).toBe('APPROVED');
     expect(approved.verifiedById).toBe('super-1');
     expect(prisma.notification.create).toHaveBeenCalled();
-    prisma.vehicle.findUnique.mockResolvedValue({ ...pending, verificationStatus: 'APPROVED' });
+    prisma.vehicle.findUnique.mockResolvedValue({ ...pending, verificationStatus: 'APPROVED', managingCompanyId: 'comp-1' });
     const pub: any = await svc.updateStatus('veh-1', 'AVAILABLE' as any, 'user-1', 'OWNER');
     expect(pub.status).toBe('AVAILABLE');
   });

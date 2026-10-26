@@ -2,13 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { StatCard, SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import Link from 'next/link';
 import { vehiclesApi, contractsApi, paymentsApi } from '@/lib/api';
-
-const NAV = OWNER_NAV;
 
 function fmtGHS(amount) {
   if (!amount && amount !== 0) return 'â€”';
@@ -21,7 +18,7 @@ function fmtDate(d) {
 }
 
 export default function OwnerDashboardPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['OWNER'] });
+  const { user } = useAuth({ requiredRoles: ['OWNER'] });
 
   const [vehicles,  setVehicles]  = useState([]);
   const [contracts, setContracts] = useState([]);
@@ -53,7 +50,7 @@ export default function OwnerDashboardPage() {
   const recentPayments = payments.slice(0, 5);
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Owner Dashboard">
+    <>
       {/* Welcome */}
       <div className="mb-8">
         <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>
@@ -180,7 +177,7 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }
 

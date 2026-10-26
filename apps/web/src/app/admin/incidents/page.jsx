@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const INCIDENT_STATUSES = ['REPORTED', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED'];
@@ -142,7 +141,7 @@ export default function AdminIncidentsPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Incidents">
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>Incidents</h2>
@@ -169,6 +168,6 @@ export default function AdminIncidentsPage() {
       <AdminPagination pagination={pagination} page={page} setPage={setPage} />
 
       {selected && <IncidentDrawer incident={selected} onClose={() => setSelected(null)} />}
-    </DashboardShell>
+    </>
   );
 }

@@ -39,7 +39,13 @@ describe('CompaniesService member management', () => {
   });
 
   it('rejects unsupported member roles', async () => {
-    await expect(svc.addMember('co-1', 'admin-1', 'COMPANY_ADMIN', { email: 'fleet@test.com', role: 'DRIVER' } as any)).rejects.toThrow();
+    await expect(svc.addMember('co-1', 'admin-1', 'COMPANY_ADMIN', { email: 'fleet@test.com', role: 'SUPER_ADMIN' } as any)).rejects.toThrow();
+  });
+
+  it('company admin can assign a Driver role inside the company', async () => {
+    prisma.role.findUnique.mockResolvedValue({ id: 'role-driver', name: 'DRIVER' });
+    await svc.addMember('co-1', 'admin-1', 'COMPANY_ADMIN', { email: 'fleet@test.com', role: 'DRIVER' } as any);
+    expect(memberCreate.mock.calls[0][0].data).toMatchObject({ role: 'DRIVER' });
   });
 
   it('cannot deactivate the last company admin', async () => {
@@ -103,6 +109,27 @@ describe('CompaniesService invites (no pre-existing account)', () => {
     expect(res.company.id).toBe('co-1');
     expect(prisma.companyMember.create).toHaveBeenCalled();
     expect(prisma.companyInvite.update).toHaveBeenCalled();
+  });
+
+  it('inviting an existing user does not add them until they accept', async () => {
+    prisma.user.findFirst.mockResolvedValue({ id: 'driver-1', email: 'driver@test.com' });
+    const res: any = await svc.createInvite('co-1', 'admin-1', 'COMPANY_ADMIN', { contact: 'driver@test.com', role: 'DRIVER' } as any);
+    expect(res.status).toBe('invited');
+    expect(prisma.companyMember.create).not.toHaveBeenCalled();
+  });
+
+  it('acceptInviteAsUser joins the company and keeps the personal Driver account', async () => {
+    prisma.companyInvite.findUnique.mockResolvedValue({ id: 'inv-1', companyId: 'co-1', email: 'driver@test.com', phone: null, role: 'OWNER', title: null, status: 'PENDING', invitedBy: 'admin-1', expiresAt: new Date(Date.now() + 86400000), company: { id: 'co-1', name: 'Lartey Company', type: 'TRANSPORT' } });
+    prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 'driver-1', firstName: 'Kofi', lastName: 'Driver', email: 'driver@test.com', phone: null, primaryRole: 'DRIVER' });
+    prisma.owner = { upsert: jest.fn().mockResolvedValue({ id: 'owner-1' }) };
+    const res: any = await svc.acceptInviteAsUser('sometoken', 'driver-1');
+    expect(res.status).toBe('joined');
+    expect(res.role).toBe('OWNER');
+    expect(prisma.companyMember.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ userId: 'driver-1', role: 'OWNER' }) }),
+    );
+    // Personal primary role is untouched by joining a company.
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('acceptInvite rejects an expired/revoked token', async () => {

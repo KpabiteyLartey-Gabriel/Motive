@@ -81,7 +81,7 @@ export default function DriverPayments() {
           <View style={[s.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={[s.cardTitle, { color: colors.textPrimary }]}>MTN MoMo Payment</Text>
 
-            <Text style={[s.label, { color: colors.textSecondary }]}>Amount (GHS)</Text>
+            <Text style={[s.label, { color: colors.textSecondary }]}>Amount</Text>
             <TextInput
               style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
               placeholder="0.00"

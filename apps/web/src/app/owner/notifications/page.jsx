@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { SectionHeader, EmptyState } from '@/components/dashboard/DashboardUI';
 import { Icon } from '@/components/ui/Icon';
 import { notificationsApi } from '@/lib/api';
@@ -40,7 +39,7 @@ function timeAgo(d) {
 }
 
 export default function OwnerNotificationsPage() {
-  const { user, loading, logout } = useAuth({ requiredRoles: ['OWNER'] });
+  const { user } = useAuth({ requiredRoles: ['OWNER'] });
   const [items, setItems] = useState([]);
   const [fetching, setFetching] = useState(true);
   const [filter, setFilter] = useState('ALL');
@@ -76,7 +75,7 @@ export default function OwnerNotificationsPage() {
   });
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={OWNER_NAV} title="Notifications">
+    <>
       <SectionHeader
         title="Notifications"
         description={unread ? `You have ${unread} unread notification${unread === 1 ? '' : 's'}` : 'Payments received, announcements from +Motive and account updates'}
@@ -126,6 +125,6 @@ export default function OwnerNotificationsPage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

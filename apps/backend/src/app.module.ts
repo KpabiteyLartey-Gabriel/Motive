@@ -24,6 +24,8 @@ import { TrackingModule } from './modules/tracking/tracking.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
 import { ComplianceModule } from './modules/compliance/compliance.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { AccountsModule } from './modules/accounts/accounts.module';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -75,6 +77,8 @@ import jwtConfig from './config/jwt.config';
     IncidentsModule,
     ComplianceModule,
     MarketplaceModule,
+    OnboardingModule,
+    AccountsModule,
   ],
   providers: [
     {

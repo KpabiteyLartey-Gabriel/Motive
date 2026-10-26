@@ -14,7 +14,7 @@ const participants = [
   {
     role: 'Transport Companies',
     who: 'Businesses operating fleets — their own and owner-supplied cars',
-    does: 'Onboard drivers, run Work & Pay / DriveOn / Rental, engage maintenance and legal, invite staff by email or phone.',
+    does: 'Onboard drivers, run Work & Pay / DriveOn / Rental, engage maintenance, invite staff by email or phone.',
     gets: 'A full operating system: fleet, people, money and reports',
   },
   {
@@ -29,12 +29,6 @@ const participants = [
     does: 'Receive jobs with the vehicle\u2019s live location; fix, record and invoice — per service or by subscription.',
     gets: 'Steady work, clear job records, recorded payments',
   },
-  {
-    role: 'Legal Professionals',
-    who: 'Lawyers engaged per deal or retained by companies',
-    does: 'Witness contracts on recorded voice/video calls, facilitate terms, sign digitally and hold copies for all parties.',
-    gets: 'Paid witnessing and contract work, with evidence on file',
-  },
 ];
 
 const moneyFlow = [
@@ -45,7 +39,7 @@ const moneyFlow = [
 ];
 
 const trustLayer = [
-  'Witnessed digital contracts',
+  'Digital contracts signed on the platform',
   'Complete audit trail',
   'Licence & document expiry alerts',
   'Live tracking, speed & remote engine control',

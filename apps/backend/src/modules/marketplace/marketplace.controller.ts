@@ -1,16 +1,16 @@
 import {
-  Controller, Get, Post, Patch, Param, Body, UseGuards, UseInterceptors, UploadedFile,
+  Controller, Get, Post, Patch, Param, Query, Body, UseGuards, UseInterceptors, UploadedFile,
   BadRequestException, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { MarketplaceService } from './marketplace.service';
-import { ExpressInterestDto, SendMessageDto } from './dto/marketplace.dto';
+import { ExpressInterestDto, SendMessageDto, SetChatUsernameDto, StartDirectThreadDto } from './dto/marketplace.dto';
 import { StorageService } from '../storage/storage.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-const IMAGE_OR_DOC = /^(image\/(png|jpe?g|webp|gif)|application\/pdf)$/i;
+const IMAGE_OR_DOC = /^(image\/(png|jpe?g|webp|gif)|application\/pdf|audio\/[a-z0-9.+-]+)$/i;
 
 @ApiTags('Marketplace')
 @ApiBearerAuth('access-token')
@@ -68,6 +68,32 @@ export class MarketplaceController {
     return this.marketplace.releaseInterest(user.id, user.primaryRole, interestId);
   }
 
+  @Get('chat/username')
+  @ApiOperation({ summary: 'My chat username (null until created on first visit to Chat)' })
+  async chatUsername(@CurrentUser() user: any) {
+    return this.marketplace.getChatUsername(user.id);
+  }
+
+  @Post('chat/username')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Create my unique chat username (required before using Chat)' })
+  async setChatUsername(@CurrentUser() user: any, @Body() dto: SetChatUsernameDto) {
+    return this.marketplace.setChatUsername(user.id, dto.chatUsername);
+  }
+
+  @Get('chat/search')
+  @ApiOperation({ summary: 'Find people by chat username (name and @username only)' })
+  async searchChatUsers(@CurrentUser() user: any, @Query('q') q?: string) {
+    return this.marketplace.searchChatUsers(user.id, q || '');
+  }
+
+  @Post('chat/direct-thread')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Open a direct chat with a person by chat username' })
+  async directThread(@CurrentUser() user: any, @Body() dto: StartDirectThreadDto) {
+    return this.marketplace.startDirectThread(user.id, dto.chatUsername);
+  }
+
   @Get('threads')
   @ApiOperation({ summary: 'My chat conversations (owner or driver)' })
   async threads(@CurrentUser() user: any) {
@@ -96,7 +122,7 @@ export class MarketplaceController {
     fileFilter: (_req: any, file: any, cb: any) => cb(null, IMAGE_OR_DOC.test(file.mimetype || '')),
   }))
   async uploadAttachment(@Param('threadId') threadId: string, @CurrentUser() user: any, @UploadedFile() file: any) {
-    if (!file) throw new BadRequestException('No file received (field "file", images or PDF, max 10MB)');
+    if (!file) throw new BadRequestException('No file received (field "file", images, PDF or audio, max 10MB)');
     // participant check happens on send; store under the thread folder
     const stored = await this.storage.uploadFile(file, `chat/${threadId}`);
     return { url: stored.url, name: file.originalname || 'document' };

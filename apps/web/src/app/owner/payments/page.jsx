@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
-import { OWNER_NAV } from '@/lib/ownerNav';
+
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { paymentsApi } from '@/lib/api';
-
-const NAV = OWNER_NAV;
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -49,7 +46,7 @@ export default function OwnerPaymentsPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Payments">
+    <>
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-4">
@@ -99,6 +96,6 @@ export default function OwnerPaymentsPage() {
           </table>
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

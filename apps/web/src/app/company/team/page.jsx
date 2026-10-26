@@ -2,16 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { companiesApi, resolveVehiclePhoto } from '@/lib/api';
-import { COMPANY_NAV, COMPANY_ROLES } from '@/lib/companyNav';
+import { COMPANY_ROLES } from '@/lib/companyNav';
 
 const MEMBER_ROLES = [
   { value: 'COMPANY_ADMIN', label: 'Company Admin', hint: 'Full control, including user management' },
   { value: 'FLEET_MANAGER', label: 'Fleet Manager', hint: 'Vehicles, documents, maintenance, tracking & remote control' },
   { value: 'COMPANY_MEMBER', label: 'Company Member', hint: 'View fleet, contracts and payments' },
-  { value: 'LEGAL_PROFESSIONAL', label: 'Lawyer / Legal', hint: 'Facilitates and manages contracts & disputes' },
+  { value: 'DRIVER', label: 'Driver', hint: 'Joins with their Driver account — can drive company vehicles when needed. Their own account stays theirs.' },
+  { value: 'OWNER', label: 'Owner', hint: 'Joins with their Owner account — can place vehicles with this company to manage. Their own account stays theirs.' },
+  { value: 'SERVICE_PROVIDER', label: 'Service Provider', hint: 'Joins with their Service Provider business — can receive company maintenance/service work.' },
 ];
 const ROLE_LABEL = Object.fromEntries(MEMBER_ROLES.map((r) => [r.value, r.label]));
 
@@ -84,12 +85,8 @@ export default function CompanyTeamPage() {
     try {
       const res = await companiesApi.createInvite(company.id, form);
       const data = res.data?.data || {};
-      if (data.status === 'added') {
-        setNotice('That person already had an account, so they have been added to your company right away.');
-      } else {
-        setNotice('Invitation created. We sent the setup link by SMS (for phone numbers) and logged it for email — you can also copy the link below and share it yourself (WhatsApp, email, …).');
-        setLastLink(data.inviteLink || '');
-      }
+      setNotice('Invitation sent by email, in-app notification and SMS (for phone numbers). They join only when they accept the link — you can also copy the link below and share it yourself.');
+      setLastLink(data.inviteLink || '');
       setForm({ contact: '', role: 'FLEET_MANAGER', title: '' });
       await load();
     } catch (err) {
@@ -134,8 +131,8 @@ export default function CompanyTeamPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={COMPANY_NAV} title="Team">
-      <SectionHeader title={company ? `${company.name} — Team` : 'Team'} description="People who run this company: admins, fleet managers, members and legal" />
+    <>
+      <SectionHeader title={company ? `${company.name} — Team` : 'Team'} description="People who run this company: admins, fleet managers and members" />
       {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-lg mb-4">{error}</div>}
 
       {fetching ? (
@@ -147,7 +144,7 @@ export default function CompanyTeamPage() {
           {isAdmin && (
             <form onSubmit={add} className="bg-neutral-50 dark:bg-dark-card border border-neutral-200 dark:border-dark-border rounded-card p-4 mb-5">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white mb-1">Invite a user</p>
-              <p className="text-xs text-neutral-500 mb-3">Enter their email or phone number — no account needed. If they already have a +Motive account they are added right away; otherwise they receive a link (SMS for phone numbers) to set up their account, already tied to {company.name} with the role you pick. The link expires in 7 days.</p>
+              <p className="text-xs text-neutral-500 mb-3">Enter their email or phone number. They receive an invite link by email and, if they already have a +Motive account, in their app and by SMS. They join {company.name} with the role you pick only when they accept — their own Driver, Owner or Service Provider accounts stay theirs. The link expires in 7 days.</p>
               <div className="grid sm:grid-cols-4 gap-3">
                 <input required placeholder="person@example.com or +233…" className="input sm:col-span-2" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
                 <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
@@ -277,6 +274,6 @@ export default function CompanyTeamPage() {
           )}
         </>
       )}
-    </DashboardShell>
+    </>
   );
 }

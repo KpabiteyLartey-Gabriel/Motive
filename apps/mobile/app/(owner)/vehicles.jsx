@@ -449,7 +449,7 @@ export default function OwnerVehicles() {
             )}
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}><Field label="Mileage (km)" placeholder="85000" keyboardType="number-pad" value={form.mileage} onChangeText={(v) => set('mileage', v)} /></View>
-              <View style={{ flex: 1 }}><Field label="Value (GHS)" placeholder="95000" keyboardType="number-pad" value={form.estimatedValue} onChangeText={(v) => set('estimatedValue', v)} /></View>
+              <View style={{ flex: 1 }}><Field label="Value" placeholder="95000" keyboardType="number-pad" value={form.estimatedValue} onChangeText={(v) => set('estimatedValue', v)} /></View>
             </View>
             <View style={{ height: 16 }} />
             <PrimaryButton title="Publish vehicle" loading={saving} onPress={() => submitVehicle(true)} />

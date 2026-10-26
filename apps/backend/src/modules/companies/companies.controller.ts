@@ -116,4 +116,13 @@ export class InvitesController {
   async accept(@Param('token') token: string, @Body() dto: AcceptInviteDto) {
     return this.companiesService.acceptInvite(token, dto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @Post(':token/accept-existing')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Accept an invite while signed in: joins the company and keeps existing personal accounts' })
+  async acceptExisting(@Param('token') token: string, @CurrentUser() user: any) {
+    return this.companiesService.acceptInviteAsUser(token, user.id);
+  }
 }

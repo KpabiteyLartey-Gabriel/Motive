@@ -9,14 +9,16 @@ const ROLE_LABEL = {
   COMPANY_ADMIN: 'Company Admin',
   FLEET_MANAGER: 'Fleet Manager',
   COMPANY_MEMBER: 'Company Member',
-  LEGAL_PROFESSIONAL: 'Lawyer / Legal',
+  SERVICE_PROVIDER: 'Service Provider',
+  DRIVER: 'Driver',
+  OWNER: 'Owner',
 };
 
 const ROLE_REDIRECTS = {
   DRIVER: '/driver/dashboard', OWNER: '/owner/dashboard',
   COMPANY_ADMIN: '/company/dashboard', COMPANY_MEMBER: '/company/dashboard',
-  FLEET_MANAGER: '/fleet/dashboard', SERVICE_PROVIDER: '/service/dashboard',
-  LEGAL_PROFESSIONAL: '/legal/dashboard', ADMIN: '/admin/dashboard', SUPER_ADMIN: '/admin/dashboard',
+  FLEET_MANAGER: '/fleet/dashboard', SERVICE_PROVIDER: '/portal',
+  ADMIN: '/admin/dashboard', SUPER_ADMIN: '/admin/dashboard',
 };
 
 export default function InvitePage() {
@@ -27,6 +29,26 @@ export default function InvitePage() {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', confirm: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [signedInUser, setSignedInUser] = useState(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('gh_motive_user');
+      const access = localStorage.getItem('gh_motive_access_token');
+      if (stored && access) setSignedInUser(JSON.parse(stored));
+    } catch { /* not signed in */ }
+  }, []);
+
+  const acceptAsSignedIn = async () => {
+    setBusy(true); setError('');
+    try {
+      await invitesApi.acceptExisting(token);
+      router.push('/portal/account');
+    } catch (err) {
+      const msg = err.response?.data?.message;
+      setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Could not accept the invitation.');
+    } finally { setBusy(false); }
+  };
 
   useEffect(() => {
     invitesApi.resolve(token)
@@ -56,7 +78,7 @@ export default function InvitePage() {
       localStorage.setItem('gh_motive_access_token', accessToken);
       localStorage.setItem('gh_motive_refresh_token', refreshToken);
       localStorage.setItem('gh_motive_user', JSON.stringify(user));
-      router.push(ROLE_REDIRECTS[user.primaryRole] || '/dashboard');
+      router.push(ROLE_REDIRECTS[user.primaryRole] || '/portal');
     } catch (err) {
       const msg = err.response?.data?.message;
       setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Could not set up your account.');
@@ -85,6 +107,18 @@ export default function InvitePage() {
               company with that role, and you will sign in with it from now on.
             </p>
             {error && <div className="bg-danger/10 border border-danger/20 text-danger text-sm px-4 py-3 rounded-lg mb-4">{error}</div>}
+            {signedInUser ? (
+              <div className="space-y-3">
+                <p className="text-sm text-neutral-500">
+                  You are signed in as <strong>{signedInUser.firstName} {signedInUser.lastName}</strong> ({signedInUser.email || signedInUser.phone}).
+                  Accepting adds {invite.company?.name} to your accounts — your own Driver, Owner or Service Provider accounts stay exactly as they are.
+                </p>
+                <button type="button" disabled={busy} onClick={acceptAsSignedIn} className="btn-primary w-full text-[15px] disabled:opacity-50">
+                  {busy ? 'Joining…' : `Accept & join ${invite.company?.name}`}
+                </button>
+                <p className="text-xs text-neutral-400">Wrong account? Sign out first, then open this link again.</p>
+              </div>
+            ) : (
             <form onSubmit={submit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <input required className="input" placeholder="First name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
@@ -106,8 +140,9 @@ export default function InvitePage() {
                 {busy ? 'Setting up…' : `Set up my account & join ${invite.company?.name}`}
               </button>
             </form>
+            )}
             <p className="text-xs text-neutral-400 mt-4">
-              Already have an account? <Link href="/login" className="underline">Sign in</Link> and ask your company admin to add your existing account instead. This link expires {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString('en-GB') : 'in 7 days'}.
+              Already have an account? <Link href="/login" className="underline">Sign in</Link>, then open this link again to accept with your existing account. This link expires {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString('en-GB') : 'in 7 days'}.
             </p>
           </>
         )}

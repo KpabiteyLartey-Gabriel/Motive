@@ -141,7 +141,6 @@ export default function AboutPage() {
                 'Transport Companies',
                 'Fleet Managers',
                 'Maintenance Providers',
-                'Legal Professionals',
               ].map((role) => (
                 <div key={role} className="flex items-center gap-2.5 rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium text-ink-soft shadow-card dark:border-dark-border dark:bg-dark-card dark:text-neutral-200">
                   <svg className="h-3.5 w-3.5 shrink-0 text-brand-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">

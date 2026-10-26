@@ -2,6 +2,7 @@
 export const ADMIN_NAV = [
   { href: '/admin/dashboard',   icon: 'dashboard',   label: 'Dashboard' },
   { href: '/admin/users',       icon: 'users',       label: 'Users' },
+  { href: '/admin/verifications', icon: 'compliance', label: 'Verifications' },
   { href: '/admin/drivers',     icon: 'drivers',     label: 'Drivers' },
   { href: '/admin/owners',      icon: 'profile',     label: 'Owners' },
   { href: '/admin/companies',   icon: 'companies',   label: 'Companies' },

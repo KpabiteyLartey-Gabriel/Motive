@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UserRole, DriverStatus, OwnerStatus, VehicleStatus, CompanyStatus } from '@prisma/client';
-import { IsEnum } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -40,6 +40,23 @@ class VerifyVehicleDto {
   status: VehicleStatus;
 }
 
+class ManualVerifyDto {
+  @IsEnum(['IDENTITY', 'LICENCE', 'ALL'])
+  target: 'IDENTITY' | 'LICENCE' | 'ALL';
+
+  @IsBoolean()
+  @IsOptional()
+  verified?: boolean;
+}
+
+class RequestResubmissionDto {
+  @IsEnum(['IDENTITY', 'LICENCE', 'ALL'])
+  target: 'IDENTITY' | 'LICENCE' | 'ALL';
+
+  @IsString()
+  reason: string;
+}
+
 @ApiTags('Admin')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,6 +74,40 @@ export class AdminController {
     @Body() dto: { subject: string; body: string; role?: UserRole },
   ) {
     return this.adminService.createAnnouncement(user.id, dto);
+  }
+
+  // ── Manual verification (Super Admin only) ─────────────────
+  @Get('verifications')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Super Admin: unified Driver/Owner verification queue (National ID + driver licence), including test accounts' })
+  @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'status', required: false, description: 'PENDING_REVIEW | NOT_SUBMITTED | VERIFIED | NEEDS_LICENCE' })
+  async listVerifications(@Query('search') search?: string, @Query('status') status?: string) {
+    return this.adminService.listVerifications({ search, status });
+  }
+
+  @Patch('verifications/:userId')
+  @Roles(UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Super Admin: manually verify or un-verify a user\u2019s National ID, licence, or both (for issues and test accounts)' })
+  async manualVerify(
+    @Param('userId') userId: string,
+    @Body() dto: ManualVerifyDto,
+    @CurrentUser() actor: any,
+  ) {
+    return this.adminService.manualVerifyUser(userId, { target: dto.target, verified: dto.verified !== false }, actor.id);
+  }
+
+  @Post('verifications/:userId/request-resubmission')
+  @Roles(UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Super Admin: send a submission back with a reason — the user is emailed and notified in-app to resubmit' })
+  async requestResubmission(
+    @Param('userId') userId: string,
+    @Body() dto: RequestResubmissionDto,
+    @CurrentUser() actor: any,
+  ) {
+    return this.adminService.requestResubmission(userId, dto, actor.id);
   }
 
   // ── Stats ──────────────────────────────────────────────────
@@ -80,6 +131,13 @@ export class AdminController {
     @Query('status') status?: string,
   ) {
     return this.adminService.listDrivers({ page, limit, search, status });
+  }
+
+  @Post('drivers/provision/:userId')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a driver profile for a DRIVER-role account that has none (e.g. registered before profiles existed)' })
+  async provisionDriver(@Param('userId') userId: string, @CurrentUser() actor: any) {
+    return this.adminService.provisionDriverProfile(userId, actor.id);
   }
 
   @Patch('drivers/:id/status')

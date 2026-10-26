@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { contractsApi } from '@/lib/api';
-import { FLEET_NAV, FLEET_ROLES } from '@/lib/fleetNav';
+import { FLEET_ROLES } from '@/lib/fleetNav';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -29,7 +28,7 @@ export default function FleetContractsPage() {
   if (loading) return <div className="min-h-screen bg-chalk flex items-center justify-center"><div className="text-neutral-500 text-sm">Loading…</div></div>;
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={FLEET_NAV} title="Contracts">
+    <>
       <SectionHeader title="Contracts" description="Work & Pay, Rental and Driving On contracts involving your fleet" />
       {fetching ? (
         <div className="text-neutral-500 text-sm py-8 text-center">Loading contracts…</div>
@@ -57,6 +56,6 @@ export default function FleetContractsPage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

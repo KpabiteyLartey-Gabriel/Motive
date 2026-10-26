@@ -9,6 +9,9 @@ import { CompanyType, UserRole } from '@prisma/client';
 import { COMPANY_MEMBER_ROLES } from './dto/company-members.dto';
 import { SMS_PROVIDER } from '../../integrations/sms/sms-integration.module';
 import { type ISmsProvider } from '../../integrations/sms/interfaces/sms-provider.interface';
+import { NotificationsService } from '../notifications/notifications.service';
+import { MessagingService } from '../messaging/messaging.service';
+import { NotificationChannel } from '@prisma/client';
 
 const COMPANY_FAMILY: UserRole[] = [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MEMBER, UserRole.FLEET_MANAGER];
 const MEMBER_INCLUDE = {
@@ -31,6 +34,8 @@ export class CompaniesService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() @Inject(SMS_PROVIDER) private readonly smsProvider?: ISmsProvider,
+    @Optional() private readonly notifications?: NotificationsService,
+    @Optional() private readonly messaging?: MessagingService,
   ) {}
 
   async create(userId: string, data: any) {
@@ -263,22 +268,55 @@ export class CompaniesService {
   private async dispatchInvite(invite: any, token: string, companyName: string) {
     const link = this.inviteLink(token);
     const roleLabel = String(invite.role).replace(/_/g, ' ');
+    const subject = `Invitation to join ${companyName} on +Motive`;
+    const body = `${companyName} invited you to join them on +Motive as ${roleLabel}. Accept the invitation here: ${link} (expires in 7 days). If you already have a +Motive account, sign in first, then open the link and accept — your existing Driver, Owner or Service Provider accounts stay yours.`;
     try {
       if (invite.phone && this.smsProvider) {
         await this.smsProvider.send({
           to: invite.phone,
-          message: `+Motive: ${companyName} invited you to join as ${roleLabel}. Set up your account here: ${link} (expires in 7 days)`,
+          message: `+Motive: ${companyName} invited you to join as ${roleLabel}. Accept here: ${link} (expires in 7 days)`,
         });
       }
-      if (invite.email) {
-        // No SMTP provider is configured yet; the admin also gets the
-        // link in the API response so it can be shared directly.
-        this.logger.log(`[InviteEmail] To: ${invite.email} | ${companyName} invited you as ${roleLabel}: ${link}`);
+      // Already a +Motive user? The invite goes to their app and their inbox.
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          deletedAt: null,
+          OR: [
+            ...(invite.email ? [{ email: { equals: invite.email, mode: 'insensitive' as const } }] : []),
+            ...(invite.phone ? [{ phone: invite.phone }] : []),
+          ],
+        },
+        select: { id: true },
+      }).catch(() => null);
+      if (existingUser && this.notifications) {
+        const data = { inviteLink: link, companyId: invite.companyId, companyName, role: invite.role };
+        await this.notifications.send({ userId: existingUser.id, channel: NotificationChannel.IN_APP, type: 'COMPANY_INVITE', subject, body, data }).catch(() => null);
+        await this.notifications.send({ userId: existingUser.id, channel: NotificationChannel.EMAIL, type: 'COMPANY_INVITE', subject, body, data }).catch(() => null);
+      } else if (invite.email && this.messaging) {
+        await this.messaging.sendEmail(invite.email, subject, body).catch(() => null);
+      } else if (invite.email) {
+        this.logger.log(`[InviteEmail] To: ${invite.email} | ${subject}: ${link}`);
       }
     } catch (err) {
       this.logger.warn(`Invite delivery failed for invite ${invite.id}: ${(err as Error).message}`);
     }
     return link;
+  }
+
+  // Joining a company in a personal role also opens that personal account
+  // (empty, to be completed later) when the user does not have one yet.
+  private async ensurePersonalProfile(userId: string, role: UserRole, displayName: string) {
+    if (role === UserRole.DRIVER) {
+      await this.prisma.driver.upsert({ where: { userId }, create: { userId }, update: {} });
+    } else if (role === UserRole.OWNER) {
+      await this.prisma.owner.upsert({ where: { userId }, create: { userId }, update: {} });
+    } else if (role === UserRole.SERVICE_PROVIDER) {
+      await this.prisma.serviceProvider.upsert({
+        where: { userId },
+        create: { userId, businessName: displayName, serviceType: 'General services' },
+        update: {},
+      });
+    }
   }
 
   private safeInvite(invite: any) {
@@ -297,35 +335,10 @@ export class CompaniesService {
     await this.assertCompanyAdmin(companyId, requesterId, requesterRole);
     const { email, phone } = this.parseContact(dto.contact);
 
-    // Already registered? Add them straight to the company.
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        deletedAt: null,
-        OR: [
-          ...(email ? [{ email: { equals: email, mode: 'insensitive' as const } }] : []),
-          ...(phone ? [{ phone }] : []),
-        ],
-      },
-    });
-    if (existingUser) {
-      if (existingUser.email) {
-        const member = await this.addMember(companyId, requesterId, requesterRole, {
-          email: existingUser.email, role: dto.role, title: dto.title,
-        });
-        return { status: 'added', member };
-      }
-      // Phone-only account: join directly by user id.
-      const existing = await this.prisma.companyMember.findUnique({
-        where: { companyId_userId: { companyId, userId: existingUser.id } },
-      });
-      if (existing?.isActive) throw new ConflictException('This user is already an active member of the company');
-      const member = existing
-        ? await this.prisma.companyMember.update({ where: { id: existing.id }, data: { role: dto.role, title: dto.title, isActive: true, leftAt: null }, include: MEMBER_INCLUDE })
-        : await this.prisma.companyMember.create({ data: { companyId, userId: existingUser.id, role: dto.role, title: dto.title }, include: MEMBER_INCLUDE });
-      await this.syncUserRole(existingUser, dto.role, companyId, requesterId);
-      return { status: 'added', member };
-    }
-
+    // Invites always require acceptance — even for people who already
+    // have a +Motive account. They sign in, open the link, and accept;
+    // their personal accounts (Driver / Owner / Service Provider) are
+    // never changed by joining a company.
     // Reuse a pending invite for the same contact (rotates the token).
     const pending = await this.prisma.companyInvite.findFirst({
       where: { companyId, status: 'PENDING', ...(email ? { email } : { phone }) },
@@ -423,7 +436,7 @@ export class CompaniesService {
       },
     });
     if (clash) {
-      throw new ConflictException('An account with this email/phone already exists. Sign in, then ask the company admin to add your account from Team.');
+      throw new ConflictException('An account with this email/phone already exists. Sign in, then open this invite link again and accept.');
     }
 
     const roleRecord = await this.prisma.role.findUnique({ where: { name: invite.role } });
@@ -441,6 +454,7 @@ export class CompaniesService {
       },
     });
 
+    await this.ensurePersonalProfile(user.id, invite.role, `${dto.firstName.trim()} ${dto.lastName.trim()}`.trim());
     const member = await this.prisma.companyMember.create({
       data: { companyId: invite.companyId, userId: user.id, role: invite.role, title: invite.title },
       include: MEMBER_INCLUDE,
@@ -457,5 +471,48 @@ export class CompaniesService {
       role: invite.role,
       member,
     };
+  }
+
+  // Accept while signed in: the company role is added on top of the
+  // user's existing accounts, which are left exactly as they are.
+  async acceptInviteAsUser(token: string, currentUserId: string) {
+    const invite: any = await this.getValidInvite(token);
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { id: true, firstName: true, lastName: true, email: true, phone: true, primaryRole: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const emailMatches = invite.email && user.email && invite.email.toLowerCase() === user.email.toLowerCase();
+    const phoneMatches = invite.phone && user.phone && invite.phone.replace(/[\s-]/g, '') === user.phone.replace(/[\s-]/g, '');
+    if ((invite.email || invite.phone) && !emailMatches && !phoneMatches) {
+      throw new ForbiddenException(
+        `This invitation was sent to ${invite.email || invite.phone}. Sign in with that account to accept it.`,
+      );
+    }
+
+    const existing = await this.prisma.companyMember.findUnique({
+      where: { companyId_userId: { companyId: invite.companyId, userId: user.id } },
+    });
+    if (existing?.isActive) throw new ConflictException('You are already an active member of this company');
+
+    await this.ensurePersonalProfile(user.id, invite.role, `${user.firstName} ${user.lastName}`.trim());
+    const member = existing
+      ? await this.prisma.companyMember.update({
+          where: { id: existing.id },
+          data: { role: invite.role, title: invite.title, isActive: true, leftAt: null },
+          include: MEMBER_INCLUDE,
+        })
+      : await this.prisma.companyMember.create({
+          data: { companyId: invite.companyId, userId: user.id, role: invite.role, title: invite.title },
+          include: MEMBER_INCLUDE,
+        });
+    await this.syncUserRole(user, invite.role, invite.companyId, invite.invitedBy);
+    await this.prisma.companyInvite.update({
+      where: { id: invite.id },
+      data: { status: 'ACCEPTED' as any, acceptedUserId: user.id, acceptedAt: new Date() },
+    });
+
+    return { status: 'joined', company: invite.company, role: invite.role, member };
   }
 }

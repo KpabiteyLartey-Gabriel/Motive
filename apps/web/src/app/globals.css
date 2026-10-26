@@ -39,9 +39,6 @@
   .btn-secondary, .btn-graphite {
     @apply inline-flex min-h-[44px] items-center justify-center gap-2 px-5 py-2.5 rounded-button bg-ink text-white text-sm font-semibold transition hover:bg-ink-soft active:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none dark:bg-white dark:text-ink dark:hover:bg-brand-50;
   }
-  .btn-concrete {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 px-5 py-2.5 rounded-button bg-mist-deep text-ink text-sm font-semibold transition hover:bg-line focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:opacity-50 disabled:pointer-events-none;
-  }
   .btn-ghost-light {
     @apply inline-flex min-h-[44px] items-center justify-center gap-2 px-5 py-2.5 rounded-button border border-white/70 bg-transparent text-white text-sm font-semibold transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-50 disabled:pointer-events-none;
   }
@@ -62,19 +59,13 @@
   .field-error { @apply mt-1.5 text-[13px] font-medium leading-snug text-danger; }
 
   /* Surfaces */
-  .card-rivian, .card {
+  .card {
     @apply rounded-card border border-line bg-white shadow-card dark:border-dark-border dark:bg-dark-card dark:shadow-none;
   }
   .card-hover { @apply transition hover:shadow-lift hover:border-brand-200; }
-  .card-header { @apply border-b border-line px-5 py-4 sm:px-6 dark:border-dark-border; }
-  .card-body { @apply px-5 py-5 sm:px-6; }
 
   /* Badges */
   .badge { @apply inline-flex min-h-[24px] items-center gap-1.5 px-2.5 py-0.5 rounded-chip text-xs font-semibold; }
-  .badge-success { @apply badge bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-300; }
-  .badge-warning { @apply badge bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300; }
-  .badge-danger { @apply badge bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300; }
-  .badge-neutral { @apply badge bg-mist text-steel dark:bg-dark-elevated dark:text-neutral-300; }
 
   /* Type helpers */
   .section-label { @apply text-[13px] font-semibold text-brand-700 dark:text-brand-400; }
@@ -83,7 +74,6 @@
   .money { @apply font-mono tabular-nums tracking-tight; }
 
   /* Tables */
-  .table-wrap { @apply overflow-x-auto rounded-card border border-line bg-white shadow-card dark:border-dark-border dark:bg-dark-card; }
   .data-table { @apply w-full min-w-[560px] text-left text-sm; }
   .data-table thead th { @apply bg-mist px-4 py-3 text-xs font-semibold text-steel dark:bg-dark-surface dark:text-neutral-400; }
   .data-table tbody td { @apply border-t border-line px-4 py-3.5 align-middle dark:border-dark-border; }
@@ -114,6 +104,24 @@
 @keyframes hero-zoom {
   from { transform: scale(1); }
   to { transform: scale(1.08); }
+}
+@keyframes guide-left {
+  0%, 100% { transform: translateX(10px); opacity: 0.55; }
+  50% { transform: translateX(-16px); opacity: 1; }
+}
+@keyframes guide-right {
+  0%, 100% { transform: translateX(-10px); opacity: 0.55; }
+  50% { transform: translateX(16px); opacity: 1; }
+}
+@keyframes guide-up {
+  0%, 100% { transform: translateY(8px); opacity: 0.55; }
+  50% { transform: translateY(-10px); opacity: 1; }
+}
+.guide-arrow-left { animation: guide-left 1.1s ease-in-out infinite; }
+.guide-arrow-right { animation: guide-right 1.1s ease-in-out infinite; }
+.guide-arrow-up { animation: guide-up 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .guide-arrow-left, .guide-arrow-right, .guide-arrow-up { animation: none; }
 }
 @keyframes dot-ping {
   0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }

@@ -6,7 +6,9 @@ export const COMPANY_MEMBER_ROLES = [
   UserRole.COMPANY_ADMIN,
   UserRole.FLEET_MANAGER,
   UserRole.COMPANY_MEMBER,
-  UserRole.LEGAL_PROFESSIONAL,
+  UserRole.SERVICE_PROVIDER,
+  UserRole.DRIVER,
+  UserRole.OWNER,
 ] as const;
 
 export class AddCompanyMemberDto {

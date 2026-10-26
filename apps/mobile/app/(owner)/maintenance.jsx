@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
@@ -25,16 +25,6 @@ export default function OwnerMaintenance() {
 
   useEffect(() => { if (user) load(); }, [user, load]);
   const onRefresh = () => { setRefreshing(true); load(); };
-
-  const approve = async (id) => {
-    try {
-      await maintenanceApi.create({ status: 'APPROVED' }); // patch would be updateStatus
-      Alert.alert('Approved', 'Maintenance request approved.');
-      load();
-    } catch (e) {
-      Alert.alert('Error', e.response?.data?.message || 'Could not approve.');
-    }
-  };
 
   if (loading || fetching) {
     return (

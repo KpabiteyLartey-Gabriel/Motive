@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, TextInput, Image } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 import { useTheme, palette } from '../../lib/theme';
 import { useAuth, fmtGHS, fmtDate } from '../../lib/useAuth';
-import { contractsApi } from '../../lib/api';
+import { contractsApi, resolveVehiclePhoto } from '../../lib/api';
 
 function InfoRow({ label, value, colors }) {
   return (
@@ -23,6 +24,8 @@ export default function DriverContract() {
   const [accepting, setAccepting] = useState(false);
   const [code, setCode] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [seenVehicle, setSeenVehicle] = useState(false);
+  const params = useLocalSearchParams();
 
   const confirmWithCode = async () => {
     if (!code.trim()) { Alert.alert('Enter your code', 'Paste the access code the owner sent you in chat.'); return; }
@@ -40,15 +43,24 @@ export default function DriverContract() {
 
   const load = useCallback(async () => {
     try {
-      const res = await contractsApi.list({ limit: 5 });
+      const res = await contractsApi.list({ limit: 20 });
       const contracts = res.data?.data?.contracts || [];
-      const active = contracts.find((c) => c.status === 'ACTIVE') || contracts[0] || null;
-      setContract(active);
+      // A shared link/chat card opens its exact contract; otherwise surface a
+      // contract waiting for confirmation before older active ones.
+      const picked = (params.contract && contracts.find((c) => c.id === params.contract))
+        || contracts.find((c) => c.requiresCode)
+        || contracts.find((c) => c.status === 'ACTIVE')
+        || contracts[0] || null;
+      setContract(picked);
     } catch {}
     setFetching(false);
-  }, []);
+  }, [params.contract]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
+
+  // The seen-vehicle attestation is per contract: never carry a tick (or a
+  // typed code) from one contract onto another.
+  useEffect(() => { setSeenVehicle(false); setCode(''); }, [contract?.id]);
 
   const handleAccept = async () => {
     Alert.alert('Accept Contract', 'Do you accept the terms of this contract?', [
@@ -93,6 +105,31 @@ export default function DriverContract() {
   const rental = contract.rentalTerms;
   const drivingOn = contract.drivingOnTerms;
 
+  const plainWap = (() => {
+    if (!wap) return null;
+    const freqWord = { DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month' }[wap.installmentFrequency] || 'week';
+    const total = Number(wap.totalPayable); const inst = Number(wap.installmentAmount); const count = Number(wap.totalInstallments);
+    const last = total - inst * (count - 1);
+    const grace = Math.max(0, Math.round(Number(wap.gracePeriodDays) || 0));
+    const countingStart = new Date(); countingStart.setDate(countingStart.getDate() + grace);
+    const firstDue = new Date(countingStart);
+    const finish = new Date(countingStart);
+    if (wap.installmentFrequency === 'MONTHLY') { firstDue.setMonth(firstDue.getMonth() + 1); finish.setMonth(finish.getMonth() + count); }
+    else if (wap.installmentFrequency === 'DAILY') { firstDue.setDate(firstDue.getDate() + 1); finish.setDate(finish.getDate() + count); }
+    else { firstDue.setDate(firstDue.getDate() + 7); finish.setDate(finish.getDate() + count * 7); }
+    const started = contract.status === 'ACTIVE' && contract.startDate;
+    return `You pay ${fmtGHS(wap.depositAmount)} deposit upfront, then ${fmtGHS(inst)} every ${freqWord} for ${count} payments — ${fmtGHS(total)} in total${last !== inst ? `, with the last payment ${fmtGHS(last)}` : ''}. Grace period: ${grace} day${grace === 1 ? '' : 's'}. ${started ? `Counting started on ${fmtDate(contract.startDate)} (after your grace period), and the last payment is due around ${fmtDate(contract.endDate || finish)}.` : `When you confirm with your access code, your ${grace}-day grace period runs first. Counting starts on ${fmtDate(countingStart)} if you confirm today, your first payment is due ${fmtDate(firstDue)}, and the last around ${fmtDate(finish)}.`}`;
+  })();
+
+  const plainDriveOn = (() => {
+    if (!drivingOn) return null;
+    const t = contract.terms || {};
+    const rm = contract.responsibilityMatrix || {};
+    return `You bring ${fmtGHS(drivingOn.dailySalesAmount)} sales every day, paid ${String(drivingOn.paymentFrequency || 'DAILY').toLowerCase()}${t.duration?.value ? `, for ${t.duration.value} ${String(t.duration.unit || '').toLowerCase()}` : ''}. You keep everything you make above the sales amount. Grace period: ${t.gracePeriodDays ?? 0} days from the day you confirm.${t.offDays ? ` Off days: ${t.offDays}.` : ''}${rm.maintenance ? ` Maintenance: ${String(rm.maintenance).toLowerCase()} takes care of it.` : ''}${rm.fuel ? ` Fuel: ${String(rm.fuel).toLowerCase()} pays.` : ''}`;
+  })();
+
+  const vehicleMeta = [contract.vehicle?.color, contract.vehicle?.region, contract.vehicle?.location].filter(Boolean).join(' · ');
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
@@ -113,11 +150,44 @@ export default function DriverContract() {
           </View>
         </View>
 
+        {!!contract.vehicle?.imageUrls?.[0] && (
+          <Image source={{ uri: resolveVehiclePhoto(contract.vehicle.imageUrls[0]) }} style={{ width: '100%', height: 180, borderRadius: 16, marginBottom: 12 }} accessibilityLabel="Vehicle photo" />
+        )}
+        {!!vehicleMeta && <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 12 }}>{vehicleMeta}</Text>}
+
+        {plainWap && (
+          <View style={[s.codeBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>Your contract in plain words</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{plainWap}</Text>
+            {(contract.terms?.offDays || contract.responsibilityMatrix?.maintenance) && (
+              <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 6 }}>
+                {contract.terms?.offDays ? `Off days: ${contract.terms.offDays}. ` : ''}
+                {contract.responsibilityMatrix?.maintenance ? `Maintenance: ${String(contract.responsibilityMatrix.maintenance).toLowerCase()} takes care of it.` : ''}
+              </Text>
+            )}
+            <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 6 }}>+Motive records your agreement and processes your payments. It does not verify the vehicle — confirm the vehicle's documents in person before accepting.</Text>
+          </View>
+        )}
+
+        {plainDriveOn && (
+          <View style={[s.codeBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>Your DriveOn contract in plain words</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{plainDriveOn}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 6 }}>+Motive records your agreement and processes your payments. It does not verify the vehicle — confirm the vehicle's documents in person before accepting.</Text>
+          </View>
+        )}
+
         {/* Confirm with Explore access code — only for approved drivers issued a code */}
         {contract.requiresCode && (
           <View style={[s.codeBox, { borderColor: colors.border, backgroundColor: colors.brandSoft }]}>
             <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>Confirm with your access code</Text>
             <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 }}>The owner approved you for this vehicle and sent a unique code in your chat. Enter it here to confirm and sign this contract. This box only appears when a code has been generated for you.</Text>
+            <TouchableOpacity onPress={() => setSeenVehicle((v) => !v)} activeOpacity={0.8} style={{ flexDirection: 'row', gap: 10, marginTop: 12 }} accessibilityRole="checkbox" accessibilityState={{ checked: seenVehicle }}>
+              <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: palette.brand, backgroundColor: seenVehicle ? palette.brand : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                {seenVehicle && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>✓</Text>}
+              </View>
+              <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 19, flex: 1 }}>I have physically seen this vehicle, and I have confirmed its documents are in the owner's name.</Text>
+            </TouchableOpacity>
             <TextInput
               style={[s.codeInput, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
               placeholder="••••••"
@@ -127,7 +197,7 @@ export default function DriverContract() {
               value={code}
               onChangeText={(v) => setCode(v.replace(/[^0-9]/g, ''))}
             />
-            <TouchableOpacity onPress={confirmWithCode} disabled={confirming} style={[s.acceptBtn, { backgroundColor: palette.brand, marginBottom: 0 }]}>
+            <TouchableOpacity onPress={confirmWithCode} disabled={confirming || !seenVehicle} style={[s.acceptBtn, { backgroundColor: palette.brand, marginBottom: 0, opacity: confirming || !seenVehicle ? 0.45 : 1 }]}>
               {confirming ? <ActivityIndicator color="#fff" /> : <Text style={[s.acceptBtnText, { color: '#fff' }]}>Confirm contract</Text>}
             </TouchableOpacity>
           </View>
@@ -164,9 +234,12 @@ export default function DriverContract() {
               <InfoRow label="Total Payable"    value={fmtGHS(wap.totalPayable)} colors={colors} />
               <InfoRow label="Deposit"          value={fmtGHS(wap.depositAmount)} colors={colors} />
               <InfoRow label="Installment"      value={`${fmtGHS(wap.installmentAmount)} / ${wap.installmentFrequency}`} colors={colors} />
+              <InfoRow label="Grace Period"     value={`${wap.gracePeriodDays ?? 0} days after you confirm — counting starts when it ends`} colors={colors} />
               <InfoRow label="Total Paid"       value={fmtGHS(wap.totalPaid)} colors={colors} />
               <InfoRow label="Remaining"        value={fmtGHS(wap.remainingBalance)} colors={colors} />
               <InfoRow label="Paid / Total"     value={`${wap.paidInstallments} / ${wap.totalInstallments} installments`} colors={colors} />
+              {!!contract.terms?.offDays && <InfoRow label="Off days" value={contract.terms.offDays} colors={colors} />}
+              {!!contract.responsibilityMatrix?.maintenance && <InfoRow label="Maintenance" value={`${String(contract.responsibilityMatrix.maintenance).toLowerCase()} takes care of it`} colors={colors} />}
               <InfoRow label="Ownership Eligible" value={wap.ownershipEligible ? 'Yes' : 'Not yet'} colors={colors} />
             </View>
           </>
@@ -192,6 +265,9 @@ export default function DriverContract() {
             <Text style={[s.section, { color: colors.textSecondary }]}>Driving On Terms</Text>
             <View style={[s.infoBlock, { borderColor: colors.border }]}>
               <InfoRow label="Daily Amount"   value={`${fmtGHS(drivingOn.dailySalesAmount)} / ${drivingOn.paymentFrequency}`} colors={colors} />
+              {!!contract.terms?.duration?.value && <InfoRow label="Runs for" value={`${contract.terms.duration.value} ${String(contract.terms.duration.unit || '').toLowerCase()}`} colors={colors} />}
+              <InfoRow label="Grace Period" value={`${contract.terms?.gracePeriodDays ?? 0} days after you confirm`} colors={colors} />
+              {!!contract.terms?.offDays && <InfoRow label="Off days" value={contract.terms.offDays} colors={colors} />}
               <InfoRow label="Driver pays fuel"        value={drivingOn.driverPaysFuel ? 'Yes' : 'No'} colors={colors} />
               <InfoRow label="Driver pays maintenance" value={drivingOn.driverPaysMaintenance ? 'Yes' : 'No'} colors={colors} />
             </View>

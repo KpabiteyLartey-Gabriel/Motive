@@ -2,13 +2,13 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateDriverProfileDto } from './dto/create-driver-profile.dto';
 import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
 import { StorageService } from '../storage/storage.service';
-import { Optional } from '@nestjs/common';
+import { BadRequestException, Optional } from '@nestjs/common';
+import { GHANA_CARD_FORMAT_MESSAGE, normalizeGhanaCardNumber } from '../../common/ghana-card';
 
 @Injectable()
 export class DriversService {
@@ -21,6 +21,11 @@ export class DriversService {
     const existing = await this.prisma.driver.findUnique({ where: { userId } });
     if (existing) {
       throw new ConflictException('Driver profile already exists for this user');
+    }
+    if ((dto as any).ghanaCardNumber) {
+      const normalized = normalizeGhanaCardNumber((dto as any).ghanaCardNumber);
+      if (!normalized) throw new BadRequestException(GHANA_CARD_FORMAT_MESSAGE);
+      (dto as any).ghanaCardNumber = normalized;
     }
 
     if (dto.licenseNumber) {
@@ -46,6 +51,15 @@ export class DriversService {
     const data: any = {};
     for (const key of ['licenseNumber', 'licenseClass', 'identityDocType', 'identityDocNumber', 'ghanaCardNumber', 'address', 'city', 'region'] as const) {
       if (dto[key] !== undefined) data[key] = dto[key];
+    }
+    if (data.ghanaCardNumber) {
+      const normalized = normalizeGhanaCardNumber(data.ghanaCardNumber);
+      if (!normalized) throw new BadRequestException(GHANA_CARD_FORMAT_MESSAGE);
+      data.ghanaCardNumber = normalized;
+    }
+    if (data.identityDocNumber && (data.identityDocType === 'GHANA_CARD' || !data.identityDocType)) {
+      const normalized = normalizeGhanaCardNumber(data.identityDocNumber);
+      if (normalized) data.identityDocNumber = normalized;
     }
     if (dto.licenseExpiryDate !== undefined) {
       data.licenseExpiryDate = dto.licenseExpiryDate ? new Date(dto.licenseExpiryDate) : null;
@@ -190,25 +204,5 @@ export class DriversService {
       drivers,
       pagination: { total, page, limit, totalPages: Math.ceil(total / (Math.max(1, Math.floor(Number(limit)) || 20))) },
     };
-  }
-
-  async authorizeDriverAccess(driverId: string, requestingUserId: string) {
-    const driver = await this.prisma.driver.findUnique({
-      where: { id: driverId },
-      select: { userId: true },
-    });
-
-    if (!driver) throw new NotFoundException('Driver not found');
-
-    if (driver.userId !== requestingUserId) {
-      // Check if admin
-      const user = await this.prisma.user.findUnique({
-        where: { id: requestingUserId },
-        select: { primaryRole: true },
-      });
-      if (!['ADMIN', 'SUPER_ADMIN'].includes(user?.primaryRole)) {
-        throw new ForbiddenException('Access denied to this driver record');
-      }
-    }
   }
 }

@@ -27,7 +27,9 @@ function NavList({ navItems, pathname, onNavigate }) {
   return (
     <nav className="space-y-1" aria-label="Dashboard">
       {navItems.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + '/');
+        const active = item.exact
+          ? pathname === item.href
+          : pathname === item.href || pathname.startsWith(item.href + '/');
         return (
           <Link
             key={item.href}
@@ -63,7 +65,7 @@ export default function DashboardShell({ user, loading, logout, navItems, title,
   if (loading) return <DashboardSkeleton />;
 
   const initials = user ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() : 'GH';
-  const roleLabel = (user?.primaryRole || '').replace(/_/g, ' ');
+  const roleLabel = user?.primaryRole === 'PENDING' ? 'User' : (user?.primaryRole || '').replace(/_/g, ' ');
 
   const sidebar = (
     <div className="flex h-full flex-col">

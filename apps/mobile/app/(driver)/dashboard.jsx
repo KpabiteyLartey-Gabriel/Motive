@@ -163,7 +163,7 @@ export default function DriverDashboard() {
           <QuickLink icon="car-outline" label="My Vehicle" sub="Assigned vehicle" colors={colors} onPress={() => router.push('/(driver)/vehicle')} />
           <QuickLink icon="warning-outline" label="Incidents" sub="Report an incident" colors={colors} onPress={() => router.push('/(driver)/incidents')} />
           <QuickLink icon="build-outline" label="Maintenance" sub="Report a problem" colors={colors} onPress={() => router.push('/(driver)/maintenance')} />
-          <QuickLink icon="notifications-outline" label="Alerts" sub="Payments & updates" colors={colors} badge={unread > 0 ? String(unread > 9 ? '9+' : unread) : null} onPress={() => router.push('/(driver)/notifications')} />
+          <QuickLink icon="scale-outline" label="Disputes" sub="Raise or track a case" colors={colors} onPress={() => router.push('/(driver)/disputes')} />
         </View>
 
         {/* Promo banner */}

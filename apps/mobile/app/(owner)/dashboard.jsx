@@ -134,6 +134,9 @@ export default function OwnerDashboard() {
           <QuickLink icon="card-outline" label="Payments" sub="Money you received" colors={colors} onPress={() => router.push('/(owner)/payments')} />
           <QuickLink icon="document-text-outline" label="Contracts" sub="Work & Pay, rentals" colors={colors} onPress={() => router.push('/(owner)/contracts')} />
           <QuickLink icon="navigate-outline" label="Track Vehicle" sub="Live locations" colors={colors} onPress={() => router.push('/(owner)/tracking')} />
+          <QuickLink icon="people-outline" label="My Drivers" sub="Drivers on your vehicles" colors={colors} onPress={() => router.push('/(owner)/drivers')} />
+          <QuickLink icon="build-outline" label="Maintenance" sub="Service & repairs" colors={colors} onPress={() => router.push('/(owner)/maintenance')} />
+          <QuickLink icon="scale-outline" label="Disputes" sub="Raise or track a case" colors={colors} onPress={() => router.push('/(owner)/disputes')} />
         </View>
 
         {/* Promo banner */}

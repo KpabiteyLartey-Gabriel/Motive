@@ -77,7 +77,7 @@ export class DisputesService {
     if (type) where.type = type;
 
     // Non-admins and non-legal see only their own disputes
-    const privileged: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.LEGAL_PROFESSIONAL];
+    const privileged: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
     if (!privileged.includes(userRole as UserRole)) {
       where.parties = { some: { userId } };
     }
@@ -108,7 +108,7 @@ export class DisputesService {
     });
     if (!dispute) throw new NotFoundException('Dispute not found');
 
-    const privileged = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.LEGAL_PROFESSIONAL, 'ANY'];
+    const privileged = [UserRole.ADMIN, UserRole.SUPER_ADMIN, 'ANY'];
     if (!privileged.includes(userRole as any)) {
       const isParty = dispute.parties.some((p) => p.userId === userId);
       if (!isParty) throw new ForbiddenException('Access denied to this dispute');
@@ -123,9 +123,9 @@ export class DisputesService {
 
     // Only admins/legal can post internal notes
     if (dto.isInternal) {
-      const privileged: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.LEGAL_PROFESSIONAL];
+      const privileged: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
       if (!privileged.includes(userRole as UserRole)) {
-        throw new ForbiddenException('Only legal/admin users can post internal notes');
+        throw new ForbiddenException('Only admin users can post internal notes');
       }
     }
 
@@ -169,9 +169,9 @@ export class DisputesService {
 
   // ── Resolve ────────────────────────────────────────────────
   async resolve(disputeId: string, userId: string, dto: ResolveDisputeDto, userRole: string) {
-    const privileged: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.LEGAL_PROFESSIONAL];
+    const privileged: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
     if (!privileged.includes(userRole as UserRole)) {
-      throw new ForbiddenException('Only legal/admin users can resolve disputes');
+      throw new ForbiddenException('Only admin users can resolve disputes');
     }
 
     const dispute = await this.prisma.dispute.findUnique({ where: { id: disputeId } });

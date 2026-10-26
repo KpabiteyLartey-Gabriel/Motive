@@ -72,11 +72,3 @@ export async function registerPushToken() {
   }
 }
 
-export async function unregisterPushToken() {
-  try {
-    if (registeredToken) {
-      await notificationsApi.removePushToken(registeredToken);
-      registeredToken = null;
-    }
-  } catch {}
-}

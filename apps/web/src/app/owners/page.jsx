@@ -30,7 +30,7 @@ const benefits = [
   },
   {
     title: 'Witnessed Contracts & Safe Transfer',
-    description: 'Invite a legal professional to witness and facilitate your deal on a recorded call, sign digitally, and — when a Work & Pay contract completes — follow the formal, verified ownership-transfer workflow.',
+    description: 'Sign the deal digitally on the platform, and — when a Work & Pay contract completes — follow the formal, verified ownership-transfer workflow.',
   },
 ];
 

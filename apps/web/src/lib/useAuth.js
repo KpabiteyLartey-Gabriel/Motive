@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { authApi } from '@/lib/api';
 
 export function useAuth({ requiredRoles } = {}) {
   const router = useRouter();
@@ -30,7 +31,17 @@ export function useAuth({ requiredRoles } = {}) {
 
       if (rolesKey) {
         const allowed = rolesKey.split(',');
-        if (!allowed.includes(parsed.primaryRole)) {
+        // A user can hold several accounts at once (Driver + Owner +
+        // Service Provider + company roles), so any held role qualifies,
+        // not just the primary one.
+        const held = new Set([parsed.primaryRole]);
+        const roleList = Array.isArray(parsed.roles) ? parsed.roles : [];
+        for (const r of roleList) {
+          if (typeof r === 'string') held.add(r);
+          else if (r?.role?.name) held.add(r.role.name);
+          else if (r?.name) held.add(r.name);
+        }
+        if (!allowed.some((role) => held.has(role))) {
           routerRef.current.replace('/login');
           return;
         }
@@ -38,6 +49,25 @@ export function useAuth({ requiredRoles } = {}) {
 
       setUser(parsed);
       setLoading(false);
+
+      // The stored user is a login-time snapshot: refresh it so changes
+      // made elsewhere (admin verification, profile updates, suspension)
+      // show up without forcing a re-login.
+      authApi.me()
+        .then(async (res) => {
+          const fresh = res.data?.data;
+          if (!fresh?.id) return;
+          const merged = { ...parsed, ...fresh };
+          localStorage.setItem('gh_motive_user', JSON.stringify(merged));
+          setUser(merged);
+
+          // Accounts with an unverified email finish email verification
+          // first; account-type setup happens later.
+          if (merged.email && !merged.emailVerifiedAt && !window.location.pathname.startsWith('/verify-email')) {
+            routerRef.current.replace('/verify-email');
+          }
+        })
+        .catch(() => {});
     } catch {
       routerRef.current.replace('/login');
     }

@@ -22,6 +22,8 @@ export default function OwnerLayout() {
     headerShadowVisible: false,
   };
 
+  // Only four tabs: Home, Explore, Messages, Profile. Everything else is a
+  // hidden screen reached from Home Quick Links or the notification bell.
   return (
     <Tabs screenOptions={screenOpts}>
       <Tabs.Screen
@@ -34,30 +36,14 @@ export default function OwnerLayout() {
         }}
       />
       <Tabs.Screen
-        name="vehicles"
+        name="explore"
         options={{
-          title: 'My Vehicles',
-          tabBarLabel: 'Vehicles',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="vehicle" color={color} size={size} focused={focused} />,
+          title: 'Explore',
+          tabBarLabel: 'Explore',
+          tabBarIcon: ({ color, size, focused }) => <TabIcon name="explore" color={color} size={size} focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="drivers"
-        options={{
-          title: 'My Drivers',
-          tabBarLabel: 'Drivers',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="drivers" color={color} size={size} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="payments"
-        options={{
-          title: 'Payments',
-          tabBarLabel: 'Payments',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="payments" color={color} size={size} focused={focused} />,
-        }}
-      />
-            <Tabs.Screen
         name="messages"
         options={{
           title: 'Messages',
@@ -65,31 +51,23 @@ export default function OwnerLayout() {
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="messages" color={color} size={size} focused={focused} />,
         }}
       />
-<Tabs.Screen
-        name="notifications"
-        options={{
-          title: 'Notifications',
-          tabBarLabel: 'Alerts',
-          tabBarIcon: ({ color, size, focused }) => <TabIcon name="notifications" color={color} size={size} focused={focused} />,
-        }}
-      />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Settings',
-          tabBarLabel: 'Settings',
+          title: 'Profile',
+          tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size, focused }) => <TabIcon name="settings" color={color} size={size} focused={focused} />,
         }}
       />
-      {/* Hidden screens — reachable from other tabs, not shown in tab bar */}
+      {/* Hidden screens — reached via Home Quick Links / bell, not the tab bar */}
+      <Tabs.Screen name="vehicles"      options={{ href: null, title: 'My Vehicles' }} />
+      <Tabs.Screen name="drivers"       options={{ href: null, title: 'My Drivers' }} />
+      <Tabs.Screen name="payments"      options={{ href: null, title: 'Payments' }} />
+      <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
+      <Tabs.Screen name="contracts"     options={{ href: null, title: 'Contracts & Codes' }} />
       <Tabs.Screen name="maintenance"   options={{ href: null, title: 'Maintenance' }} />
       <Tabs.Screen name="disputes"      options={{ href: null, title: 'Disputes' }} />
-            <Tabs.Screen name="contracts"   options={{ href: null, title: 'Contracts & Codes' }} />
-<Tabs.Screen name="tracking"      options={{ href: null, title: 'Tracking' }} />
+      <Tabs.Screen name="tracking"      options={{ href: null, title: 'Tracking' }} />
     </Tabs>
   );
 }
-
-
-
-

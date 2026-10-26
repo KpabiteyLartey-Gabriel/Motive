@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { StatCard, SectionHeader, StatusBadge } from '@/components/dashboard/DashboardUI';
-import { ADMIN_NAV, AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
+import { AdminTable, AdminPagination, fmt } from '@/components/dashboard/AdminHelpers';
 import { adminApi } from '@/lib/api';
 
 const ROLE_BADGE = {
@@ -14,7 +13,6 @@ const ROLE_BADGE = {
   COMPANY_MEMBER:      { bg: 'bg-solar-yellow/10', text: 'text-solar-yellow',      label: 'Company Member' },
   FLEET_MANAGER:       { bg: 'bg-success/10',      text: 'text-success',     label: 'Fleet Manager' },
   SERVICE_PROVIDER:    { bg: 'bg-warning/10',      text: 'text-warning',     label: 'Service Provider' },
-  LEGAL_PROFESSIONAL:  { bg: 'bg-neutral-800',     text: 'text-neutral-400', label: 'Legal' },
   ADMIN:               { bg: 'bg-danger/10',       text: 'text-danger',      label: 'Admin' },
   SUPER_ADMIN:         { bg: 'bg-danger/10',       text: 'text-danger',      label: 'Super Admin' },
 };
@@ -60,7 +58,6 @@ function AnnouncementCard() {
           <option value="DRIVER">Drivers</option>
           <option value="COMPANY_ADMIN">Company admins</option>
           <option value="FLEET_MANAGER">Fleet managers</option>
-          <option value="LEGAL_PROFESSIONAL">Legal professionals</option>
           <option value="SERVICE_PROVIDER">Maintenance providers</option>
         </select>
       </div>
@@ -126,7 +123,7 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={ADMIN_NAV} title="Admin — +Motive">
+    <>
       {/* Welcome */}
       <div className="mb-8">
         <h2 className="text-xl font-medium text-graphite dark:text-paper mb-1" style={{ letterSpacing: "-0.02em" }}>+Motive Administration</h2>
@@ -196,6 +193,6 @@ export default function AdminDashboardPage() {
         <AdminTable columns={COLS} rows={users} loading={usersLoading} />
       </div>
       <AdminPagination pagination={pagination} page={page} setPage={setPage} />
-    </DashboardShell>
+    </>
   );
 }

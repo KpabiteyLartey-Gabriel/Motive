@@ -2,22 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
-import DashboardShell from '@/components/dashboard/DashboardShell';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { contractsApi } from '@/lib/api';
-
-const NAV = [
-  { href: '/company/dashboard',    icon: 'dashboard', label: 'Dashboard' },
-  { href: '/company/vehicles',     icon: 'vehicle', label: 'Fleet' },
-  { href: '/company/drivers',      icon: 'drivers', label: 'Drivers' },
-  { href: '/company/contracts',    icon: 'contract', label: 'Contracts' },
-  { href: '/company/payments',     icon: 'payments', label: 'Payments' },
-  { href: '/company/maintenance',  icon: 'maintenance', label: 'Maintenance' },
-  { href: '/company/tracking',     icon: 'tracking', label: 'Tracking' },
-  { href: '/company/reports',      icon: 'reports', label: 'Reports' },
-  { href: '/company/team',         icon: 'users', label: 'Team' },
-  { href: '/company/disputes',     icon: 'disputes', label: 'Disputes' },
-];
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -42,7 +28,7 @@ export default function CompanyDriversPage() {
   const driverContracts = contracts.filter((c) => c.parties?.some((p) => p.role === 'DRIVER') || c.driverId);
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={NAV} title="Drivers">
+    <>
       <SectionHeader title="Driver Roster" description="Drivers assigned under your company's vehicle contracts" />
 
       {fetching ? (
@@ -81,6 +67,6 @@ export default function CompanyDriversPage() {
           </table>
         </div>
       )}
-    </DashboardShell>
+    </>
   );
 }

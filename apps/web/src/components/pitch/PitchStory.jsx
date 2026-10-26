@@ -37,7 +37,7 @@ const scenes = [
     kicker: 'Help & law, on call',
     title: 'A breakdown or a contract is never a phone-call scramble.',
     narration:
-      'A driver raises a breakdown with a voice or video report and live location — maintenance is dispatched to the spot. And every deal can be witnessed by a legal professional on a recorded call, signed digitally, with an identical copy for everyone.',
+      'A driver raises a breakdown with a voice or video report and live location — maintenance is dispatched to the spot. Every deal is recorded on the platform and signed digitally, with an identical copy for everyone.',
     points: ['Maintenance to your live location', 'Per-service or subscription care', 'Witnessed, digitally signed contracts'],
   },
   {

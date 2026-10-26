@@ -1,11 +1,22 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GHANA_CARD_FORMAT_MESSAGE, normalizeGhanaCardNumber } from '../../common/ghana-card';
 
 @Injectable()
 export class OwnersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private normalizeGhanaCard(data: any) {
+    if (data?.ghanaCardNumber) {
+      const normalized = normalizeGhanaCardNumber(data.ghanaCardNumber);
+      if (!normalized) throw new BadRequestException(GHANA_CARD_FORMAT_MESSAGE);
+      data.ghanaCardNumber = normalized;
+    }
+    return data;
+  }
+
   async createProfile(userId: string, data: any) {
+    this.normalizeGhanaCard(data);
     const existing = await this.prisma.owner.findUnique({ where: { userId } });
     if (existing) {
       throw new ConflictException('Owner profile already exists for this user');
@@ -38,6 +49,7 @@ export class OwnersService {
   }
 
   async updateProfile(userId: string, data: any) {
+    this.normalizeGhanaCard(data);
     const existing = await this.prisma.owner.findUnique({ where: { userId } });
     if (!existing) {
       // Settings saves should work even if the profile row was never created
