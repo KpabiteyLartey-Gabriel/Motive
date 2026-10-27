@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
 import { useAuth, fmtDate, fmtGHS } from '../../lib/useAuth';
 import { maintenanceApi } from '../../lib/api';
+import RenewalsPanel from '../../components/RenewalsPanel';
+import ServicesCatalog from '../../components/ServicesCatalog';
 
 const STATUS_COLOR = { REQUESTED: 'warning', APPROVED: 'success', IN_PROGRESS: 'warning', COMPLETED: 'success', CANCELLED: 'danger' };
 
@@ -41,6 +43,8 @@ export default function OwnerMaintenance() {
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textMuted} />}
       >
+        <RenewalsPanel />
+        <ServicesCatalog />
         <Text style={[s.pageTitle, { color: colors.textPrimary }]}>Maintenance Requests</Text>
 
         {requests.length === 0 ? (
@@ -55,7 +59,7 @@ export default function OwnerMaintenance() {
               <View key={r.id} style={[s.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
                 <View style={[s.cardHeader, { borderBottomColor: colors.border }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{r.type} — {r.urgency}</Text>
+                    <Text style={[s.cardTitle, { color: colors.textPrimary }]}>{r.type} â€” {r.urgency}</Text>
                     <Text style={[s.cardDate, { color: colors.textMuted }]}>{fmtDate(r.createdAt)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>

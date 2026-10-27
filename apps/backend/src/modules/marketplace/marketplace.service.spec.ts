@@ -48,11 +48,12 @@ describe('MarketplaceService (Explore, interest, chat, codes)', () => {
     return { svc: new MarketplaceService(prisma), prisma };
   }
 
-  it('explore only asks for verified, published vehicles with no approved driver', async () => {
+  it('explore only asks for verified, company-published vehicles with no approved driver', async () => {
     const { svc, prisma } = makeSvc();
     const res: any[] = await svc.explore('driver-user');
     expect(prisma.vehicle.findMany.mock.calls[0][0].where.status).toBe('AVAILABLE');
     expect(prisma.vehicle.findMany.mock.calls[0][0].where.verificationStatus).toBe('APPROVED');
+    expect(prisma.vehicle.findMany.mock.calls[0][0].where.managingCompanyId).toEqual({ not: null });
     expect(res[0].interestCount).toBe(2);
   });
 

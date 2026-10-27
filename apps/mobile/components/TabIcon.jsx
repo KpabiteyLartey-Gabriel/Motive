@@ -17,6 +17,7 @@ const ICONS = {
   documents: { active: 'folder', inactive: 'folder-outline' },
   disputes: { active: 'scale', inactive: 'scale-outline' },
   maintenance: { active: 'build', inactive: 'build-outline' },
+  services: { active: 'build', inactive: 'build-outline' },
   incidents: { active: 'warning', inactive: 'warning-outline' },
   settings: { active: 'settings', inactive: 'settings-outline' },
   reports: { active: 'bar-chart', inactive: 'bar-chart-outline' },

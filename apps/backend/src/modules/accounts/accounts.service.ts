@@ -47,19 +47,15 @@ export class AccountsService {
     return v ? { status: v.status, licenseNumber: v.licenseNumber, reviewNote: v.reviewNote || null, submittedAt: v.updatedAt } : null;
   }
 
+  // Identity verification (National ID, licence, face checks) is no
+  // longer part of any account flow. A Driver/Owner account exists once
+  // it has been created through the paid creation flow, and that is all
+  // its status says. Legacy identity records stay readable below for
+  // history, but they never gate the account.
   private driverAccount(driver: any, identity: any = null, licenceVerification: any = null) {
-    if (!driver) return { kind: 'DRIVER', status: 'NOT_CREATED' as AccountStatus, needs: ['identityVerification', 'licenceVerification'], dashboardPath: '/driver/dashboard', identityVerification: identity, licenceVerification };
-    const idVerified = !!(driver.nationalIdVerifiedAt || driver.verifiedAt);
-    const licenceVerified = !!driver.licenceVerifiedAt;
-    const needs: string[] = [];
-    // Phase 1: Ghana Card + live face check. Phase 2 (only after phase 1):
-    // Driver's Licence. A rejected document reopens its phase for resubmission.
-    if (!identity || identity.status === 'REJECTED') needs.push('identityVerification');
-    else if ((!licenceVerification && !driver.licenseNumber) || licenceVerification?.status === 'REJECTED') needs.push('licenceVerification');
-    else if (!driver.licenseNumber) needs.push('licence');
-    const status: AccountStatus = idVerified && licenceVerified ? 'VERIFIED' : needs.length === 0 ? 'PENDING_REVIEW' : 'IN_PROGRESS';
+    if (!driver) return { kind: 'DRIVER', status: 'NOT_CREATED' as AccountStatus, needs: [], dashboardPath: '/driver/dashboard', identityVerification: identity, licenceVerification };
     return {
-      kind: 'DRIVER', status, needs, dashboardPath: '/driver/dashboard',
+      kind: 'DRIVER', status: 'VERIFIED' as AccountStatus, needs: [], dashboardPath: '/driver/dashboard',
       ghanaCardNumber: driver.ghanaCardNumber || driver.identityDocNumber || null,
       licenseNumber: driver.licenseNumber || null,
       identityVerification: identity,
@@ -68,13 +64,8 @@ export class AccountsService {
   }
 
   private ownerAccount(owner: any, identity: any = null) {
-    if (!owner) return { kind: 'OWNER', status: 'NOT_CREATED' as AccountStatus, needs: ['nationalId', 'identityVerification'], dashboardPath: '/owner/dashboard', identityVerification: identity };
-    const idVerified = !!(owner.nationalIdVerifiedAt || owner.verifiedAt);
-    const needs: string[] = [];
-    if (!owner.ghanaCardNumber) needs.push('nationalId');
-    if (!identity || identity.status === 'REJECTED') needs.push('identityVerification');
-    const status: AccountStatus = idVerified ? 'VERIFIED' : needs.length === 0 ? 'PENDING_REVIEW' : 'IN_PROGRESS';
-    return { kind: 'OWNER', status, needs, dashboardPath: '/owner/dashboard', ghanaCardNumber: owner.ghanaCardNumber || null, identityVerification: identity };
+    if (!owner) return { kind: 'OWNER', status: 'NOT_CREATED' as AccountStatus, needs: [], dashboardPath: '/owner/dashboard', identityVerification: identity };
+    return { kind: 'OWNER', status: 'VERIFIED' as AccountStatus, needs: [], dashboardPath: '/owner/dashboard', ghanaCardNumber: owner.ghanaCardNumber || null, identityVerification: identity };
   }
 
   private serviceProviderAccount(sp: any) {
@@ -213,6 +204,17 @@ export class AccountsService {
   async submitNationalId(userId: string, kind: 'DRIVER' | 'OWNER', ghanaCardNumberRaw: string) {
     const ghanaCardNumber = normalizeGhanaCardNumber(ghanaCardNumberRaw);
     if (!ghanaCardNumber) throw new BadRequestException(GHANA_CARD_FORMAT_MESSAGE);
+    // The profile may only come from the paid creation flow. Someone with
+    // no profile and no completed creation order cannot open one here.
+    const existing = await this.loadUser(userId);
+    const hasProfile = kind === 'DRIVER' ? !!existing.driver : !!existing.owner;
+    if (!hasProfile) {
+      const orders = (this.prisma as any).accountCreationOrder;
+      const order = orders ? await orders.findFirst({ where: { userId, kind, status: 'COMPLETED' } }).catch(() => null) : null;
+      if (!order) {
+        throw new BadRequestException(`Create your ${kind === 'DRIVER' ? 'Driver' : 'Owner'} account first — confirm your interest and pay the account creation charge in My Account.`);
+      }
+    }
     await this.assertGhanaCardFree(userId, ghanaCardNumber);
     if (kind === 'DRIVER') {
       await this.prisma.driver.upsert({

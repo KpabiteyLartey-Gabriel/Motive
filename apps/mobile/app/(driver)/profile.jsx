@@ -7,6 +7,7 @@ import { useAuth, fmtDate } from '../../lib/useAuth';
 import { driversApi } from '../../lib/api';
 import { Field, PrimaryButton, Badge } from '../../components/ui';
 import { AppearanceToggle } from '../../components/AppearanceToggle';
+import ProfilePicture from '../../components/ProfilePicture';
 
 function InfoRow({ label, value, colors }) {
   return (
@@ -126,6 +127,9 @@ export default function DriverProfile() {
           <Text style={[s.fullName, { color: colors.textPrimary }]}>{user?.firstName} {user?.lastName}</Text>
           <View style={[s.rolePill, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
             <Text style={[s.roleText, { color: colors.textSecondary }]}>Driver</Text>
+          </View>
+          <View style={{ alignSelf: 'stretch', marginTop: 18 }}>
+            <ProfilePicture user={user} accountLabel="Driver" />
           </View>
         </View>
 

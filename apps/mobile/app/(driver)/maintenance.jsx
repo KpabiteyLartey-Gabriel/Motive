@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme, palette } from '../../lib/theme';
 import { useAuth, fmtDate } from '../../lib/useAuth';
 import { maintenanceApi, vehiclesApi } from '../../lib/api';
+import RenewalsPanel from '../../components/RenewalsPanel';
+import ServicesCatalog from '../../components/ServicesCatalog';
 
 const STATUS_COLOR = { REQUESTED: 'warning', APPROVED: 'success', IN_PROGRESS: 'warning', COMPLETED: 'success', CANCELLED: 'danger', SCHEDULED: 'warning' };
 
@@ -69,6 +71,8 @@ export default function DriverMaintenance() {
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textMuted} />}
       >
+        <RenewalsPanel />
+        <ServicesCatalog />
         {!showForm ? (
           <TouchableOpacity style={[s.btn, { backgroundColor: palette.solarYellow }]} onPress={() => setShowForm(true)} activeOpacity={0.85}>
             <Text style={[s.btnText, { color: '#FFFFFF' }]}>Report Issue / Request Service</Text>
@@ -98,7 +102,7 @@ export default function DriverMaintenance() {
             <Text style={[s.lbl, { color: colors.textSecondary }]}>Description</Text>
             <TextInput
               style={[s.textarea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
-              placeholder="Describe the issue or service needed…"
+              placeholder="Describe the issue or service neededâ€¦"
               placeholderTextColor={colors.textMuted}
               multiline
               numberOfLines={4}
@@ -129,7 +133,7 @@ export default function DriverMaintenance() {
               return (
                 <View key={r.id} style={[s.listRow, { borderBottomColor: colors.border }, i === requests.length - 1 && { borderBottomWidth: 0 }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.listTitle, { color: colors.textPrimary }]}>{r.type} — {r.urgency}</Text>
+                    <Text style={[s.listTitle, { color: colors.textPrimary }]}>{r.type} â€” {r.urgency}</Text>
                     <Text style={[s.listDesc, { color: colors.textMuted }]} numberOfLines={1}>{r.description}</Text>
                     <Text style={[s.listDate, { color: colors.textMuted }]}>{fmtDate(r.createdAt)}</Text>
                   </View>

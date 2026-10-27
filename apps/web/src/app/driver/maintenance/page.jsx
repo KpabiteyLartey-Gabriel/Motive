@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { maintenanceApi } from '@/lib/api';
+import RenewalsPanel from '@/components/servicing/RenewalsPanel';
+import ServicesCatalog from '@/components/servicing/ServicesCatalog';
 
 function fmtDate(d) {
-  if (!d) return '—';
+  if (!d) return 'â€”';
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -25,7 +27,9 @@ export default function DriverMaintenancePage() {
 
   return (
     <>
-      <SectionHeader title="Maintenance" description="Service and repair requests for the vehicle you drive" />
+      <SectionHeader title="Servicing" description="Service and repair requests for the vehicle you drive" />
+        <RenewalsPanel />
+        <ServicesCatalog />
       {fetching ? (
         <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-20" />)}</div>
       ) : requests.length === 0 ? (
@@ -38,7 +42,7 @@ export default function DriverMaintenancePage() {
                 <div>
                   <p className="text-sm font-semibold text-ink dark:text-white">{(r.type || 'Maintenance').replace(/_/g, ' ')}</p>
                   <p className="mt-0.5 text-xs text-steel dark:text-neutral-500">
-                    {r.vehicle?.registrationNumber ? `${r.vehicle.registrationNumber} · ` : ''}{fmtDate(r.createdAt)}
+                    {r.vehicle?.registrationNumber ? `${r.vehicle.registrationNumber} Â· ` : ''}{fmtDate(r.createdAt)}
                   </p>
                 </div>
                 <StatusBadge status={r.status} />

@@ -1,9 +1,11 @@
+// User portal tabs, in order: Dashboard (the Explore vehicle grid),
+// Chat, My Accounts, Services, Settings last. Notifications are not a
+// tab — they live behind the bell in the header.
 export const PORTAL_NAV = [
   { href: '/portal', icon: 'dashboard', label: 'Dashboard', exact: true },
   { href: '/portal/chat', icon: 'messages', label: 'Chat' },
-  { href: '/portal/explore', icon: 'explore', label: 'Explore' },
   { href: '/portal/account', icon: 'profile', label: 'My Account' },
-  { href: '/portal/notifications', icon: 'notifications', label: 'Notifications' },
+  { href: '/portal/services', icon: 'services', label: 'Services' },
   { href: '/portal/settings', icon: 'settings', label: 'Settings' },
 ];
 

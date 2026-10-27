@@ -9,6 +9,7 @@ export const ADMIN_NAV = [
   { href: '/admin/vehicles',    icon: 'vehicle',     label: 'Vehicles' },
   { href: '/admin/contracts',   icon: 'contract',    label: 'Contracts' },
   { href: '/admin/payments',    icon: 'payments',    label: 'Payments' },
+  { href: '/admin/charges',     icon: 'payments',    label: 'Charges' },
   { href: '/admin/disputes',    icon: 'disputes',    label: 'Disputes' },
   { href: '/admin/maintenance', icon: 'maintenance', label: 'Maintenance' },
   { href: '/admin/tracking',    icon: 'tracking',    label: 'Tracking' },

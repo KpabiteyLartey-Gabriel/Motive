@@ -26,6 +26,7 @@ function makeSvc(user: any) {
     licenceVerification: {
       upsert: jest.fn().mockImplementation(({ create }: any) => Promise.resolve({ id: 'lv-1', ...create })),
     },
+    accountCreationOrder: { findFirst: jest.fn().mockResolvedValue({ id: 'order-1', status: 'COMPLETED' }) },
     company: { create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'co-1', ...data })) },
     companyMember: { create: jest.fn().mockResolvedValue({ id: 'm-1' }) },
     role: { findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({ id: `role-${where.name}`, name: where.name })) },

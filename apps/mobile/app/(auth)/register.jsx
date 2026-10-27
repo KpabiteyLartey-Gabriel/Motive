@@ -3,17 +3,11 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import SecureStore from '../../lib/storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../lib/api';
+import { postAuthRoute } from '../../lib/postAuth';
 import { useTheme } from '../../lib/theme';
 import { Field, PrimaryButton } from '../../components/ui';
 import BrandLogo from '../../components/BrandLogo';
-
-const ROLES = [
-  { value: 'DRIVER', label: 'Driver', description: 'I drive or want to drive a vehicle', icon: 'car-outline' },
-  { value: 'OWNER', label: 'Vehicle Owner', description: 'I own vehicles and want to manage them', icon: 'key-outline' },
-  { value: 'COMPANY_ADMIN', label: 'Transport Company', description: 'I manage a transport or fleet company', icon: 'business-outline' },
-];
 
 const ERRORS = {
   firstName: 'First name is required.',
@@ -26,7 +20,9 @@ const ERRORS = {
 export default function RegisterScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '', role: 'DRIVER' });
+  // Main Onboarding step 1: a plain User account. No Driver/Owner or any
+  // other role is chosen or sent here — accounts are added later.
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -49,7 +45,7 @@ export default function RegisterScreen() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const payload = { firstName: form.firstName.trim(), lastName: form.lastName.trim(), password: form.password, role: form.role };
+      const payload = { firstName: form.firstName.trim(), lastName: form.lastName.trim(), password: form.password };
       if (form.email.trim()) payload.email = form.email.trim();
       if (form.phone.trim()) payload.phone = form.phone.trim();
       const response = await authApi.register(payload);
@@ -57,8 +53,7 @@ export default function RegisterScreen() {
       await SecureStore.setItemAsync('accessToken', accessToken);
       await SecureStore.setItemAsync('refreshToken', refreshToken);
       await SecureStore.setItemAsync('user', JSON.stringify(user));
-      const roleRoutes = { DRIVER: '/(driver)/dashboard', OWNER: '/(owner)/dashboard', COMPANY_ADMIN: '/(driver)/dashboard' };
-      router.replace(roleRoutes[user.primaryRole] || '/(driver)/dashboard');
+      router.replace(postAuthRoute(user));
     } catch (e) {
       // If the connection dropped after the account was saved, signing in
       // with the same details succeeds — treat that as a completed signup
@@ -70,8 +65,7 @@ export default function RegisterScreen() {
           await SecureStore.setItemAsync('accessToken', accessToken);
           await SecureStore.setItemAsync('refreshToken', refreshToken);
           await SecureStore.setItemAsync('user', JSON.stringify(user));
-          const roleRoutes = { DRIVER: '/(driver)/dashboard', OWNER: '/(owner)/dashboard', COMPANY_ADMIN: '/(driver)/dashboard' };
-          router.replace(roleRoutes[user.primaryRole] || '/(driver)/dashboard');
+          router.replace(postAuthRoute(user));
           return;
         } catch {}
       }
@@ -89,27 +83,6 @@ export default function RegisterScreen() {
           <Text style={[s.subtitle, { color: colors.textSecondary }]}>Free to start — it only takes a minute.</Text>
 
           {error ? <View style={s.alert} accessibilityRole="alert"><Text style={s.alertText}>{error}</Text></View> : null}
-
-          <Text style={[s.label, { color: colors.textPrimary }]}>I am joining as…</Text>
-          <View style={{ gap: 10, marginBottom: 20 }}>
-            {ROLES.map((r) => {
-              const active = form.role === r.value;
-              return (
-                <TouchableOpacity key={r.value} onPress={() => set('role', r.value)} activeOpacity={0.85}
-                  accessibilityRole="radio" accessibilityState={{ selected: active }}
-                  style={[s.role, { borderColor: active ? colors.brand : colors.border, backgroundColor: active ? colors.brandSoft : colors.card }]}>
-                  <View style={[s.roleIcon, { backgroundColor: active ? colors.brand : colors.elevated }]}>
-                    <Ionicons name={r.icon} size={20} color={active ? '#fff' : colors.brandText} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.roleLabel, { color: colors.textPrimary }]}>{r.label}</Text>
-                    <Text style={[s.roleDesc, { color: colors.textSecondary }]}>{r.description}</Text>
-                  </View>
-                  {active && <Ionicons name="checkmark-circle" size={22} color={colors.brand} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
 
           <View style={{ gap: 16 }}>
             <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -152,10 +125,6 @@ const s = StyleSheet.create({
   alertText: { color: '#B91C1C', fontSize: 14, lineHeight: 20, fontWeight: '600' },
   label: { fontSize: 14, fontWeight: '600', marginBottom: 10 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  role: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 16, padding: 14, minHeight: 64 },
-  roleIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  roleLabel: { fontSize: 15, fontWeight: '700' },
-  roleDesc: { fontSize: 13, marginTop: 2, lineHeight: 17 },
   terms: { textAlign: 'center', fontSize: 12.5, lineHeight: 17 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' },
 });

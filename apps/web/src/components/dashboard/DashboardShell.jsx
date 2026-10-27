@@ -51,7 +51,7 @@ function NavList({ navItems, pathname, onNavigate }) {
   );
 }
 
-export default function DashboardShell({ user, loading, logout, navItems, title, children }) {
+export default function DashboardShell({ user, loading, logout, navItems, title, headerActions, children }) {
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
   const [open, setOpen] = useState(false);
@@ -110,6 +110,7 @@ export default function DashboardShell({ user, loading, logout, navItems, title,
             <h1 className="truncate text-base font-semibold tracking-tight text-ink sm:text-lg dark:text-white">{title}</h1>
             {roleLabel && <p className="truncate text-xs capitalize text-steel dark:text-neutral-400">{roleLabel.toLowerCase()} workspace</p>}
           </div>
+          {headerActions}
           <button type="button" onClick={toggle} className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-steel shadow-card hover:text-brand-700 dark:bg-dark-card dark:text-neutral-300 dark:hover:text-brand-300" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
             {theme === 'dark' ? (
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>

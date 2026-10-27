@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsPositive, IsString, Length, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CompanyType } from '@prisma/client';
 
@@ -15,6 +15,32 @@ export class CreateServiceProviderDto {
   @ApiPropertyOptional() @IsString() @IsOptional() address?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() city?: string;
   @ApiPropertyOptional() @IsString() @IsOptional() region?: string;
+}
+
+export class ConfirmCreationInterestDto {
+  @ApiProperty({ example: '123456', description: 'The 6-digit code sent to your phone, email and in-app notifications' })
+  @IsString() @Length(6, 6)
+  code: string;
+}
+
+export class PayAccountCreationDto {
+  @ApiProperty({ example: '0244000000', description: 'Mobile money number to charge' })
+  @IsString() @MinLength(7)
+  payerPhone: string;
+
+  @ApiPropertyOptional({ example: 'MOMO' })
+  @IsString() @IsOptional()
+  paymentMethod?: string;
+
+  @ApiPropertyOptional({ example: 'MTN' })
+  @IsString() @IsOptional()
+  paymentProvider?: string;
+}
+
+export class UpdateChargeDto {
+  @ApiProperty({ example: 20, description: 'Account creation charge in GHS' })
+  @IsNumber() @IsPositive()
+  amountGhs: number;
 }
 
 export class CreateCompanyAccountDto {

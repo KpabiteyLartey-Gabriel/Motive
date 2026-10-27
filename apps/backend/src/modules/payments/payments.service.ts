@@ -15,6 +15,7 @@ import {
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { PaymentProviderFactory } from '../../integrations/payments/payment-provider.factory';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AccountCreationService } from '../accounts/account-creation.service';
 import { NotificationChannel } from '@prisma/client';
 import { Optional } from '@nestjs/common';
 
@@ -27,6 +28,7 @@ export class PaymentsService {
     private readonly audit: AuditService,
     private readonly providerFactory: PaymentProviderFactory,
     @Optional() private readonly notifications?: NotificationsService,
+    @Optional() private readonly accountCreation?: AccountCreationService,
   ) {}
 
   private generatePaymentNumber(): string {
@@ -222,6 +224,9 @@ export class PaymentsService {
 
     if (status === 'SUCCESSFUL') {
       await this.onPaymentSucceeded(payment, isDirectPay, providerReference);
+      // Account-creation payments carry no contract: provision the
+      // Driver/Owner account whose creation order this payment paid for.
+      await this.accountCreation?.completeFromPayment(payment).catch(() => null);
     } else {
       await this.audit.log({
         action: AuditAction.PAYMENT_FAILED,

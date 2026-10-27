@@ -7,11 +7,12 @@ import {
   Optional,
 } from '@nestjs/common';
 import { MessagingService } from '../messaging/messaging.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { createHash, randomInt } from 'crypto';
 import { CreateContractDto } from './dto/create-contract.dto';
-import { AuditAction, ContractStatus, ContractType, DriverStatus, UserRole } from '@prisma/client';
+import { AuditAction, ContractStatus, ContractType, DriverStatus, NotificationChannel, UserRole } from '@prisma/client';
 
 @Injectable()
 export class ContractsService {
@@ -19,6 +20,7 @@ export class ContractsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     @Optional() private readonly messaging?: MessagingService,
+    @Optional() private readonly notifications?: NotificationsService,
   ) {}
 
   private generateContractNumber(): string {
@@ -345,6 +347,21 @@ export class ContractsService {
             }
           }
         }
+        // DriveOn / Rental: no installment schedule. The end (renewal)
+        // date comes from the renewal date the driver set when signing,
+        // else from the owner-set duration counted from the start.
+        if (!endsAt) {
+          const agreed: any = (contract as any).terms || {};
+          if (agreed.renewalDate) {
+            const d = new Date(agreed.renewalDate);
+            if (!Number.isNaN(d.getTime())) endsAt = d;
+          } else if (agreed.duration?.value) {
+            const unit = String(agreed.duration.unit || 'MONTHS').toUpperCase();
+            const freq = unit.startsWith('DAY') ? 'DAILY' : unit.startsWith('WEEK') ? 'WEEKLY' : 'MONTHLY';
+            const periods = unit.startsWith('YEAR') ? Number(agreed.duration.value) * 12 : Number(agreed.duration.value);
+            if (periods > 0) endsAt = this.addPeriods(startsAt, freq, periods);
+          }
+        }
         await tx.contract.update({
           where: { id: contractId },
           data: { status: ContractStatus.ACTIVE, startDate: startsAt, ...(endsAt ? { endDate: endsAt } : {}) },
@@ -397,6 +414,19 @@ export class ContractsService {
     const party = contract.parties.find((p) => p.userId === userId && p.role === UserRole.DRIVER);
     if (!party) throw new ForbiddenException('Only the driver this contract was issued to can confirm it with a code');
     if (party.signedAt) throw new ConflictException('You have already confirmed this contract');
+
+    // Awarded contracts sign from a Driver account. If the person was
+    // awarded before creating one, the code stays valid — they create the
+    // account first, then come back and sign with the same code.
+    if (typeof this.prisma.driver?.findUnique === 'function') {
+      const driverProfile = await this.prisma.driver.findUnique({ where: { userId } });
+      if (!driverProfile) {
+        throw new BadRequestException('Create your Driver account first (My Account → Add Driver account), then enter this code again to sign. Your code stays valid.');
+      }
+      if (!party.driverId) {
+        await this.prisma.contractParty.update({ where: { id: party.id }, data: { driverId: driverProfile.id } });
+      }
+    }
 
     const interest = await this.prisma.vehicleInterest.findFirst({
       where: { vehicleId: contract.vehicleId, driverUserId: userId, status: 'APPROVED' },
@@ -588,6 +618,182 @@ export class ContractsService {
     };
   }
 
+  // ── Attach a contract template to a vehicle ────────────────
+  /**
+   * Owner contracts are created as reusable templates (caption + financial
+   * terms, no vehicle). Attaching binds one template to one of the owner's
+   * vehicles; the vehicle can then be awarded with that contract.
+   */
+  async attachVehicle(contractId: string, ownerUserId: string, vehicleId: string) {
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      include: { parties: true },
+    });
+    if (!contract) throw new NotFoundException('Contract not found');
+    if (contract.createdBy !== ownerUserId) throw new ForbiddenException('Only the owner who created this contract can attach it to a vehicle');
+    if (contract.status !== ContractStatus.DRAFT) throw new BadRequestException('Only a draft contract can be attached to a vehicle');
+    if (contract.parties.some((p) => p.role === UserRole.DRIVER)) {
+      throw new BadRequestException('This contract has already been awarded. Create a new contract to use with another vehicle.');
+    }
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    const owner = await this.prisma.owner.findUnique({ where: { userId: ownerUserId } });
+    if (!owner || vehicle.ownerId !== owner.id) {
+      throw new ForbiddenException('You can only attach contracts to your own vehicles');
+    }
+    const busy = await this.prisma.contract.findFirst({
+      where: {
+        vehicleId, id: { not: contractId },
+        status: { in: [ContractStatus.ACTIVE, ContractStatus.PENDING_SIGNATURES] },
+      },
+    });
+    if (busy) throw new ConflictException('This vehicle already has a contract in progress or active on it');
+
+    const modelMap: Record<string, any> = { WORK_AND_PAY: 'WORK_AND_PAY', RENTAL: 'RENTAL', DRIVING_ON: 'DRIVING_ON' };
+    await this.prisma.$transaction([
+      this.prisma.contract.update({ where: { id: contractId }, data: { vehicleId } }),
+      this.prisma.vehicle.update({ where: { id: vehicleId }, data: { operatingModel: modelMap[contract.type] ?? undefined } }),
+    ]);
+    return this.findById(contractId, ownerUserId, 'ANY');
+  }
+
+  // ── Award an attached contract to a driver ─────────────────
+  /**
+   * The owner searches a driver by chat username and awards the contract.
+   * The signing code is sent straight to that person (SMS + email + in-app),
+   * never through the owner. If they hold no Driver account yet, the award
+   * still lands and tells them to create one first — confirmWithCode keeps
+   * the code valid but refuses to sign until the Driver account exists.
+   */
+  async awardContract(contractId: string, ownerUserId: string, rawUsername: string) {
+    const chatUsername = String(rawUsername || '').trim().replace(/^@+/, '').toLowerCase();
+    if (!chatUsername) throw new BadRequestException('Enter the driver\'s chat username.');
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      include: { parties: true, vehicle: true, workAndPayTerms: true, drivingOnTerms: true, rentalTerms: true },
+    });
+    if (!contract) throw new NotFoundException('Contract not found');
+    if (contract.status !== ContractStatus.DRAFT && contract.status !== ContractStatus.PENDING_SIGNATURES) {
+      throw new BadRequestException('Only a draft contract can be awarded.');
+    }
+    const isOwnerSide = contract.createdBy === ownerUserId
+      || contract.parties.some((p) => p.userId === ownerUserId && p.role !== UserRole.DRIVER);
+    if (!isOwnerSide) throw new ForbiddenException('Only the owner side can award this contract');
+    if (!contract.vehicleId || !contract.vehicle) {
+      throw new BadRequestException('Attach this contract to a vehicle first, then award it.');
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { chatUsername },
+      select: { id: true, firstName: true, lastName: true, chatUsername: true, email: true, phone: true, profilePhotoUrl: true },
+    });
+    if (!target) {
+      throw new NotFoundException(`No user found with username @${chatUsername}. Ask the driver for their exact chat username.`);
+    }
+    if (target.id === ownerUserId) throw new BadRequestException('You cannot award a contract to yourself.');
+    const driver = await this.prisma.driver.findUnique({ where: { userId: target.id } });
+
+    const existingDriverParty = contract.parties.find((p) => p.role === UserRole.DRIVER && p.userId);
+    if (existingDriverParty && existingDriverParty.userId !== target.id) {
+      throw new ConflictException('This contract is already awarded to another driver.');
+    }
+    if (!existingDriverParty) {
+      await this.prisma.contractParty.create({
+        data: { contractId, userId: target.id, driverId: driver?.id ?? null, role: UserRole.DRIVER },
+      });
+    } else if (driver && !existingDriverParty.driverId) {
+      await this.prisma.contractParty.update({ where: { id: existingDriverParty.id }, data: { driverId: driver.id } });
+    }
+    await this.prisma.contract.update({ where: { id: contractId }, data: { status: ContractStatus.PENDING_SIGNATURES } });
+
+    const pairOr = [
+      { ownerUserId, driverUserId: target.id },
+      { ownerUserId: target.id, driverUserId: ownerUserId },
+    ];
+    let thread = await this.prisma.chatThread.findFirst({
+      where: { interestId: null, contractId: null, OR: pairOr },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!thread) thread = await this.prisma.chatThread.findFirst({ where: { OR: pairOr }, orderBy: { createdAt: 'asc' } });
+    if (!thread) thread = await this.prisma.chatThread.findFirst({ where: { contractId, driverUserId: target.id } });
+    if (!thread) {
+      thread = await this.prisma.chatThread.create({
+        data: { vehicleId: contract.vehicleId, interestId: null, contractId, ownerUserId, driverUserId: target.id },
+      });
+    }
+
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    await this.prisma.contractAccessCode.updateMany({
+      where: { contractId, status: 'ACTIVE' },
+      data: { status: 'REVOKED' },
+    });
+    await this.prisma.contractAccessCode.create({
+      data: {
+        contractId, vehicleId: contract.vehicleId, driverUserId: target.id,
+        codeHash: createHash('sha256').update(code).digest('hex'), createdById: ownerUserId,
+      },
+    });
+
+    const w: any = (contract as any).workAndPayTerms;
+    const don: any = (contract as any).drivingOnTerms;
+    const agreed: any = (contract as any).terms || {};
+    const vehicleLabel = `${contract.vehicle.make} ${contract.vehicle.model} (${contract.vehicle.registrationNumber})`;
+    const money = w
+      ? ` You pay GHS ${Number(w.depositAmount).toLocaleString('en-GH')} deposit, then GHS ${Number(w.installmentAmount).toLocaleString('en-GH')} every ${String(w.installmentFrequency || 'WEEKLY').toLowerCase()} for ${w.totalInstallments} payments — GHS ${Number(w.totalPayable).toLocaleString('en-GH')} in total. Grace period: ${w.gracePeriodDays ?? 0} days.`
+      : don
+        ? ` This is a DriveOn contract: you bring GHS ${Number(don.dailySalesAmount).toLocaleString('en-GH')} sales, paid ${String(don.paymentFrequency || 'DAILY').toLowerCase()}. Grace period: ${agreed.gracePeriodDays ?? 0} days.`
+        : '';
+    const needsAccount = !driver;
+    const signLink = `/driver/contracts?contract=${contractId}`;
+    await this.prisma.chatMessage.create({
+      data: {
+        threadId: thread.id, senderUserId: ownerUserId, kind: 'CONTRACT', contractId,
+        body: `You have been awarded the contract for the ${vehicleLabel}.${money}\nOpen it here: ${signLink}\nYour signing code has been sent to your phone, email and notifications${needsAccount ? ' — create your Driver account first, then use the code to sign' : ' — use it on the contract to sign'}. +Motive records the agreement and tracks the terms; confirm in person that you have seen the vehicle and its documents before signing.`,
+      },
+    });
+    await this.prisma.chatThread.update({
+      where: { id: thread.id },
+      data: { lastMessageAt: new Date(), ...((thread as any).contractId ? {} : { contractId }) },
+    });
+
+    const subject = needsAccount ? 'A contract was awarded to you — create your Driver account to sign it' : 'A contract was awarded to you';
+    const body = `Hello ${target.firstName}, you have been awarded the contract for the ${vehicleLabel}.${money} Your signing code is ${code}.${needsAccount ? ' You do not have a Driver account yet: create one in My Account first, then enter this code to sign. The code stays valid.' : ' Enter this code on the contract to sign it.'} Open it here: ${signLink}`;
+    const sentTo: string[] = [];
+    if (this.notifications) {
+      const attempts: Array<[NotificationChannel, string, boolean]> = [
+        ...(target.phone ? [[NotificationChannel.SMS, 'sms', true] as [NotificationChannel, string, boolean]] : []),
+        ...(target.email ? [[NotificationChannel.EMAIL, 'email', true] as [NotificationChannel, string, boolean]] : []),
+        [NotificationChannel.IN_APP, 'in-app', true],
+      ];
+      for (const [channel, label] of attempts) {
+        const ok = await this.notifications.send({
+          userId: target.id, channel, type: 'CONTRACT_AWARDED', subject, body,
+          data: { contractId, threadId: thread.id, vehicleId: contract.vehicleId, requiresDriverAccount: needsAccount },
+        }).then(() => true).catch(() => false);
+        if (ok) sentTo.push(label);
+      }
+    } else {
+      try {
+        await this.prisma.notification.create({
+          data: {
+            userId: target.id, channel: 'IN_APP', type: 'CONTRACT_AWARDED', status: 'SENT', sentAt: new Date(),
+            subject, body, data: { contractId, threadId: thread.id, vehicleId: contract.vehicleId, requiresDriverAccount: needsAccount },
+          },
+        });
+        sentTo.push('in-app');
+      } catch { /* best effort */ }
+    }
+
+    return {
+      contractId, threadId: thread.id, requiresDriverAccount: needsAccount, codeSentTo: sentTo,
+      driver: {
+        id: target.id, firstName: target.firstName, lastName: target.lastName,
+        chatUsername: target.chatUsername, profilePhotoUrl: target.profilePhotoUrl || null,
+        hasDriverAccount: !!driver,
+      },
+    };
+  }
+
   // ── Terminate ──────────────────────────────────────────────
   async terminateContract(contractId: string, userId: string, reason: string) {
     const contract = await this.prisma.contract.findUnique({
@@ -669,7 +875,7 @@ export class ContractsService {
         where, skip, take: Math.max(1, Math.floor(Number(limit)) || 20),
         orderBy: { createdAt: 'desc' },
         include: {
-          vehicle: { select: { id: true, registrationNumber: true, make: true, model: true, year: true, color: true, imageUrls: true, region: true, location: true } },
+          vehicle: { select: { id: true, registrationNumber: true, make: true, model: true, year: true, type: true, color: true, mileage: true, fuelType: true, transmission: true, imageUrls: true, region: true, location: true } },
           parties: { select: { id: true, userId: true, driverId: true, companyId: true, role: true, signedAt: true } },
           workAndPayTerms: true,
           rentalTerms: true,
@@ -703,7 +909,7 @@ export class ContractsService {
       where: { id: contractId },
       include: {
         vehicle: {
-          select: { id: true, registrationNumber: true, make: true, model: true, year: true, status: true, color: true, imageUrls: true, region: true, location: true },
+          select: { id: true, registrationNumber: true, make: true, model: true, year: true, status: true, type: true, color: true, mileage: true, fuelType: true, transmission: true, imageUrls: true, region: true, location: true },
         },
         parties: {
           select: { id: true, userId: true, driverId: true, companyId: true, role: true, signedAt: true },

@@ -5,6 +5,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useTheme, palette } from '../../lib/theme';
 import { useAuth, fmtGHS, fmtDate } from '../../lib/useAuth';
 import { contractsApi, resolveVehiclePhoto } from '../../lib/api';
+import { formatOffDays, hasOffDays } from '../../lib/offDays';
 
 function InfoRow({ label, value, colors }) {
   return (
@@ -109,7 +110,9 @@ export default function DriverContract() {
     if (!wap) return null;
     const freqWord = { DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month' }[wap.installmentFrequency] || 'week';
     const total = Number(wap.totalPayable); const inst = Number(wap.installmentAmount); const count = Number(wap.totalInstallments);
-    const last = total - inst * (count - 1);
+    // Installments pay the total minus the deposit, so the last one is
+    // what is left of that balance — not of the full total.
+    const last = (total - (Number(wap.depositAmount) || 0)) - inst * (count - 1);
     const grace = Math.max(0, Math.round(Number(wap.gracePeriodDays) || 0));
     const countingStart = new Date(); countingStart.setDate(countingStart.getDate() + grace);
     const firstDue = new Date(countingStart);
@@ -129,6 +132,14 @@ export default function DriverContract() {
   })();
 
   const vehicleMeta = [contract.vehicle?.color, contract.vehicle?.region, contract.vehicle?.location].filter(Boolean).join(' · ');
+  const vehicleName = contract.vehicle ? [contract.vehicle.year, contract.vehicle.make, contract.vehicle.model].filter(Boolean).join(' ') : 'Vehicle not specified';
+  const vehicleDetails = [
+    contract.vehicle?.registrationNumber ? `Registration ${contract.vehicle.registrationNumber}` : null,
+    contract.vehicle?.type ? String(contract.vehicle.type).replace(/_/g, ' ') : null,
+    contract.vehicle?.color || null,
+    contract.vehicle?.mileage != null ? `${Number(contract.vehicle.mileage).toLocaleString()} km` : null,
+    vehicleMeta || null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -150,18 +161,21 @@ export default function DriverContract() {
           </View>
         </View>
 
+        <View style={{ marginBottom: 14 }}>
+          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>{vehicleName}</Text>
+          {!!vehicleDetails && <Text style={{ color: colors.textSecondary, fontSize: 12.5, lineHeight: 18, marginTop: 3 }}>{vehicleDetails}</Text>}
+        </View>
         {!!contract.vehicle?.imageUrls?.[0] && (
           <Image source={{ uri: resolveVehiclePhoto(contract.vehicle.imageUrls[0]) }} style={{ width: '100%', height: 180, borderRadius: 16, marginBottom: 12 }} accessibilityLabel="Vehicle photo" />
         )}
-        {!!vehicleMeta && <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 12 }}>{vehicleMeta}</Text>}
 
         {plainWap && (
           <View style={[s.codeBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 14 }}>Your contract in plain words</Text>
             <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{plainWap}</Text>
-            {(contract.terms?.offDays || contract.responsibilityMatrix?.maintenance) && (
+            {(hasOffDays(contract.terms?.offDays) || contract.responsibilityMatrix?.maintenance) && (
               <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 6 }}>
-                {contract.terms?.offDays ? `Off days: ${contract.terms.offDays}. ` : ''}
+                {hasOffDays(contract.terms?.offDays) ? `Off days: ${contract.terms.offDaysLabel || formatOffDays(contract.terms.offDays)}. ` : ''}
                 {contract.responsibilityMatrix?.maintenance ? `Maintenance: ${String(contract.responsibilityMatrix.maintenance).toLowerCase()} takes care of it.` : ''}
               </Text>
             )}
@@ -238,7 +252,7 @@ export default function DriverContract() {
               <InfoRow label="Total Paid"       value={fmtGHS(wap.totalPaid)} colors={colors} />
               <InfoRow label="Remaining"        value={fmtGHS(wap.remainingBalance)} colors={colors} />
               <InfoRow label="Paid / Total"     value={`${wap.paidInstallments} / ${wap.totalInstallments} installments`} colors={colors} />
-              {!!contract.terms?.offDays && <InfoRow label="Off days" value={contract.terms.offDays} colors={colors} />}
+              {hasOffDays(contract.terms?.offDays) && <InfoRow label="Off days" value={contract.terms.offDaysLabel || formatOffDays(contract.terms.offDays)} colors={colors} />}
               {!!contract.responsibilityMatrix?.maintenance && <InfoRow label="Maintenance" value={`${String(contract.responsibilityMatrix.maintenance).toLowerCase()} takes care of it`} colors={colors} />}
               <InfoRow label="Ownership Eligible" value={wap.ownershipEligible ? 'Yes' : 'Not yet'} colors={colors} />
             </View>
@@ -267,7 +281,7 @@ export default function DriverContract() {
               <InfoRow label="Daily Amount"   value={`${fmtGHS(drivingOn.dailySalesAmount)} / ${drivingOn.paymentFrequency}`} colors={colors} />
               {!!contract.terms?.duration?.value && <InfoRow label="Runs for" value={`${contract.terms.duration.value} ${String(contract.terms.duration.unit || '').toLowerCase()}`} colors={colors} />}
               <InfoRow label="Grace Period" value={`${contract.terms?.gracePeriodDays ?? 0} days after you confirm`} colors={colors} />
-              {!!contract.terms?.offDays && <InfoRow label="Off days" value={contract.terms.offDays} colors={colors} />}
+              {hasOffDays(contract.terms?.offDays) && <InfoRow label="Off days" value={contract.terms.offDaysLabel || formatOffDays(contract.terms.offDays)} colors={colors} />}
               <InfoRow label="Driver pays fuel"        value={drivingOn.driverPaysFuel ? 'Yes' : 'No'} colors={colors} />
               <InfoRow label="Driver pays maintenance" value={drivingOn.driverPaysMaintenance ? 'Yes' : 'No'} colors={colors} />
             </View>

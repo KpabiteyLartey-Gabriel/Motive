@@ -163,8 +163,12 @@ export const invitesApi = {
 // Provider and Company accounts, plus company memberships.
 export const accountsApi = {
   me: () => apiClient.get('/accounts/me'),
-  createDriver: () => apiClient.post('/accounts/me/driver'),
-  createOwner: () => apiClient.post('/accounts/me/owner'),
+  // Paid Driver/Owner creation: start (code) -> confirm -> pay -> created.
+  creationCharges: () => apiClient.get('/accounts/me/creation/charges'),
+  startCreation: (kind) => apiClient.post(`/accounts/me/creation/${kind}/start`),
+  confirmCreation: (kind, code) => apiClient.post(`/accounts/me/creation/${kind}/confirm`, { code }),
+  payCreation: (kind, data) => apiClient.post(`/accounts/me/creation/${kind}/pay`, data),
+  creationStatus: (kind) => apiClient.get(`/accounts/me/creation/${kind}/status`),
   createServiceProvider: (data) => apiClient.post('/accounts/me/service-provider', data),
   createCompany: (data) => apiClient.post('/accounts/me/company', data),
   submitIdentityVerification: (kind, { ghanaCardNumber, idFront, idBack, selfie, livenessChallenge, livenessPassed }) => {
@@ -210,6 +214,8 @@ export const vehiclesApi = {
     return apiClient.post(`/vehicles/${id}/photos`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   setPhotos: (id, imageUrls) => apiClient.patch(`/vehicles/${id}/photos`, { imageUrls }),
+  myRenewals: () => apiClient.get('/vehicles/me/renewals'),
+  updateRenewals: (id, data) => apiClient.patch(`/vehicles/${id}/renewals`, data),
   updateStatus: (id, status) => apiClient.patch(`/vehicles/${id}/status`, { status }),
   changeOperatingModel: (id, operatingModel, managingCompanyId) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel, ...(managingCompanyId ? { managingCompanyId } : {}) }),
   getPendingModelChange: (id) => apiClient.get(`/vehicles/${id}/operating-model-request`),
@@ -234,6 +240,8 @@ export const contractsApi = {
   accept:  (id)     => apiClient.post(`/contracts/${id}/accept`),
   confirmCode: (id, code) => apiClient.post(`/contracts/${id}/confirm-code`, { code }),
   share:   (id, chatUsername) => apiClient.post(`/contracts/${id}/share`, { chatUsername }),
+  attach:  (id, vehicleId) => apiClient.post(`/contracts/${id}/attach`, { vehicleId }),
+  award:   (id, chatUsername) => apiClient.post(`/contracts/${id}/award`, { chatUsername }),
   updateStatus: (id, status) => apiClient.patch(`/contracts/${id}/status`, { status }),
   terminate: (id, reason) => apiClient.patch(`/contracts/${id}/terminate`, { reason }),
   getSchedule: (id) => apiClient.get(`/contracts/${id}/schedule`),
@@ -270,6 +278,18 @@ export const paymentsApi = {
 };
 
 // ── Maintenance ───────────────────────────────────────────────
+export const servicesApi = {
+  list: (params) => apiClient.get('/services', { params }),
+  mine: () => apiClient.get('/services/mine'),
+  create: (data) => apiClient.post('/services', data),
+  update: (id, data) => apiClient.patch(`/services/${id}`, data),
+  remove: (id) => apiClient.delete(`/services/${id}`),
+  request: (id, data) => apiClient.post(`/services/${id}/request`, data),
+  myRequests: () => apiClient.get('/services/requests/mine'),
+  incomingRequests: () => apiClient.get('/services/requests/incoming'),
+  updateRequestStatus: (id, data) => apiClient.patch(`/services/requests/${id}/status`, data),
+};
+
 export const maintenanceApi = {
   list:    (params) => apiClient.get('/maintenance', { params }),
   getById: (id)     => apiClient.get(`/maintenance/${id}`),
@@ -340,6 +360,9 @@ export const locationShareApi = {
 // ── Admin ────────────────────────────────────────────────────
 export const adminApi = {
   announce: (data) => apiClient.post('/admin/announcements', data),
+  // Account creation charges
+  getCharges: () => apiClient.get('/admin/charges'),
+  updateCharge: (kind, amountGhs) => apiClient.patch(`/admin/charges/${kind}`, { amountGhs }),
   // Users
   listUsers:      (params) => apiClient.get('/users', { params }),
   getUser:        (id)     => apiClient.get(`/users/${id}`),

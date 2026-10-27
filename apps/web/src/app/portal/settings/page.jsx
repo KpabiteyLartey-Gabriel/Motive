@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/useAuth';
 import { SectionHeader, StatusBadge } from '@/components/dashboard/DashboardUI';
 
 import { usersApi } from '@/lib/api';
+import ProfilePicture from '@/components/settings/ProfilePicture';
 
 export default function PortalSettingsPage() {
   const { user } = useAuth();
@@ -54,6 +55,7 @@ export default function PortalSettingsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-card border border-line bg-white p-5 shadow-card dark:border-dark-border dark:bg-dark-card dark:shadow-none">
           <h3 className="text-base font-semibold text-ink dark:text-white">Profile</h3>
+          <div className="mt-4"><ProfilePicture user={user} accountLabel="User" /></div>
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div><label htmlFor="firstName" className="label">First name</label><input id="firstName" className="input" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>

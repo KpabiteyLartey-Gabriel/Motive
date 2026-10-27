@@ -3,14 +3,40 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { VehicleStatus, UserRole, OperatingModel, VehicleVerificationStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
-export class VehiclesService {
-  constructor(private readonly prisma: PrismaService) {}
+export class VehiclesService implements OnApplicationBootstrap, OnModuleDestroy {
+  private readonly logger = new Logger(VehiclesService.name);
+  private renewalTimers: Array<ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>> = [];
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notifications?: NotificationsService,
+  ) {}
+
+  onApplicationBootstrap() {
+    // Proactive renewal reminders: first scan shortly after boot, then
+    // every 12 hours. Owners (and linked drivers) are notified even if
+    // nobody opens Servicing.
+    const first = setTimeout(() => { void this.scanRenewalReminders().catch(() => null); }, 30_000);
+    const every = setInterval(() => { void this.scanRenewalReminders().catch(() => null); }, 12 * 60 * 60 * 1000);
+    (first as any).unref?.(); (every as any).unref?.();
+    this.renewalTimers = [first, every];
+  }
+
+  onModuleDestroy() {
+    for (const t of this.renewalTimers) { clearTimeout(t as any); clearInterval(t as any); }
+    this.renewalTimers = [];
+  }
 
   // OWNER accounts are not always provisioned with an Owner profile
   // (registration historically created only the User). Create it on first
@@ -410,6 +436,210 @@ export class VehiclesService {
     if (Object.keys(data).length === 0) return vehicle;
     Object.assign(data, this.invalidateVerificationIfNeeded(vehicle, Object.keys(data)));
     return this.prisma.vehicle.update({ where: { id: vehicleId }, data });
+  }
+
+  // ── Renewal tracking (Servicing) ───────────────────────────
+  // Insurance + roadworthiness per vehicle, with proactive owner reminders.
+  // Insurance and roadworthiness expiry dates per vehicle — the dates
+  // drivers and owners forget to renew. Everyone linked to a vehicle
+  // (its owner, its current driver, anyone on an active contract for it)
+  // sees the same tracker in Servicing; only the owner updates dates.
+  private renewalStatus(expiry: Date | null | undefined, now = new Date()) {
+    if (!expiry) return { status: 'NOT_SET' as const, daysLeft: null as number | null };
+    const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const daysLeft = Math.round((startOf(new Date(expiry)) - startOf(now)) / 86400000);
+    if (daysLeft < 0) return { status: 'EXPIRED' as const, daysLeft };
+    if (daysLeft <= 30) return { status: 'DUE_SOON' as const, daysLeft };
+    return { status: 'VALID' as const, daysLeft };
+  }
+
+  // The two renewals tracked per vehicle.
+  static readonly RENEWAL_DEFS = [
+    { key: 'INSURANCE', field: 'insuranceExpiryDate', label: 'Insurance' },
+    { key: 'ROADWORTHINESS', field: 'roadWorthinessExpiryDate', label: 'Roadworthiness' },
+  ] as const;
+
+  private shapeRenewals(vehicle: any, canEdit: boolean) {
+    const item = (def: (typeof VehiclesService.RENEWAL_DEFS)[number]) => ({
+      key: def.key, field: def.field, label: def.label,
+      expiryDate: vehicle[def.field] || null, ...this.renewalStatus(vehicle[def.field] || null),
+    });
+    return {
+      vehicle: {
+        id: vehicle.id, make: vehicle.make, model: vehicle.model, year: vehicle.year,
+        registrationNumber: vehicle.registrationNumber, type: vehicle.type, color: vehicle.color || null,
+        imageUrl: vehicle.imageUrls?.[0] || null, status: vehicle.status,
+      },
+      canEdit,
+      renewals: VehiclesService.RENEWAL_DEFS.map(item),
+    };
+  }
+
+  // Who may set the dates: the vehicle's owner — and, on a Work & Pay
+  // contract, the driver awarded that contract, since keeping the car
+  // legal and on the road is part of working it off.
+  private canEditRenewals(vehicle: any, userId: string, owner?: any) {
+    if (owner && vehicle.ownerId === owner.id) return true;
+    return (vehicle.contracts || []).some((c: any) =>
+      c.type === 'WORK_AND_PAY' && (c.parties || []).some((p: any) => p.role === 'DRIVER'));
+  }
+
+  private async assertCanEditRenewals(vehicle: any, userId: string) {
+    const owner = await this.prisma.owner.findUnique({ where: { userId } }).catch(() => null);
+    if (owner && vehicle.ownerId === owner.id) return;
+    const wap = typeof (this.prisma as any).contract?.findFirst === 'function'
+      ? await this.prisma.contract.findFirst({
+          where: {
+            vehicleId: vehicle.id, status: 'ACTIVE', type: 'WORK_AND_PAY',
+            parties: { some: { userId, role: 'DRIVER' } },
+          },
+          select: { id: true },
+        }).catch(() => null)
+      : null;
+    if (!wap) {
+      throw new ForbiddenException('Only the vehicle owner or its Work & Pay driver can update its renewal dates');
+    }
+  }
+
+  async getMyRenewals(userId: string) {
+    const [owner, driver] = await Promise.all([
+      this.prisma.owner.findUnique({ where: { userId } }).catch(() => null),
+      (this.prisma as any).driver?.findUnique ? this.prisma.driver.findUnique({ where: { userId } }).catch(() => null) : null,
+    ]);
+    const or: any[] = [];
+    if (owner) or.push({ ownerId: owner.id });
+    if (driver) or.push({ currentDriverId: driver.id });
+    or.push({ contracts: { some: { status: 'ACTIVE', parties: { some: { userId } } } } });
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { OR: or },
+      orderBy: { registrationNumber: 'asc' },
+      include: {
+        contracts: {
+          where: { status: 'ACTIVE' },
+          select: { type: true, parties: { where: { userId }, select: { role: true } } },
+        },
+      },
+    });
+    const shaped = vehicles.map((v: any) => this.shapeRenewals(v, this.canEditRenewals(v, userId, owner)));
+    await this.notifyDueRenewals(userId, shaped).catch(() => null);
+    const counts = { expired: 0, dueSoon: 0, notSet: 0 };
+    for (const v of shaped) for (const r of v.renewals) {
+      if (r.status === 'EXPIRED') counts.expired += 1;
+      else if (r.status === 'DUE_SOON') counts.dueSoon += 1;
+      else if (r.status === 'NOT_SET') counts.notSet += 1;
+    }
+    return { vehicles: shaped, counts };
+  }
+
+  // Reminder stages: 30 days out, 7 days out, expiry day, and expired.
+  // Each stage is sent once per vehicle + renewal + expiry date, so
+  // renewing (changing the date) naturally starts a fresh cycle.
+  private renewalStage(daysLeft: number | null): 'D30' | 'D7' | 'D0' | 'EXPIRED' | null {
+    if (daysLeft === null) return null;
+    if (daysLeft < 0) return 'EXPIRED';
+    if (daysLeft === 0) return 'D0';
+    if (daysLeft <= 7) return 'D7';
+    if (daysLeft <= 30) return 'D30';
+    return null;
+  }
+
+  private async notifyDueRenewals(userId: string, shaped: any[]) {
+    if (typeof (this.prisma as any).notification?.findMany !== 'function') return;
+    const existing = await this.prisma.notification.findMany({
+      where: { userId, type: 'RENEWAL_REMINDER' },
+      select: { data: true },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    }).catch(() => []);
+    const already = new Set(existing.map((n: any) =>
+      `${n.data?.vehicleId}:${n.data?.key}:${n.data?.expiryDate || ''}:${n.data?.stage || n.data?.status || ''}`));
+    for (const v of shaped) {
+      for (const r of v.renewals) {
+        const stage = this.renewalStage(r.daysLeft);
+        if (!stage) continue;
+        const expiryIso = r.expiryDate ? new Date(r.expiryDate).toISOString().slice(0, 10) : '';
+        const dedupe = `${v.vehicle.id}:${r.key}:${expiryIso}:${stage}`;
+        if (already.has(dedupe)) continue;
+        already.add(dedupe);
+        const when = stage === 'EXPIRED'
+          ? `expired ${Math.abs(r.daysLeft)} day${Math.abs(r.daysLeft) === 1 ? '' : 's'} ago`
+          : stage === 'D0' ? 'expires today'
+          : `expires in ${r.daysLeft} day${r.daysLeft === 1 ? '' : 's'}`;
+        const subject = `${r.label} ${stage === 'EXPIRED' ? 'overdue' : 'due'} — ${v.vehicle.registrationNumber}`;
+        const body = `The ${r.label.toLowerCase()} for ${v.vehicle.make} ${v.vehicle.model} (${v.vehicle.registrationNumber}) ${when}. Renew it, then update the new date in Servicing.`;
+        const data = { vehicleId: v.vehicle.id, key: r.key, stage, expiryDate: expiryIso };
+        if (this.notifications?.send) {
+          await this.notifications.send({ userId, channel: 'IN_APP' as any, type: 'RENEWAL_REMINDER', subject, body, data }).catch(() => null);
+          // Owners also get email at the urgent stages, so the reminder
+          // reaches them even if they never open the app.
+          if (stage === 'D7' || stage === 'D0' || stage === 'EXPIRED') {
+            await this.notifications.send({ userId, channel: 'EMAIL' as any, type: 'RENEWAL_REMINDER', subject, body, data }).catch(() => null);
+          }
+        } else {
+          await this.prisma.notification.create({
+            data: {
+              userId, channel: 'IN_APP', type: 'RENEWAL_REMINDER', status: 'SENT', sentAt: new Date(),
+              subject, body, data,
+            },
+          }).catch(() => null);
+        }
+      }
+    }
+  }
+
+  // Proactive scan (boot + every 12h, and callable by tests/admin jobs):
+  // every vehicle with a renewal expiring within 30 days — or expired in
+  // the last 90 days — reminds its owner, its current driver, and anyone
+  // on an active contract for it. Nobody has to open Servicing first.
+  async scanRenewalReminders(now = new Date()) {
+    if (typeof (this.prisma as any).vehicle?.findMany !== 'function') return { scanned: 0, recipients: 0 };
+    const in30 = new Date(now.getTime() + 30 * 86400000);
+    const ago90 = new Date(now.getTime() - 90 * 86400000);
+    const or = VehiclesService.RENEWAL_DEFS.map((d) => ({ [d.field]: { not: null, lte: in30, gte: ago90 } }));
+    const vehicles = await (this.prisma.vehicle as any).findMany({
+      where: { OR: or },
+      include: {
+        owner: { select: { userId: true } },
+        currentDriver: { select: { userId: true } },
+        contracts: {
+          where: { status: 'ACTIVE' },
+          select: { parties: { select: { userId: true } } },
+        },
+      },
+    }).catch(() => []);
+    let recipients = 0;
+    for (const vehicle of vehicles) {
+      const userIds = new Set<string>();
+      if (vehicle.owner?.userId) userIds.add(vehicle.owner.userId);
+      if (vehicle.currentDriver?.userId) userIds.add(vehicle.currentDriver.userId);
+      for (const c of vehicle.contracts || []) for (const p of c.parties || []) if (p.userId) userIds.add(p.userId);
+      const shaped = [this.shapeRenewals(vehicle, false)];
+      for (const userId of userIds) {
+        recipients += 1;
+        await this.notifyDueRenewals(userId, shaped).catch(() => null);
+      }
+    }
+    if (vehicles.length) this.logger.log(`Renewal scan: ${vehicles.length} vehicle(s) due, ${recipients} recipient(s) checked`);
+    return { scanned: vehicles.length, recipients };
+  }
+
+  async updateRenewals(vehicleId: string, userId: string, dto: Record<string, string | null | undefined>) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    await this.assertCanEditRenewals(vehicle, userId);
+    const data: Record<string, any> = {};
+    for (const def of VehiclesService.RENEWAL_DEFS) {
+      const value = dto[def.field];
+      if (value === undefined) continue;
+      if (value === null || value === '') { data[def.field] = null; continue; }
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) throw new BadRequestException(`${def.label} date is not a valid date.`);
+      data[def.field] = d;
+    }
+    const updated = Object.keys(data).length
+      ? await this.prisma.vehicle.update({ where: { id: vehicleId }, data })
+      : vehicle;
+    return this.shapeRenewals(updated, true);
   }
 
   async setVerificationEvidence(vehicleId: string, kind: string, url: string, requestingUserId: string, requestingUserRole: string) {

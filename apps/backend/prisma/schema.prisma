@@ -126,9 +126,11 @@ enum VehicleType {
   SEDAN
   SUV
   PICKUP
+  VAN
   MINIBUS
   BUS
   TRUCK
+  TRAILER
   MOTORCYCLE
   TRICYCLE
   OTHER
@@ -360,6 +362,7 @@ model User {
   notifications    Notification[]
   pushTokens       PushToken[]
   auditLogs        AuditLog[]          @relation("AuditActor")
+  accountCreationOrders AccountCreationOrder[]
 
   @@index([email])
   @@index([phone])
@@ -572,6 +575,78 @@ enum ServiceProviderStatus {
   SUSPENDED
 }
 
+enum ProviderServiceCategory {
+  DETAILING
+  CAR_WASH
+  OIL_CHANGE
+  TYRE_SALES
+  WHEEL_ALIGNMENT
+  BRAKES
+  BATTERY
+  AC_SERVICE
+  DIAGNOSTICS
+  GENERAL_SERVICING
+  TOWING
+  OTHER
+}
+
+// A service a provider publishes (detailing, oil change, tyres, towing…).
+// Listed in Servicing for owners, drivers and normal users alike.
+model ProviderService {
+  id                String                  @id @default(cuid())
+  serviceProviderId String
+  title             String
+  category          ProviderServiceCategory @default(OTHER)
+  description       String?
+  priceGhs          Decimal?                @db.Decimal(10, 2)
+  priceNote         String?
+  durationMins      Int?
+  isAvailable       Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  serviceProvider ServiceProvider @relation(fields: [serviceProviderId], references: [id], onDelete: Cascade)
+  requests ServiceRequest[]
+
+  @@index([serviceProviderId])
+  @@index([category, isAvailable])
+  @@map("provider_services")
+}
+
+enum ServiceRequestStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  COMPLETED
+  CANCELLED
+}
+
+// Someone asking a provider for one of its published services, from the
+// Servicing pages. The vehicle may be one linked to them in +Motive, or
+// simply described ("my Corolla, GE-1234-25") when it is not.
+model ServiceRequest {
+  id                String               @id @default(cuid())
+  providerServiceId String
+  serviceProviderId String
+  requestedBy       String
+  vehicleId         String?
+  vehicleLabel      String?
+  preferredDate     DateTime?
+  contactPhone      String?
+  notes             String?
+  status            ServiceRequestStatus @default(REQUESTED)
+  providerNote      String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  providerService ProviderService @relation(fields: [providerServiceId], references: [id], onDelete: Cascade)
+  serviceProvider ServiceProvider @relation(fields: [serviceProviderId], references: [id], onDelete: Cascade)
+
+  @@index([serviceProviderId, status])
+  @@index([requestedBy])
+  @@map("service_requests")
+}
+
 model ServiceProvider {
   id           String                @id @default(cuid())
   userId       String                @unique
@@ -586,6 +661,8 @@ model ServiceProvider {
   updatedAt    DateTime              @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+  services ProviderService[]
+  serviceRequests ServiceRequest[]
 
   @@index([userId])
   @@map("service_providers")
@@ -774,6 +851,10 @@ model Vehicle {
   ownerId            String?
   managingCompanyId  String?
   currentDriverId    String?
+  // Renewal tracking (Servicing): the dates drivers and owners forget.
+  // Dates only — no documents are collected for these.
+  insuranceExpiryDate       DateTime?
+  roadWorthinessExpiryDate  DateTime?
   imageUrls          String[]
   notes              String?
   createdAt          DateTime      @default(now())
@@ -1406,6 +1487,40 @@ model SystemSetting {
   updatedBy String?
 
   @@map("system_settings")
+}
+
+// Paid account creation (Driver / Owner): a User confirms interest with a
+// one-time code sent to phone + email + in-app, pays the creation charge
+// set by an admin in SystemSetting, and only then is the account created.
+enum AccountCreationStatus {
+  PENDING_VERIFICATION
+  AWAITING_PAYMENT
+  COMPLETED
+  EXPIRED
+}
+
+model AccountCreationOrder {
+  id               String                @id @default(cuid())
+  userId           String
+  kind             String // DRIVER | OWNER
+  amount           Decimal               @db.Decimal(15, 2)
+  currency         String                @default("GHS")
+  status           AccountCreationStatus @default(PENDING_VERIFICATION)
+  codeHash         String?
+  codeExpiresAt    DateTime?
+  codeUsedAt       DateTime?
+  paymentId        String?               @unique
+  verifiedAt       DateTime?
+  paidAt           DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+  @@index([status])
+  @@map("account_creation_orders")
 }
 
 // ─────────────────────────────────────────────────────────────

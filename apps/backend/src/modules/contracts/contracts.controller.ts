@@ -18,6 +18,10 @@ class UpdateContractStatusDto {
   @IsString() status: string;
 }
 
+class AttachContractDto {
+  @IsString() vehicleId: string;
+}
+
 @ApiTags('Contracts')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
@@ -71,6 +75,20 @@ export class ContractsController {
   @ApiOperation({ summary: 'Owner shares a draft contract with a driver by chat username (posts a contract card in chat, returns the confirmation code once)' })
   async share(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: ShareContractDto) {
     return this.contractsService.shareContract(id, user.id, dto.chatUsername);
+  }
+
+  @Post(':id/attach')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Owner attaches a contract template to one of their vehicles' })
+  async attach(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: AttachContractDto) {
+    return this.contractsService.attachVehicle(id, user.id, dto.vehicleId);
+  }
+
+  @Post(':id/award')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Owner awards an attached contract to a driver by chat username; the signing code goes straight to that person (SMS, email, in-app)' })
+  async award(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: ShareContractDto) {
+    return this.contractsService.awardContract(id, user.id, dto.chatUsername);
   }
 
   @Post(':id/confirm-code')

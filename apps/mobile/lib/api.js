@@ -72,6 +72,7 @@ export default apiClient;
 export const authApi = {
   register: (data) => apiClient.post('/auth/register', data),
   login:    (data) => apiClient.post('/auth/login', data),
+  refresh:  (refreshToken) => apiClient.post('/auth/refresh-token', { refreshToken }),
   forgotPassword: (identifier) => apiClient.post('/auth/forgot-password', { identifier }),
   resetPassword:  (token, newPassword) => apiClient.post('/auth/reset-password', { token, newPassword }),
 };
@@ -125,6 +126,9 @@ export const vehiclesApi = {
     }
     return apiClient.post(`/vehicles/${id}/photos`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  setPhotos: (id, imageUrls) => apiClient.patch(`/vehicles/${id}/photos`, { imageUrls }),
+  myRenewals: () => apiClient.get('/vehicles/me/renewals'),
+  updateRenewals: (id, data) => apiClient.patch(`/vehicles/${id}/renewals`, data),
   updateStatus: (id, status) => apiClient.patch(`/vehicles/${id}/status`, { status }),
   changeOperatingModel: (id, operatingModel, managingCompanyId) => apiClient.patch(`/vehicles/${id}/operating-model`, { operatingModel, ...(managingCompanyId ? { managingCompanyId } : {}) }),
   getPendingModelChange: (id) => apiClient.get(`/vehicles/${id}/operating-model-request`),
@@ -141,6 +145,8 @@ export const contractsApi = {
   accept:    (id) => apiClient.post(`/contracts/${id}/accept`),
   confirmCode: (id, code) => apiClient.post(`/contracts/${id}/confirm-code`, { code }),
   share:     (id, chatUsername) => apiClient.post(`/contracts/${id}/share`, { chatUsername }),
+  attach:    (id, vehicleId) => apiClient.post(`/contracts/${id}/attach`, { vehicleId }),
+  award:     (id, chatUsername) => apiClient.post(`/contracts/${id}/award`, { chatUsername }),
   getSchedule: (id) => apiClient.get(`/contracts/${id}/schedule`),
 };
 
@@ -196,7 +202,30 @@ export const usersApi = {
   },
 };
 
+// ── Accounts (roles a User holds: Driver, Owner, ...) ────────
+export const accountsApi = {
+  me: () => apiClient.get('/accounts/me'),
+  // Paid Driver/Owner creation: start (code) -> confirm -> pay -> created.
+  creationCharges: () => apiClient.get('/accounts/me/creation/charges'),
+  startCreation: (kind) => apiClient.post(`/accounts/me/creation/${kind}/start`),
+  confirmCreation: (kind, code) => apiClient.post(`/accounts/me/creation/${kind}/confirm`, { code }),
+  payCreation: (kind, data) => apiClient.post(`/accounts/me/creation/${kind}/pay`, data),
+  creationStatus: (kind) => apiClient.get(`/accounts/me/creation/${kind}/status`),
+};
+
 // ── Maintenance ──────────────────────────────────────────────
+export const servicesApi = {
+  list: (params) => apiClient.get('/services', { params }),
+  mine: () => apiClient.get('/services/mine'),
+  create: (data) => apiClient.post('/services', data),
+  update: (id, data) => apiClient.patch(`/services/${id}`, data),
+  remove: (id) => apiClient.delete(`/services/${id}`),
+  request: (id, data) => apiClient.post(`/services/${id}/request`, data),
+  myRequests: () => apiClient.get('/services/requests/mine'),
+  incomingRequests: () => apiClient.get('/services/requests/incoming'),
+  updateRequestStatus: (id, data) => apiClient.patch(`/services/requests/${id}/status`, data),
+};
+
 export const maintenanceApi = {
   list:   (params) => apiClient.get('/maintenance', { params }),
   create: (data) => apiClient.post('/maintenance', data),

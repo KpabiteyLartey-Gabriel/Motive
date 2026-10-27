@@ -20,6 +20,7 @@ import { SettlementsModule } from './modules/settlements/settlements.module';
 import { DisputesModule } from './modules/disputes/disputes.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { ServicesModule } from './modules/services/services.module';
 import { TrackingModule } from './modules/tracking/tracking.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
 import { ComplianceModule } from './modules/compliance/compliance.module';
@@ -73,6 +74,7 @@ import jwtConfig from './config/jwt.config';
     DisputesModule,
     NotificationsModule,
     MaintenanceModule,
+    ServicesModule,
     TrackingModule,
     IncidentsModule,
     ComplianceModule,

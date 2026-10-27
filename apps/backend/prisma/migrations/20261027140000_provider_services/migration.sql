@@ -1,0 +1,5 @@
+CREATE TYPE "ProviderServiceCategory" AS ENUM ('DETAILING', 'CAR_WASH', 'OIL_CHANGE', 'TYRE_SALES', 'WHEEL_ALIGNMENT', 'BRAKES', 'BATTERY', 'AC_SERVICE', 'DIAGNOSTICS', 'GENERAL_SERVICING', 'TOWING', 'OTHER');
+CREATE TABLE "provider_services" ("id" TEXT NOT NULL, "serviceProviderId" TEXT NOT NULL, "title" TEXT NOT NULL, "category" "ProviderServiceCategory" NOT NULL DEFAULT 'OTHER', "description" TEXT, "priceGhs" DECIMAL(10,2), "priceNote" TEXT, "durationMins" INTEGER, "isAvailable" BOOLEAN NOT NULL DEFAULT true, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, CONSTRAINT "provider_services_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "provider_services_serviceProviderId_idx" ON "provider_services"("serviceProviderId");
+CREATE INDEX "provider_services_category_isAvailable_idx" ON "provider_services"("category", "isAvailable");
+ALTER TABLE "provider_services" ADD CONSTRAINT "provider_services_serviceProviderId_fkey" FOREIGN KEY ("serviceProviderId") REFERENCES "service_providers"("id") ON DELETE CASCADE ON UPDATE CASCADE;

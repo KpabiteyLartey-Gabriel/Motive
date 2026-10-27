@@ -2,18 +2,21 @@
 
 import { usePathname } from 'next/navigation';
 import DashboardShell from '@/components/dashboard/DashboardShell';
+import NotificationBell from '@/components/dashboard/NotificationBell';
 import { OWNER_NAV } from '@/lib/ownerNav';
 import { useAuth } from '@/lib/useAuth';
 
 const TITLES = {
   '/owner/dashboard': 'Owner Dashboard',
-  '/owner/vehicles': 'My Vehicles',
-  '/owner/drivers': 'My Drivers',
-  '/owner/tracking': 'Vehicle Tracking',
   '/owner/messages': 'Chat',
-  '/owner/contracts': 'Contract',
+  '/owner/payments': 'Payments',
+  '/owner/contracts': 'Contracts',
+  '/owner/vehicles': 'My Vehicles',
+  '/owner/maintenance': 'Servicing',
+  '/owner/tracking': 'Vehicle Tracking',
   '/owner/account': 'My Account',
-  '/owner/notifications': 'Notification',
+  '/owner/settings': 'Settings',
+  '/owner/notifications': 'Notifications',
 };
 
 // Persistent owner shell: mounts once; only page content swaps on navigation.
@@ -26,7 +29,7 @@ export default function OwnerLayout({ children }) {
   );
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={OWNER_NAV} title={TITLES[pathname] || current?.label || 'Owner'}>
+    <DashboardShell user={user} loading={loading} logout={logout} navItems={OWNER_NAV} title={TITLES[pathname] || current?.label || 'Owner'} headerActions={<NotificationBell href="/owner/notifications" />}>
       {children}
     </DashboardShell>
   );

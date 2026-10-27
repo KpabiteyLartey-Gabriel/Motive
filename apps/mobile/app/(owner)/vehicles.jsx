@@ -1,519 +1,276 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, Image } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../../lib/theme';
-import { useAuth, fmtGHS, fmtDate } from '../../lib/useAuth';
-import { vehiclesApi, complianceApi, companiesApi, resolveVehiclePhoto } from '../../lib/api';
-import VehiclePhotos from '../../components/VehiclePhotos';
-import { Field, PrimaryButton } from '../../components/ui';
-import { Image } from 'react-native';
+import { useTheme, palette } from '../../lib/theme';
+import { useAuth, fmtGHS } from '../../lib/useAuth';
 import * as ImagePicker from 'expo-image-picker';
+import { vehiclesApi, contractsApi, marketplaceApi, resolveVehiclePhoto } from '../../lib/api';
+import { Card, Badge, Field, PrimaryButton } from '../../components/ui';
 
-const EVIDENCE_SLOTS = [
-  { kind: 'frontPlate', label: 'Front of vehicle — number plate clearly visible' },
-  { kind: 'rearPlate', label: 'Rear of vehicle — number plate clearly visible' },
-  { kind: 'vinPlate', label: 'Chassis / VIN plate — close-up, numbers readable' },
-  { kind: 'registrationCert', label: 'Vehicle Registration Certificate (DVLA)' },
-];
+const TYPE_LABEL = { WORK_AND_PAY: 'Work & Pay', DRIVING_ON: 'DriveOn', RENTAL: 'Rental' };
+const VEHICLE_KINDS = ['MOTORCYCLE', 'TRICYCLE', 'SEDAN', 'SUV', 'PICKUP', 'VAN', 'MINIBUS', 'BUS', 'TRUCK', 'TRAILER', 'OTHER'];
 
-const TYPES = ['SEDAN', 'SUV', 'PICKUP', 'MINIBUS', 'BUS', 'TRUCK', 'MOTORCYCLE', 'TRICYCLE', 'OTHER'];
-const FUELS = ['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID', 'LPG'];
-const TRANSMISSIONS = ['MANUAL', 'AUTOMATIC'];
-const GHANA_REGIONS = ['Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern', 'Greater Accra', 'North East', 'Northern', 'Oti', 'Savannah', 'Upper East', 'Upper West', 'Volta', 'Western', 'Western North'];
-const MODELS = [
-  { value: 'WORK_AND_PAY', label: 'Work & Pay' },
-  { value: 'DRIVING_ON', label: 'DriveOn' },
-  { value: 'RENTAL', label: 'Rental' },
-];
-const EMPTY_FORM = { registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), color: '', chassisNumber: '', region: '', type: 'SEDAN', fuelType: 'PETROL', transmission: 'AUTOMATIC', operatingModel: 'WORK_AND_PAY', managingCompanyId: '', mileage: '', estimatedValue: '' };
-
-function ChipRow({ label, options, value, onChange, colors }) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 }}>{label}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {options.map((o) => {
-          const v = typeof o === 'string' ? o : o.value;
-          const l = typeof o === 'string' ? o.replace(/_/g, ' ') : o.label;
-          const active = value === v;
-          return (
-            <TouchableOpacity key={v} onPress={() => onChange(v)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: active ? colors.brand : colors.border, backgroundColor: active ? colors.brandSoft : colors.card }}>
-              <Text style={{ fontSize: 12.5, fontWeight: '700', color: active ? colors.brandText : colors.textSecondary }}>{l}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
+// My Vehicles: grid of the owner's motor vehicles. Attach one of the
+// created contracts, then award it to a driver found by search.
 export default function OwnerVehicles() {
   const { colors } = useTheme();
-  const { user, loading } = useAuth();
-  const [vehicles, setVehicles]   = useState([]);
-  const [fetching, setFetching]   = useState(true);
+  const { user } = useAuth();
+  const [vehicles, setVehicles] = useState([]);
+  const [contracts, setContracts] = useState([]);
+  const [fetching, setFetching] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selected, setSelected]   = useState(null);
-  const [compliance, setCompliance] = useState([]);
-  const [showForm, setShowForm]   = useState(false);
-  const [form, setForm]           = useState(EMPTY_FORM);
-  const [saving, setSaving]       = useState(false);
-  const [formError, setFormError] = useState('');
-  const [statusBusy, setStatusBusy] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [form, setForm] = useState({ registrationNumber: '', make: '', model: '', year: String(new Date().getFullYear()), type: 'SEDAN', color: '', mileage: '', region: '', location: '' });
+  const [attachFor, setAttachFor] = useState(null);
+  const [awardFor, setAwardFor] = useState(null);
+  const [driverQuery, setDriverQuery] = useState('');
+  const [driverResults, setDriverResults] = useState([]);
+  const [pickedDriver, setPickedDriver] = useState(null);
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-
-  const [companies, setCompanies] = useState([]);
-
-  useEffect(() => {
-    if (!user) return;
-    companiesApi.list({ limit: 50 })
-      .then((r) => setCompanies((r.data?.data?.companies || []).filter((c) => c.status === 'ACTIVE')))
-      .catch(() => setCompanies([]));
-  }, [user]);
-
-  const submitVehicle = async (publish) => {
-    setFormError('');
-    if (!form.registrationNumber.trim() || !form.make.trim() || !form.model.trim() || !form.year) {
-      setFormError('Registration number, make, model and year are required.');
-      return;
-    }
-    if (publish && form.operatingModel === 'RENTAL' && !form.managingCompanyId) {
-      setFormError('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out, or save it as a draft and choose later.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await vehiclesApi.create({
-        registrationNumber: form.registrationNumber.trim(),
-        make: form.make.trim(),
-        model: form.model.trim(),
-        year: Number(form.year),
-        color: form.color.trim() || undefined,
-        region: form.region.trim() || undefined,
-        type: form.type,
-        fuelType: form.fuelType,
-        transmission: form.transmission,
-        operatingModel: form.operatingModel,
-        chassisNumber: form.chassisNumber.trim() || undefined,
-        managingCompanyId: form.operatingModel === 'RENTAL' && form.managingCompanyId ? form.managingCompanyId : undefined,
-        mileage: form.mileage ? Number(form.mileage) : undefined,
-        estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
-        publish,
-      });
-      const created = res.data?.data;
-      if (created?.id) setVehicles((prev) => [created, ...prev]);
-      setForm(EMPTY_FORM);
-      setShowForm(false);
-      if (created?.id) openVehicle(created);
-    } catch (e) {
-      const m = e.response?.data?.message || 'Could not save the vehicle. Please try again.';
-      setFormError(Array.isArray(m) ? m.join(' ') : m);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const [pendingReq, setPendingReq] = useState(null);
-  const [modelBusy, setModelBusy]   = useState(false);
-  const [modelMsg, setModelMsg]     = useState('');
-  const [rentalCompanyId, setRentalCompanyId] = useState('');
-  const [showRentalPicker, setShowRentalPicker] = useState(false);
-  const [vChassis, setVChassis]       = useState('');
-  const [verifyBusy, setVerifyBusy]   = useState('');
-  const [verifyMsg, setVerifyMsg]     = useState('');
-
-  const loadPending = async (vehicleId) => {
-    try {
-      const r = await vehiclesApi.getPendingModelChange(vehicleId);
-      setPendingReq(r.data?.data || null);
-    } catch { setPendingReq(null); }
-  };
-
-  const changeModel = async (vehicle, target) => {
-    if (target === 'RENTAL' && !rentalCompanyId && !vehicle.managingCompanyId) {
-      setShowRentalPicker(true);
-      setModelMsg('Only companies can publish vehicles for rent. Choose the company that will rent this vehicle out, then confirm.');
-      return;
-    }
-    setModelBusy(true);
-    setModelMsg('');
-    try {
-      const res = await vehiclesApi.changeOperatingModel(vehicle.id, target, target === 'RENTAL' ? (rentalCompanyId || undefined) : undefined);
-      const d = res.data?.data || {};
-      if (d.approvalRequired) {
-        setPendingReq(d.request);
-        if (d.vehicle) {
-          setVehicles((prev) => prev.map((x) => (x.id === d.vehicle.id ? { ...x, ...d.vehicle } : x)));
-          setSelected((s) => (s?.id === d.vehicle.id ? { ...s, ...d.vehicle } : s));
-        }
-        setShowRentalPicker(false);
-        setModelMsg('Change requested — the assigned driver must approve it first, because this Work & Pay vehicle is becoming theirs.');
-      } else if (d.vehicle) {
-        setVehicles((prev) => prev.map((x) => (x.id === d.vehicle.id ? { ...x, ...d.vehicle } : x)));
-        setSelected((s) => (s?.id === d.vehicle.id ? { ...s, ...d.vehicle } : s));
-        setShowRentalPicker(false);
-        setModelMsg(d.companyUpdated ? 'Rental company saved. You can publish this vehicle now.' : 'Contract type updated.');
-      }
-    } catch (e) {
-      setModelMsg(e.response?.data?.message || 'Could not change the contract type.');
-    } finally {
-      setModelBusy(false);
-    }
-  };
-
-  const changeStatus = async (vehicle, status) => {
-    setStatusBusy(true);
-    try {
-      const res = await vehiclesApi.updateStatus(vehicle.id, status);
-      const updated = res.data?.data || { ...vehicle, status };
-      setVehicles((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
-      setSelected((s) => (s?.id === updated.id ? { ...s, ...updated } : s));
-    } catch (e) {
-      setFormError(e.response?.data?.message || 'Could not update the vehicle status.');
-    } finally {
-      setStatusBusy(false);
-    }
-  };
 
   const load = useCallback(async () => {
     try {
-      const res = await vehiclesApi.list({ limit: 50 });
-      setVehicles(res.data?.data?.vehicles || []);
+      const [v, c] = await Promise.all([
+        vehiclesApi.list({ limit: 100 }).catch(() => null),
+        contractsApi.list({ limit: 100 }).catch(() => null),
+      ]);
+      setVehicles(v?.data?.data?.vehicles || v?.data?.data || []);
+      setContracts(c?.data?.data?.contracts || []);
     } catch {}
     setFetching(false);
     setRefreshing(false);
   }, []);
 
   useEffect(() => { if (user) load(); }, [user, load]);
-  const onRefresh = () => { setRefreshing(true); load(); };
 
-  const applyVehicleUpdate = (updated) => {
-    if (!updated?.id) return;
-    setVehicles((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
-    setSelected((s) => (s?.id === updated.id ? { ...s, ...updated } : s));
-  };
+  const contractByVehicle = {};
+  contracts.forEach((c) => { if (c.vehicleId) contractByVehicle[c.vehicleId] = c; });
+  const attachable = contracts.filter((c) => !c.vehicleId && c.status === 'DRAFT' && !(c.parties || []).some((p) => p.role === 'DRIVER'));
 
-  const saveIdentity = async () => {
-    if (!selected) return;
-    setVerifyBusy('identity');
-    setVerifyMsg('');
-    try {
-      const res = await vehiclesApi.updateDetails(selected.id, { chassisNumber: vChassis.trim() });
-      applyVehicleUpdate(res.data?.data);
-      setVerifyMsg('Chassis number saved.');
-    } catch (e) {
-      setVerifyMsg(e.response?.data?.message || 'Could not save those details.');
-    } finally {
-      setVerifyBusy('');
+  const createVehicle = async () => {
+    if (!form.registrationNumber.trim() || !form.make.trim() || !form.model.trim() || !form.year) {
+      Alert.alert('Details needed', 'Registration number, make, model and year are required.');
+      return;
     }
-  };
-
-  const pickEvidence = async (kind) => {
-    if (!selected) return;
+    setBusy('create');
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { setVerifyMsg('Photo access is needed to upload evidence images.'); return; }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
-      const name = (asset.uri.split('/').pop() || 'evidence.jpg').split('?')[0];
-      const form = new FormData();
-      form.append('kind', kind);
-      form.append('file', { uri: asset.uri, name, type: name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg' });
-      setVerifyBusy(kind);
-      setVerifyMsg('');
-      const res = await vehiclesApi.uploadEvidence(selected.id, kind, form);
-      applyVehicleUpdate(res.data?.data);
+      await vehiclesApi.create({
+        registrationNumber: form.registrationNumber.trim(), make: form.make.trim(), model: form.model.trim(),
+        year: Number(form.year), type: form.type, color: form.color.trim() || undefined,
+        fuelType: 'PETROL', transmission: 'AUTOMATIC',
+        mileage: form.mileage ? Number(form.mileage) : undefined,
+        region: form.region.trim() || undefined, location: form.location.trim() || undefined, publish: false,
+      });
+      setShowForm(false);
+      Alert.alert('Vehicle added', 'Attach a contract to it, then award it to a driver.');
+      load();
     } catch (e) {
-      setVerifyMsg(e.response?.data?.message || 'Evidence upload failed.');
-    } finally {
-      setVerifyBusy('');
+      Alert.alert('Could not save', e.response?.data?.message || 'Please try again.');
     }
+    setBusy('');
   };
 
-  const submitVerification = async () => {
-    if (!selected) return;
-    setVerifyBusy('submit');
-    setVerifyMsg('');
+  // Owners can add a vehicle picture at any time from the card; the
+  // newest picture becomes the cover photo.
+  const pickVehiclePhoto = async (vehicle) => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert('Photo access needed', 'Allow photo access to add a vehicle picture.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+    setBusy('photo');
     try {
-      const res = await vehiclesApi.submitVerification(selected.id);
-      applyVehicleUpdate(res.data?.data);
-      setVerifyMsg('Submitted. A Super Admin will check the details against your images; you will be notified of the outcome.');
+      const oldUrls = vehicle.imageUrls || [];
+      const res = await vehiclesApi.uploadPhotos(vehicle.id, result.assets[0].uri);
+      const allUrls = (res.data?.data || res.data)?.imageUrls || [];
+      const newUrl = allUrls.find((u) => !oldUrls.includes(u)) || allUrls[allUrls.length - 1];
+      if (newUrl && oldUrls.length) await vehiclesApi.setPhotos(vehicle.id, [newUrl, ...oldUrls]).catch(() => {});
+      load();
     } catch (e) {
-      const m = e.response?.data?.message || 'Could not submit for verification.';
-      setVerifyMsg(Array.isArray(m) ? m.join(' ') : m);
-    } finally {
-      setVerifyBusy('');
+      Alert.alert('Could not upload', e.response?.data?.message || 'Please try another image.');
     }
+    setBusy('');
   };
 
-  const openVehicle = async (v) => {
-    setSelected(v);
-    setModelMsg('');
-    setVerifyMsg('');
-    setVChassis(v.chassisNumber || '');
-    setRentalCompanyId(v.managingCompanyId || '');
-    setShowRentalPicker(false);
-    loadPending(v.id);
+  const attach = async (vehicle, contractId) => {
+    setBusy('attach');
     try {
-      const res = await complianceApi.listForVehicle(v.id);
-      setCompliance(res.data?.data || []);
-    } catch { setCompliance([]); }
+      await contractsApi.attach(contractId, vehicle.id);
+      setAttachFor(null);
+      load();
+    } catch (e) {
+      Alert.alert('Could not attach', e.response?.data?.message || 'Please try again.');
+    }
+    setBusy('');
   };
 
-  if (loading || fetching) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={colors.textPrimary} />
-      </SafeAreaView>
-    );
-  }
+  const searchDrivers = async () => {
+    if (!driverQuery.trim()) return;
+    setBusy('search');
+    try {
+      const res = await marketplaceApi.searchChatUsers(driverQuery.trim());
+      setDriverResults(res.data?.data || []);
+      if (!(res.data?.data || []).length) Alert.alert('No one found', 'Ask the driver for their exact chat username.');
+    } catch { Alert.alert('Search failed', 'Please try again.'); }
+    setBusy('');
+  };
 
-  if (selected) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-          <TouchableOpacity onPress={() => setSelected(null)} style={[s.back, { borderColor: colors.border }]}>
-            <Text style={[s.backText, { color: colors.textSecondary }]}>← Back to fleet</Text>
-          </TouchableOpacity>
+  const award = async (contract) => {
+    if (!pickedDriver?.chatUsername) { Alert.alert('Pick a driver', 'Find and select the driver first.'); return; }
+    setBusy('award');
+    try {
+      const res = await contractsApi.award(contract.id, pickedDriver.chatUsername);
+      const data = res.data?.data || res.data;
+      setAwardFor(null);
+      setPickedDriver(null);
+      setDriverResults([]);
+      Alert.alert('Contract awarded', data?.requiresDriverAccount
+        ? `@${data.driver.chatUsername} has no Driver account yet. Their signing code was sent to their phone, email and notifications and stays valid until they create one and sign.`
+        : `@${data.driver.chatUsername} has their signing code by phone, email and notifications. This vehicle becomes active when they sign.`);
+      load();
+    } catch (e) {
+      Alert.alert('Could not award', e.response?.data?.message || 'Please try again.');
+    }
+    setBusy('');
+  };
 
-          <Text style={[s.vTitle, { color: colors.textPrimary }]}>{selected.make} {selected.model}</Text>
-          <Text style={[s.vPlate, { color: colors.textSecondary }]}>{selected.registrationNumber} · {selected.year}</Text>
-
-          {selected.status === 'DRAFT' && (
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 10 }}>This vehicle is a draft — only you can see it.</Text>
-              <PrimaryButton title="Publish vehicle" loading={statusBusy} onPress={() => changeStatus(selected, 'AVAILABLE')} />
-            </View>
-          )}
-          {selected.status === 'AVAILABLE' && (
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 10 }}>Published — available for contracts.</Text>
-              <PrimaryButton title="Unpublish" loading={statusBusy} onPress={() => changeStatus(selected, 'DRAFT')} />
-            </View>
-          )}
-          {formError ? <Text style={{ color: colors.danger, fontSize: 13, marginBottom: 12 }}>{formError}</Text> : null}
-
-          <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14, marginBottom: 16, backgroundColor: colors.card }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>
-              Contract type: {(selected.operatingModel || 'Not set').replace(/_/g, ' ')}
-            </Text>
-            {pendingReq ? (
-              <Text style={{ fontSize: 13, color: colors.warning, lineHeight: 19 }}>
-                Waiting for the assigned driver to approve changing {(pendingReq.fromModel || '').replace(/_/g, ' ')} → {(pendingReq.toModel || '').replace(/_/g, ' ')}. Work & Pay vehicles become the driver&apos;s own, so they must agree first.
-              </Text>
-            ) : (
-              <>
-                <Text style={{ fontSize: 12.5, color: colors.textMuted, marginBottom: 10, lineHeight: 18 }}>
-                  Choose the type this vehicle is published for. Work & Pay changes with a driver assigned need the driver&apos;s approval. DriveOn can be changed any time. Rental is published through a company you choose.
-                </Text>
-                <ChipRow label="" options={MODELS} value={selected.operatingModel || 'WORK_AND_PAY'} onChange={(v) => changeModel(selected, v)} colors={colors} />
-                {(showRentalPicker || selected.operatingModel === 'RENTAL') && (
-                  <>
-                    <ChipRow label="Company that will rent it out" options={companies.map((c) => ({ value: c.id, label: c.name }))} value={rentalCompanyId || selected.managingCompanyId || ''} onChange={setRentalCompanyId} colors={colors} />
-                    {selected.operatingModel === 'RENTAL' && !selected.managingCompanyId ? (
-                      <PrimaryButton title="Save rental company" loading={modelBusy} onPress={() => changeModel(selected, 'RENTAL')} />
-                    ) : selected.operatingModel !== 'RENTAL' ? (
-                      <PrimaryButton title="Confirm — rent through this company" loading={modelBusy} onPress={() => changeModel(selected, 'RENTAL')} />
-                    ) : null}
-                  </>
-                )}
-                {modelBusy ? <Text style={{ fontSize: 12.5, color: colors.textMuted }}>Saving…</Text> : null}
-              </>
-            )}
-            {modelMsg ? <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 8, lineHeight: 19 }}>{modelMsg}</Text> : null}
-          </View>
-
-          <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14, marginBottom: 16, backgroundColor: colors.card }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>
-              Verification: {(selected.verificationStatus || 'NOT_SUBMITTED').replace(/_/g, ' ')}
-            </Text>
-            <Text style={{ fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginBottom: 8 }}>
-              Every vehicle is verified by a Super Admin before it can be published. They confirm the registration number, chassis number, colour, type and year against your evidence images, as on the DVLA registration certificate.
-            </Text>
-            {selected.verificationStatus === 'REJECTED' && selected.verificationNote ? (
-              <Text style={{ fontSize: 13, color: colors.danger, lineHeight: 19, marginBottom: 8 }}>Reason: {selected.verificationNote}</Text>
-            ) : null}
-            {selected.verificationStatus === 'APPROVED' ? (
-              <Text style={{ fontSize: 13, color: colors.success, fontWeight: '600' }}>Verified — this vehicle can be published.</Text>
-            ) : selected.verificationStatus === 'PENDING_REVIEW' ? (
-              <Text style={{ fontSize: 13, color: colors.warning, lineHeight: 19 }}>Submitted — waiting for a Super Admin to verify this vehicle. You will be notified of the outcome.</Text>
-            ) : (
-              <>
-                <Field label="Chassis number *" placeholder="JTDBR32E862000111" value={vChassis} onChangeText={setVChassis} autoCapitalize="characters" />
-                <View style={{ height: 10 }} />
-                <PrimaryButton title="Save chassis number" loading={verifyBusy === 'identity'} onPress={saveIdentity} />
-                <View style={{ height: 14 }} />
-                {EVIDENCE_SLOTS.map((slot) => {
-                  const url = selected.verificationEvidence?.[slot.kind];
-                  return (
-                    <View key={slot.kind} style={{ marginBottom: 12 }}>
-                      <Text style={{ fontSize: 12.5, color: colors.textSecondary, marginBottom: 6 }}>{slot.label}</Text>
-                      {url ? <Image source={{ uri: resolveVehiclePhoto(url) }} style={{ width: '100%', height: 120, borderRadius: 10, marginBottom: 6 }} /> : null}
-                      <TouchableOpacity onPress={() => pickEvidence(slot.kind)} disabled={verifyBusy === slot.kind} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}>
-                        <Text style={{ color: colors.brand, fontWeight: '700', fontSize: 13 }}>{verifyBusy === slot.kind ? 'Uploading…' : url ? 'Replace image' : 'Upload image'}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-                <PrimaryButton title={selected.verificationStatus === 'REJECTED' ? 'Resubmit for verification' : 'Submit for verification'} loading={verifyBusy === 'submit'} onPress={submitVerification} />
-              </>
-            )}
-            {verifyMsg ? <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 8, lineHeight: 19 }}>{verifyMsg}</Text> : null}
-          </View>
-
-          <VehiclePhotos vehicle={selected} colors={colors} />
-
-          {[
-            { label: 'Status',       value: selected.status },
-            { label: 'Type',         value: selected.type },
-            { label: 'Fuel',         value: selected.fuelType },
-            { label: 'Transmission', value: selected.transmission },
-            { label: 'Color',        value: selected.color },
-            { label: 'Mileage',      value: selected.mileage ? `${selected.mileage.toLocaleString()} km` : '—' },
-            { label: 'Value',        value: selected.estimatedValue ? fmtGHS(selected.estimatedValue) : '—' },
-            { label: 'Operating',    value: selected.operatingModel?.replace(/_/g, ' ') },
-          ].map(({ label, value }) => (
-            <View key={label} style={[s.infoRow, { borderBottomColor: colors.border }]}>
-              <Text style={[s.infoLabel, { color: colors.textMuted }]}>{label}</Text>
-              <Text style={[s.infoValue, { color: colors.textPrimary }]}>{value || '—'}</Text>
-            </View>
-          ))}
-
-          {compliance.length > 0 && (
-            <>
-              <Text style={[s.section, { color: colors.textSecondary, marginTop: 20 }]}>Compliance</Text>
-              {compliance.map((c) => {
-                const expColor = c.status === 'EXPIRED' ? colors.danger : c.status === 'EXPIRING_SOON' ? colors.warning : colors.success;
-                return (
-                  <View key={c.id} style={[s.infoRow, { borderBottomColor: colors.border }]}>
-                    <Text style={[s.infoLabel, { color: colors.textMuted }]}>{c.documentType?.replace(/_/g, ' ')}</Text>
-                    <Text style={[s.infoValue, { color: expColor }]}>{c.status?.replace(/_/g, ' ')}{c.expiryDate ? ` · ${fmtDate(c.expiryDate)}` : ''}</Text>
-                  </View>
-                );
-              })}
-            </>
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    );
+  if (fetching) {
+    return <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }} edges={['bottom']}><ActivityIndicator color={palette.brand} /></SafeAreaView>;
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textMuted} />}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Text style={[s.pageTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
-            {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}
-          </Text>
-          <TouchableOpacity onPress={() => setShowForm((v) => !v)} style={{ backgroundColor: colors.ctaBg, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{showForm ? 'Close' : '+ Add vehicle'}</Text>
-          </TouchableOpacity>
-        </View>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['bottom']}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}>
+        <PrimaryButton title={showForm ? 'Close form' : '+ Add vehicle'} onPress={() => setShowForm((v) => !v)} />
         {showForm && (
-          <View style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 18 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>Add a vehicle</Text>
-            <Text style={{ fontSize: 12.5, color: colors.textMuted, marginBottom: 14 }}>Publish now to make it Available for contracts, or save as a draft and publish later.</Text>
-            {formError ? <Text style={{ color: colors.danger, fontSize: 13, marginBottom: 12 }}>{formError}</Text> : null}
-            <Field label="Registration number *" placeholder="GR-1234-26" value={form.registrationNumber} onChangeText={(v) => set('registrationNumber', v)} autoCapitalize="characters" />
-            <View style={{ height: 12 }} />
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}><Field label="Make *" placeholder="Toyota" value={form.make} onChangeText={(v) => set('make', v)} /></View>
-              <View style={{ flex: 1 }}><Field label="Model *" placeholder="Corolla" value={form.model} onChangeText={(v) => set('model', v)} /></View>
+          <Card style={{ padding: 16, marginTop: 16 }}>
+            <Text style={[s.note, { color: colors.textMuted }]}>Any motor vehicle — motorbike, tricycle, car, van, truck or trailer. Basic, public information only.</Text>
+            <View style={s.chips}>
+              {VEHICLE_KINDS.map((t) => (
+                <TouchableOpacity key={t} onPress={() => set('type', t)} style={[s.chip, { borderColor: form.type === t ? palette.brand : colors.border, backgroundColor: form.type === t ? palette.brand : 'transparent' }]} accessibilityRole="button" accessibilityState={{ selected: form.type === t }}>
+                  <Text style={{ color: form.type === t ? '#fff' : colors.textSecondary, fontWeight: '700', fontSize: 11.5 }}>{t}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={{ height: 12 }} />
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}><Field label="Year *" placeholder="2021" keyboardType="number-pad" value={form.year} onChangeText={(v) => set('year', v)} /></View>
-              <View style={{ flex: 1 }}><Field label="Colour" placeholder="White" value={form.color} onChangeText={(v) => set('color', v)} /></View>
-            </View>
-            <View style={{ height: 12 }} />
-            <Field label="Chassis number" placeholder="From the VIN plate / registration certificate" value={form.chassisNumber} onChangeText={(v) => set('chassisNumber', v)} autoCapitalize="characters" />
-            <View style={{ height: 12 }} />
-            <View style={{ height: 14 }} />
-            <ChipRow label="Region" options={GHANA_REGIONS} value={form.region} onChange={(v) => set('region', v)} colors={colors} />
-            <ChipRow label="Vehicle type" options={TYPES} value={form.type} onChange={(v) => set('type', v)} colors={colors} />
-            <ChipRow label="Fuel" options={FUELS} value={form.fuelType} onChange={(v) => set('fuelType', v)} colors={colors} />
-            <ChipRow label="Transmission" options={TRANSMISSIONS} value={form.transmission} onChange={(v) => set('transmission', v)} colors={colors} />
-            <ChipRow label="How it will earn" options={MODELS} value={form.operatingModel} onChange={(v) => set('operatingModel', v)} colors={colors} />
-            {form.operatingModel === 'RENTAL' && (
-              <>
-                <Text style={{ fontSize: 12.5, color: colors.textMuted, marginBottom: 10, lineHeight: 18 }}>Only companies publish rentals. Choose the company that will rent this vehicle out.</Text>
-                <ChipRow label="Company that will rent it out *" options={companies.map((c) => ({ value: c.id, label: c.name }))} value={form.managingCompanyId} onChange={(v) => set('managingCompanyId', v)} colors={colors} />
-                {companies.length === 0 ? <Text style={{ fontSize: 12.5, color: colors.warning, marginBottom: 10 }}>No active companies found yet — you can save as a draft and choose later.</Text> : null}
-              </>
-            )}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}><Field label="Mileage (km)" placeholder="85000" keyboardType="number-pad" value={form.mileage} onChangeText={(v) => set('mileage', v)} /></View>
-              <View style={{ flex: 1 }}><Field label="Value" placeholder="95000" keyboardType="number-pad" value={form.estimatedValue} onChangeText={(v) => set('estimatedValue', v)} /></View>
-            </View>
-            <View style={{ height: 16 }} />
-            <PrimaryButton title="Publish vehicle" loading={saving} onPress={() => submitVehicle(true)} />
-            <TouchableOpacity onPress={() => submitVehicle(false)} disabled={saving} style={{ alignItems: 'center', paddingVertical: 13 }}>
-              <Text style={{ color: colors.brand, fontWeight: '700', fontSize: 14.5 }}>Save as draft</Text>
-            </TouchableOpacity>
-          </View>
+            <Field label="Registration number" placeholder="GR 1234-26" autoCapitalize="characters" value={form.registrationNumber} onChangeText={(v) => set('registrationNumber', v)} />
+            <Field label="Make" placeholder="Toyota" value={form.make} onChangeText={(v) => set('make', v)} />
+            <Field label="Model" placeholder="Hiace" value={form.model} onChangeText={(v) => set('model', v)} />
+            <Field label="Year" placeholder="2021" keyboardType="numeric" value={form.year} onChangeText={(v) => set('year', v)} />
+            <Field label="Colour" placeholder="White" value={form.color} onChangeText={(v) => set('color', v)} />
+            <Field label="Mileage (km)" placeholder="120000" keyboardType="numeric" value={form.mileage} onChangeText={(v) => set('mileage', v)} />
+            <Field label="Region" placeholder="Greater Accra" value={form.region} onChangeText={(v) => set('region', v)} />
+            <Field label="Area / address" placeholder="Osu, Accra" value={form.location} onChangeText={(v) => set('location', v)} />
+            <PrimaryButton title="Add vehicle" onPress={createVehicle} loading={busy === 'create'} />
+          </Card>
         )}
 
+        <Text style={[s.section, { color: colors.textSecondary }]}>Your vehicles</Text>
         {vehicles.length === 0 ? (
-          <View style={[s.empty, { borderColor: colors.border }]}>
-            <Text style={[s.emptyTitle, { color: colors.textPrimary }]}>No vehicles yet</Text>
-            <Text style={[s.emptyText, { color: colors.textMuted }]}>Tap Add vehicle to register and publish your first vehicle.</Text>
-          </View>
-        ) : (
-          vehicles.map((v) => {
-            const statusColor = v.status === 'ACTIVE' || v.status === 'ASSIGNED' ? colors.success
-              : v.status === 'UNDER_MAINTENANCE' ? colors.warning
-              : colors.textMuted;
-            return (
-              <TouchableOpacity
-                key={v.id}
-                style={[s.vCard, { borderColor: colors.border, backgroundColor: colors.card }]}
-                onPress={() => openVehicle(v)}
-                activeOpacity={0.75}
-              >
-                {v.imageUrls?.[0] ? <Image source={{ uri: resolveVehiclePhoto(v.imageUrls[0]) }} style={s.thumb} /> : null}
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.vCardTitle, { color: colors.textPrimary }]}>{v.make} {v.model} ({v.year})</Text>
-                  <Text style={[s.vCardPlate, { color: colors.textSecondary }]}>{v.registrationNumber}</Text>
-                  <Text style={[s.vCardModel, { color: colors.textMuted }]}>{v.operatingModel?.replace(/_/g, ' ') || v.type}</Text>
-                  <Text style={[s.vCardModel, { color: v.status === 'AVAILABLE' ? colors.success : colors.textMuted, fontWeight: '700' }]}>{v.status === 'AVAILABLE' ? '● Published' : v.status === 'DRAFT' ? '● Draft' : `● ${(v.status || '').replace(/_/g, ' ')}`}</Text>
-                </View>
-                <View>
-                  <View style={[s.statusDot, { backgroundColor: statusColor }]} />
-                  <Text style={[s.vCardArrow, { color: colors.textMuted }]}>→</Text>
-                </View>
+          <Text style={{ color: colors.textMuted, fontSize: 13.5, lineHeight: 20 }}>No vehicles yet. Add your first one above.</Text>
+        ) : vehicles.map((v) => {
+          const contract = contractByVehicle[v.id];
+          const isActive = contract?.status === 'ACTIVE';
+          const awarded = contract && (contract.parties || []).some((p) => p.role === 'DRIVER');
+          return (
+            <Card key={v.id} style={{ padding: 0, marginBottom: 14, overflow: 'hidden' }}>
+              {v.imageUrls?.[0] ? <Image source={{ uri: resolveVehiclePhoto(v.imageUrls[0]) }} style={s.photo} /> : <View style={[s.photo, { backgroundColor: colors.elevated, alignItems: 'center', justifyContent: 'center' }]}><Text style={{ color: colors.textMuted, fontSize: 12 }}>No photo yet</Text></View>}
+              <TouchableOpacity onPress={() => pickVehiclePhoto(v)} disabled={busy === 'photo'} style={s.photoBtn} accessibilityRole="button">
+                <Text style={s.photoBtnText}>{busy === 'photo' ? 'Uploading…' : v.imageUrls?.[0] ? 'Change photo' : 'Add photo'}</Text>
               </TouchableOpacity>
-            );
-          })
-        )}
+              <View style={{ padding: 14 }}>
+                <View style={s.rowBetween}>
+                  <Text style={[s.title, { color: colors.textPrimary }]}>{v.make} {v.model} · {v.year}</Text>
+                  <Badge label={isActive ? 'Active contract' : awarded ? 'Awarded' : contract ? 'Attached' : v.status} tone={isActive ? 'success' : 'warning'} />
+                </View>
+                <Text style={[s.meta, { color: colors.textMuted }]}>{v.registrationNumber} · {v.type} · {v.color || ''}{v.mileage ? ` · ${Number(v.mileage).toLocaleString()} km` : ''} · {v.location || v.region || ''}</Text>
+                {contract ? (
+                  <>
+                    <Text style={[s.body, { color: colors.textSecondary }]}>{contract.title || 'Contract'} ({contract.contractNumber}) — {TYPE_LABEL[contract.type] || contract.type}</Text>
+                    {(() => {
+                      const driverParty = (contract.parties || []).find((p) => p.role === 'DRIVER' && p.user);
+                      if (!driverParty) return null;
+                      const d = driverParty.user;
+                      const name = [d.firstName, d.lastName].filter(Boolean).join(' ') || 'Driver';
+                      return (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                          {d.profilePhotoUrl
+                            ? <Image source={{ uri: resolveVehiclePhoto(d.profilePhotoUrl) }} style={s.avatar} />
+                            : <View style={[s.avatar, s.avatarFallback]}><Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{name.charAt(0)}</Text></View>}
+                          <Text style={[s.body, { color: colors.textPrimary, fontWeight: '700', flex: 1, marginTop: 0 }]}>
+                            {driverParty.signedAt ? 'Driver: ' : 'Awarded to: '}{name}
+                            {d.chatUsername ? <Text style={{ color: colors.textMuted, fontWeight: '400' }}> @{d.chatUsername}</Text> : null}
+                            <Text style={{ color: driverParty.signedAt ? '#059669' : '#D97706' }}>{driverParty.signedAt ? ' · Confirmed' : ' · Awaiting signing'}</Text>
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <Text style={[s.body, { color: colors.textMuted }]}>No contract attached yet.</Text>
+                )}
+
+                {!contract && attachFor !== v.id && <PrimaryButton title="Attach contract" onPress={() => setAttachFor(v.id)} style={{ marginTop: 12 }} />}
+                {!contract && attachFor === v.id && (
+                  <View style={{ marginTop: 12, gap: 8 }}>
+                    {attachable.length === 0 ? (
+                      <Text style={[s.note, { color: colors.textMuted }]}>You have no unattached contracts. Create one in Contracts first.</Text>
+                    ) : attachable.map((c) => (
+                      <TouchableOpacity key={c.id} onPress={() => attach(v, c.id)} style={[s.pickRow, { borderColor: colors.border }]} accessibilityRole="button">
+                        <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 13.5 }}>{c.title || 'Untitled'} — {TYPE_LABEL[c.type] || c.type}</Text>
+                        <Text style={{ color: colors.textMuted, fontSize: 11.5 }}>{c.contractNumber}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity onPress={() => setAttachFor(null)} style={s.linkBtn}><Text style={{ color: colors.brand, fontWeight: '700' }}>Cancel</Text></TouchableOpacity>
+                  </View>
+                )}
+
+                {contract && !awarded && awardFor !== contract.id && <PrimaryButton title="Award contract" onPress={() => { setAwardFor(contract.id); setPickedDriver(null); setDriverResults([]); }} style={{ marginTop: 12 }} />}
+                {contract && !awarded && awardFor === contract.id && (
+                  <View style={{ marginTop: 12 }}>
+                    <Field label="Search driver by name or @username" placeholder="kofi" value={driverQuery} onChangeText={setDriverQuery} />
+                    <PrimaryButton title={busy === 'search' ? 'Searching…' : 'Search'} onPress={searchDrivers} />
+                    {driverResults.map((d) => {
+                      const person = d.user || d;
+                      const selected = pickedDriver?.id === person.id;
+                      return (
+                        <TouchableOpacity key={person.id} onPress={() => setPickedDriver(person)} style={[s.pickRow, { borderColor: selected ? palette.brand : colors.border, marginTop: 8 }]} accessibilityRole="button" accessibilityState={{ selected }}>
+                          <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 13.5 }}>{person.firstName} {person.lastName} <Text style={{ color: colors.textMuted, fontWeight: '400' }}>@{person.chatUsername}</Text></Text>
+                          <Text style={{ color: colors.textMuted, fontSize: 11.5 }}>{(person.accounts || []).map((a) => a.label || a.kind || a).join(' · ') || 'User account only — no Driver account yet'}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <PrimaryButton title="Award to this driver" onPress={() => award(contract)} loading={busy === 'award'} disabled={!pickedDriver} style={{ marginTop: 10 }} />
+                    <TouchableOpacity onPress={() => setAwardFor(null)} style={s.linkBtn}><Text style={{ color: colors.brand, fontWeight: '700' }}>Cancel</Text></TouchableOpacity>
+                    <Text style={[s.note, { color: colors.textMuted }]}>The signing code goes straight to their phone, email and notifications.</Text>
+                  </View>
+                )}
+                {contract && awarded && !isActive && <Text style={[s.note, { color: '#D97706', marginTop: 10 }]}>Awarded — becomes an active {TYPE_LABEL[contract.type] || ''} contract when the driver signs.</Text>}
+                {isActive && <Text style={[s.note, { color: '#059669', marginTop: 10 }]}>Active {TYPE_LABEL[contract.type] || ''} contract on this vehicle.</Text>}
+                {contract?.estimatedValue != null && <Text style={[s.meta, { color: colors.textMuted }]}>Value {fmtGHS(contract.estimatedValue)}</Text>}
+              </View>
+            </Card>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  pageTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
-  vCard:     { borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center' },
-  vCardTitle:{ fontSize: 15, fontWeight: '700' },
-  vCardPlate:{ fontSize: 13, marginTop: 2 },
-  vCardModel:{ fontSize: 12, marginTop: 2 },
-  statusDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 4, alignSelf: 'flex-end' },
-  vCardArrow:{ fontSize: 16, alignSelf: 'flex-end' },
-  back:      { borderWidth: 1, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, alignSelf: 'flex-start', marginBottom: 16 },
-  backText:  { fontSize: 13 },
-  vTitle:    { fontSize: 22, fontWeight: '700', marginBottom: 4 },
-  vPlate:    { fontSize: 14, marginBottom: 20 },
-  section:   { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 },
-  infoRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1 },
-  infoLabel: { fontSize: 13 },
-  infoValue: { fontSize: 13, fontWeight: '500', textAlign: 'right', flex: 1 },
-  empty:     { borderWidth: 1, borderRadius: 16, padding: 40, alignItems: 'center' },
-  emptyTitle:{ fontSize: 15, fontWeight: '600', marginBottom: 8 },
-  emptyText: { fontSize: 13 },
-  thumb:     { width: 56, height: 56, borderRadius: 10, marginRight: 12, backgroundColor: '#222' },
+  section: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 20, marginBottom: 12 },
+  photo: { width: '100%', height: 150 },
+  photoBtn: { position: 'absolute', top: 118, right: 10, backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  photoBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  title: { fontSize: 15, fontWeight: '700', flex: 1 },
+  meta: { fontSize: 12, marginTop: 4 },
+  body: { fontSize: 13.5, lineHeight: 20, marginTop: 8 },
+  note: { fontSize: 12.5, lineHeight: 18 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 12 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  avatar: { width: 24, height: 24, borderRadius: 12 },
+  avatarFallback: { backgroundColor: palette.brand, alignItems: 'center', justifyContent: 'center' },
+  pickRow: { borderWidth: 1, borderRadius: 12, padding: 12 },
+  linkBtn: { alignItems: 'center', paddingVertical: 8 },
 });

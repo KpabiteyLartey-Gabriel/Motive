@@ -65,34 +65,33 @@ describe('OnboardingService', () => {
     expect(state.completed).toBe(false);
   });
 
-  it('choosing Owner creates the owner profile and moves to National ID', async () => {
+  it('choosing Owner creates the owner profile and onboarding is done — no National ID step', async () => {
     const { prisma, state } = makePrisma({ ...baseUser });
     const svc = new OnboardingService(prisma);
     const after = await svc.setAccountType('user-1', AccountType.OWNER);
     expect(state.user.primaryRole).toBe('OWNER');
     expect(state.owner).toBeTruthy();
-    expect(after.nextStep).toBe('nationalId');
+    expect(after.nextStep).toBe('done');
+    expect(after.completed).toBe(true);
+    expect(after.steps.map((s: any) => s.key)).toEqual(['account', 'accountType']);
   });
 
-  it('owner finishes after submitting a National ID (pending review still counts as submitted)', async () => {
+  it('an Owner account is complete with no National ID submitted', async () => {
     const { prisma } = makePrisma({ ...baseUser, primaryRole: 'OWNER', owner: { id: 'owner-1', userId: 'user-1', status: 'PENDING_VERIFICATION', ghanaCardNumber: null } });
     const svc = new OnboardingService(prisma);
-    const after = await svc.submitNationalId('user-1', 'GHA-123456789-0');
-    expect(after.nationalId.status).toBe('PENDING_REVIEW');
-    expect(after.completed).toBe(true);
-    expect(after.verified).toBe(false);
+    const state = await svc.getState('user-1');
+    expect(state.nationalId.status).toBe('NOT_SUBMITTED');
+    expect(state.completed).toBe(true);
+    expect(state.verified).toBe(true);
   });
 
-  it('driver must also submit a licence before onboarding is complete', async () => {
-    const driver = { id: 'driver-1', userId: 'user-1', status: 'PENDING_VERIFICATION', ghanaCardNumber: 'GHA-1', licenseNumber: null };
+  it('a Driver account is complete with no licence submitted', async () => {
+    const driver = { id: 'driver-1', userId: 'user-1', status: 'PENDING_VERIFICATION', ghanaCardNumber: null, licenseNumber: null };
     const { prisma } = makePrisma({ ...baseUser, primaryRole: 'DRIVER', driver });
     const svc = new OnboardingService(prisma);
-    const before = await svc.getState('user-1');
-    expect(before.completed).toBe(false);
-    expect(before.nextStep).toBe('licence');
-    const after = await svc.submitDriverLicence('user-1', { licenseNumber: 'GH-999', licenseClass: 'Class B' });
-    expect(after.licence.status).toBe('PENDING_REVIEW');
-    expect(after.completed).toBe(true);
+    const state = await svc.getState('user-1');
+    expect(state.completed).toBe(true);
+    expect(state.nextStep).toBe('done');
   });
 
   it('owners cannot submit a driver licence and a taken Ghana Card is rejected', async () => {

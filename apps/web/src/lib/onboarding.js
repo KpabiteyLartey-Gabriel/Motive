@@ -1,5 +1,3 @@
-import { onboardingApi } from '@/lib/api';
-
 export const ROLE_DASHBOARDS = {
   PENDING: '/portal',
   DRIVER: '/driver/dashboard',
@@ -27,19 +25,10 @@ export function needsEmailVerification(user) {
 }
 
 // Current journey: create account -> verify email -> portal as a User.
-// Account type and identity setup happen later in settings, so a plain
-// PENDING account lands on /portal. Configured roles keep their homes.
+// Driver/Owner accounts are created later in My Account (paid flow) and
+// open straight on their dashboards — there is no National ID or licence
+// setup step in any flow anymore.
 export async function resolvePostAuthPath(user) {
   if (needsEmailVerification(user)) return '/verify-email';
-  const role = user?.primaryRole;
-  if (role === 'DRIVER' || role === 'OWNER') {
-    try {
-      const res = await onboardingApi.me();
-      const state = res.data?.data || res.data;
-      return state?.completed ? (state.dashboardPath || dashboardForRole(role)) : '/onboarding';
-    } catch {
-      return dashboardForRole(role);
-    }
-  }
-  return dashboardForRole(role);
+  return dashboardForRole(user?.primaryRole);
 }

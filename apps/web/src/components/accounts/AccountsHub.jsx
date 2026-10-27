@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/useAuth';
 import { SectionHeader, fmtDate } from '@/components/dashboard/DashboardUI';
 import { roleNamesOf } from '@/lib/portalNav';
-import { accountsApi } from '@/lib/api';
+import { accountsApi, authApi } from '@/lib/api';
+import AccountCreationFlow from '@/components/accounts/AccountCreationFlow';
 import { formatGhanaCardInput, GHANA_CARD_HINT, GHANA_CARD_PLACEHOLDER } from '@/lib/ghanaCard';
 
 const STATUS_TEXT = {
@@ -30,14 +31,14 @@ const KIND_INFO = {
     title: 'Driver Account',
     tagline: 'DRIVE AND EARN',
     explain: 'Drive vehicles for owners and companies. Get matched to Work & Pay, DriveOn and rental trips, track your earnings and build your driving record.',
-    needsText: 'Two phases. Phase 1: Ghana Card number, front and back of the card, and a live camera face check you must pass. Phase 2: your Driver\u2019s Licence number with front and back of the licence. Our team compares everything before verifying you.',
+    needsText: 'Confirm it is you with the code we send to your phone, email and notifications, then pay the one-time Driver account creation charge (set by +Motive admin). Your account is created when the payment is confirmed.',
     accessText: 'Open to every user. You can hold this together with Owner and Service Provider accounts.',
   },
   OWNER: {
     title: 'Owner Account',
     tagline: 'RENT OUT YOUR VEHICLE',
     explain: 'Put your vehicle to work. List it for Work & Pay, DriveOn or rental, follow payments, and place it with a company to manage for you when you join one.',
-    needsText: 'Your National ID number (Ghana Card, format GHA-000000000-0), photos of the front and back of the card, and a live camera face check. Our team compares everything before verifying you.',
+    needsText: 'Confirm it is you with the code we send to your phone, email and notifications, then pay the one-time Owner account creation charge (set by +Motive admin). Your account is created when the payment is confirmed.',
     accessText: 'Open to every user. You can hold this together with Driver and Service Provider accounts.',
   },
   SERVICE_PROVIDER: {
@@ -98,6 +99,25 @@ export default function AccountsHub({ currentKind = null }) {
       const res = await accountsApi.me();
       setData(res.data?.data || res.data);
     } catch { setError('Could not load your accounts.'); }
+  }, []);
+
+  // After a paid creation, refresh the session so the new role is in the
+  // token and the stored user — then the dashboard opens without a
+  // sign-out/sign-in round trip (the email explains that fallback).
+  const refreshSession = useCallback(async (freshUser) => {
+    try {
+      const refreshToken = localStorage.getItem('gh_motive_refresh_token');
+      if (refreshToken) {
+        const res = await authApi.refresh(refreshToken);
+        const tokens = res.data?.data || res.data;
+        if (tokens?.accessToken) localStorage.setItem('gh_motive_access_token', tokens.accessToken);
+        if (tokens?.refreshToken) localStorage.setItem('gh_motive_refresh_token', tokens.refreshToken);
+      }
+      if (freshUser) {
+        const stored = JSON.parse(localStorage.getItem('gh_motive_user') || '{}');
+        localStorage.setItem('gh_motive_user', JSON.stringify({ ...stored, ...freshUser }));
+      }
+    } catch { /* signing out and back in still works */ }
   }, []);
 
   useEffect(() => { if (user) load(); }, [user, load]);
@@ -296,6 +316,21 @@ export default function AccountsHub({ currentKind = null }) {
 
   const pick = (kind) => {
     setSelected(kind);
+    // A brand-new Driver/Owner account goes through the paid creation
+    // flow (code -> pay -> created), never the old direct form.
+    if ((kind === 'DRIVER' || kind === 'OWNER') && accounts[kind]?.status === 'NOT_CREATED') {
+      setStage('creation');
+      setError('');
+      return;
+    }
+    // An existing Driver/Owner account needs nothing more — National ID
+    // and licence setup are not part of any flow now. Point at its card.
+    if (kind === 'DRIVER' || kind === 'OWNER') {
+      setStage('select');
+      setError('');
+      setMessage(`Your ${KIND_INFO[kind].title} is ready — use “Open ${kind === 'DRIVER' ? 'Driver' : 'Owner'} dashboard” on its card above to enter it.`);
+      return;
+    }
     // A driver who already finished Phase 1 goes straight to Phase 2 —
     // unless either document was sent back, which reopens its own phase.
     const acct = accounts[kind];
@@ -451,18 +486,7 @@ export default function AccountsHub({ currentKind = null }) {
                   <p className="text-steel dark:text-neutral-400"><strong className="text-emerald-950 dark:text-white">What you need:</strong> {info.needsText}</p>
                   <p className="text-steel dark:text-neutral-400"><strong className="text-emerald-950 dark:text-white">Access:</strong> {accessFor(kind)}</p>
                   <p className="text-steel dark:text-neutral-400"><strong className="text-emerald-950 dark:text-white">Status:</strong> {STATUS_TEXT[a?.status] || 'Not created'}</p>
-                  {(kind === 'DRIVER' || kind === 'OWNER') && a?.identityVerification && (
-                    <p className="text-steel dark:text-neutral-400"><strong className="text-emerald-950 dark:text-white">Identity check:</strong> {a.identityVerification.status === 'APPROVED' ? 'Approved' : a.identityVerification.status === 'REJECTED' ? 'Rejected — submit again' : `Submitted — waiting for our team to compare your face to your Ghana Card${a.identityVerification.livenessPassed ? ' (live check passed)' : ' (manual review)'}`}</p>
-                  )}
-                  {kind === 'DRIVER' && a?.licenceVerification && (
-                    <p className="text-steel dark:text-neutral-400"><strong className="text-emerald-950 dark:text-white">Licence check:</strong> {a.licenceVerification.status === 'APPROVED' ? 'Approved' : a.licenceVerification.status === 'REJECTED' ? 'Resubmission requested — use Add Account to submit again' : 'Submitted — waiting for review'}</p>
-                  )}
-                  {a?.identityVerification?.status === 'REJECTED' && a.identityVerification.reviewNote && (
-                    <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300"><strong>What to fix:</strong> {a.identityVerification.reviewNote}</p>
-                  )}
-                  {a?.licenceVerification?.status === 'REJECTED' && a.licenceVerification.reviewNote && (
-                    <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300"><strong>Licence — what to fix:</strong> {a.licenceVerification.reviewNote}</p>
-                  )}
+{/* Identity/licence checks are not part of any flow anymore — legacy submission states are not shown. */}
                 </div>
                 {a?.status === 'VERIFIED' && kind === 'DRIVER' && <Link href="/driver/dashboard" className="mt-4 font-semibold text-emerald-800 hover:underline dark:text-emerald-300">Open Driver dashboard</Link>}
                 {a?.status === 'VERIFIED' && kind === 'OWNER' && <Link href="/owner/dashboard" className="mt-4 font-semibold text-emerald-800 hover:underline dark:text-emerald-300">Open Owner dashboard</Link>}
@@ -517,6 +541,22 @@ export default function AccountsHub({ currentKind = null }) {
         ) : (
           <div className="space-y-3">
             <button type="button" onClick={() => { stopCamera(); setStage('select'); }} className="text-sm font-semibold text-emerald-800 hover:underline dark:text-emerald-300">← Back</button>
+
+            {stage === 'creation' && (selected === 'DRIVER' || selected === 'OWNER') && (
+              <AccountCreationFlow
+                kind={selected}
+                defaultPhone={user?.phone || ''}
+                onCancel={() => setStage('select')}
+                onDone={async () => {
+                  const fresh = await load().then(async () => {
+                    const res = await accountsApi.me().catch(() => null);
+                    return (res?.data?.data || res?.data)?.user || null;
+                  });
+                  await refreshSession(fresh);
+                  setMessage(`Your ${selected === 'DRIVER' ? 'Driver' : 'Owner'} account has been created. We emailed you how to open it — the button in the green box above also takes you there.`);
+                }}
+              />
+            )}
 
             {selected === 'DRIVER' && stage === 'form' && (
               <div className="space-y-2">
@@ -659,9 +699,9 @@ export default function AccountsHub({ currentKind = null }) {
               </div>
             )}
 
-            <button type="button" disabled={!!busy} onClick={submitForm} className="btn-primary w-full">
+            {stage !== 'creation' && <button type="button" disabled={!!busy} onClick={submitForm} className="btn-primary w-full">
               {busy ? 'Submitting…' : stage === 'licence' ? 'Submit licence for review' : stage === 'liveness' ? (livenessPassed ? (selected === 'DRIVER' ? 'Submit — finish Phase 1' : 'Submit for review') : 'Submit ID & face check for review') : selected === 'DRIVER' ? 'Continue to live face check' : selected === 'OWNER' ? 'Submit ID & verify your face' : isCreate ? `Add ${KIND_INFO[selected].title}` : 'Save details'}
-            </button>
+            </button>}
             {(selected === 'DRIVER' || selected === 'OWNER') && stage === 'form' && (
               <p className="text-xs text-steel dark:text-neutral-500">Next, your camera opens for a live face check. Nothing is verified until our team compares your face with your Ghana Card.</p>
             )}

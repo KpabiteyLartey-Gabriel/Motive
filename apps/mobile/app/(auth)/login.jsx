@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import SecureStore from '../../lib/storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authApi } from '../../lib/api';
+import { postAuthRoute } from '../../lib/postAuth';
 import { useTheme } from '../../lib/theme';
 import { Field, PrimaryButton } from '../../components/ui';
 import BrandLogo from '../../components/BrandLogo';
@@ -31,12 +32,7 @@ export default function LoginScreen() {
       await SecureStore.setItemAsync('accessToken', accessToken);
       await SecureStore.setItemAsync('refreshToken', refreshToken);
       await SecureStore.setItemAsync('user', JSON.stringify(user));
-      const roleRoutes = {
-        DRIVER: '/(driver)/dashboard', OWNER: '/(owner)/dashboard',
-        COMPANY_ADMIN: '/(driver)/dashboard', FLEET_MANAGER: '/(driver)/dashboard',
-        ADMIN: '/(driver)/dashboard', SUPER_ADMIN: '/(driver)/dashboard',
-      };
-      router.replace(roleRoutes[user.primaryRole] || '/(driver)/dashboard');
+      router.replace(postAuthRoute(user));
     } catch (e) {
       if (!e.response) {
         // No answer at all — the backend could not be reached from this phone

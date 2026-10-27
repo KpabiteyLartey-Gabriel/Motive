@@ -10,6 +10,18 @@ import { VehiclesService } from './vehicles.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateVehicleDto, UpdateVehicleStatusDto, ChangeOperatingModelDto, DecideModelChangeDto, UpdateVehicleDto, SetVerificationEvidenceDto, SubmitVerificationDto, VerificationDecisionDto } from './dto/create-vehicle.dto';
 import { UpdateVehiclePhotosDto } from './dto/update-vehicle-photos.dto';
+import { IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export class UpdateRenewalsDto {
+  @ApiPropertyOptional({ example: '2027-03-31', description: 'Insurance expiry date (ISO date), or null to clear' })
+  @IsOptional() @IsString()
+  insuranceExpiryDate?: string | null;
+
+  @ApiPropertyOptional({ example: '2026-12-15', description: 'Roadworthiness expiry date (ISO date), or null to clear' })
+  @IsOptional() @IsString()
+  roadWorthinessExpiryDate?: string | null;
+}
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -68,6 +80,18 @@ export class VehiclesController {
   @ApiOperation({ summary: 'Update vehicle details (chassis number etc). Changing identity details after verification requires re-verification.' })
   async updateDetails(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateVehicleDto) {
     return this.vehiclesService.updateDetails(id, dto as any, user.id, user.primaryRole);
+  }
+
+  @Get('me/renewals')
+  @ApiOperation({ summary: 'Servicing renewals: insurance & roadworthiness expiry for every vehicle linked to me' })
+  async myRenewals(@CurrentUser() user: any) {
+    return this.vehiclesService.getMyRenewals(user.id);
+  }
+
+  @Patch(':id/renewals')
+  @ApiOperation({ summary: 'Owner updates a vehicle\'s insurance / roadworthiness expiry dates' })
+  async updateRenewals(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateRenewalsDto) {
+    return this.vehiclesService.updateRenewals(id, user.id, dto as Record<string, string | null | undefined>);
   }
 
   @Post(':id/verification/evidence/upload')

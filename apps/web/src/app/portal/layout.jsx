@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import DashboardShell from '@/components/dashboard/DashboardShell';
+import NotificationBell from '@/components/dashboard/NotificationBell';
 import { getPortalNav } from '@/lib/portalNav';
 import { useAuth } from '@/lib/useAuth';
 
@@ -14,9 +15,10 @@ export default function PortalLayout({ children }) {
   const current = navItems.find((item) =>
     item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
+  const title = pathname === '/portal/notifications' ? 'Notifications' : current?.label || 'Portal';
 
   return (
-    <DashboardShell user={user} loading={loading} logout={logout} navItems={navItems} title={current?.label || 'Portal'}>
+    <DashboardShell user={user} loading={loading} logout={logout} navItems={navItems} title={title} headerActions={<NotificationBell />}>
       {children}
     </DashboardShell>
   );

@@ -15,6 +15,8 @@ import { UserRole, DriverStatus, OwnerStatus, VehicleStatus, CompanyStatus } fro
 import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { AdminService } from './admin.service';
+import { AccountCreationService } from '../accounts/account-creation.service';
+import { UpdateChargeDto } from '../accounts/dto/accounts.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -63,7 +65,24 @@ class RequestResubmissionDto {
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly creation: AccountCreationService,
+  ) {}
+
+  // ── Account creation charges ───────────────────────────────
+  @Get('charges')
+  @ApiOperation({ summary: 'Admin: Driver/Owner account creation charges (GHS)' })
+  async getCharges() {
+    return this.creation.getCharges();
+  }
+
+  @Patch('charges/:kind')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Admin: update the Driver or Owner account creation charge (GHS)' })
+  async updateCharge(@CurrentUser() user: any, @Param('kind') kind: string, @Body() dto: UpdateChargeDto) {
+    return this.creation.setCharge(kind, dto.amountGhs, user.id);
+  }
 
   // ── Announcements ──────────────────────────────────────────
   @Post('announcements')

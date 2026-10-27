@@ -219,6 +219,10 @@ export class MarketplaceService {
       where: {
         status: VehicleStatus.AVAILABLE,
         verificationStatus: VehicleVerificationStatus.APPROVED,
+        // Explore is company-published only: individual owners never list
+        // publicly (their deals are private/direct), so only vehicles a
+        // company manages may appear here.
+        managingCompanyId: { not: null },
         interests: { none: { status: VehicleInterestStatus.APPROVED } },
       },
       orderBy: { updatedAt: 'desc' },

@@ -1,10 +1,11 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Post, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AccountsService } from './accounts.service';
-import { CreateCompanyAccountDto, CreateServiceProviderDto } from './dto/accounts.dto';
+import { AccountCreationService } from './account-creation.service';
+import { ConfirmCreationInterestDto, CreateCompanyAccountDto, CreateServiceProviderDto, PayAccountCreationDto } from './dto/accounts.dto';
 import { SubmitDriverLicenceDto, SubmitNationalIdDto } from '../onboarding/dto/onboarding.dto';
 
 @ApiTags('Accounts')
@@ -12,7 +13,10 @@ import { SubmitDriverLicenceDto, SubmitNationalIdDto } from '../onboarding/dto/o
 @UseGuards(JwtAuthGuard)
 @Controller('accounts')
 export class AccountsController {
-  constructor(private readonly accounts: AccountsService) {}
+  constructor(
+    private readonly accounts: AccountsService,
+    private readonly creation: AccountCreationService,
+  ) {}
 
   @Get('me')
   @ApiOperation({ summary: 'All accounts the signed-in user holds: Driver, Owner, Service Provider, Company, plus company memberships' })
@@ -20,18 +24,40 @@ export class AccountsController {
     return this.accounts.getMyAccounts(user.id);
   }
 
-  @Post('me/driver')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a Driver account (keeps any Owner / Service Provider accounts)' })
-  async createDriver(@CurrentUser() user: any) {
-    return this.accounts.createDriver(user.id);
+  // ── Paid Driver/Owner creation ─────────────────────────────
+  // No free direct create: start -> confirm code -> pay -> the account
+  // is provisioned on confirmed payment.
+  @Get('me/creation/charges')
+  @ApiOperation({ summary: 'Current Driver/Owner account creation charges (set by an admin)' })
+  async creationCharges() {
+    return this.creation.getCharges();
   }
 
-  @Post('me/owner')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create an Owner account (keeps any Driver / Service Provider accounts)' })
-  async createOwner(@CurrentUser() user: any) {
-    return this.accounts.createOwner(user.id);
+  @Post('me/creation/:kind/start')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Start Driver/Owner creation: sends one interest code to phone, email and in-app notifications' })
+  async creationStart(@CurrentUser() user: any, @Param('kind') kind: string) {
+    return this.creation.start(user.id, kind);
+  }
+
+  @Post('me/creation/:kind/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirm interest in a Driver/Owner account with the 6-digit code' })
+  async creationConfirm(@CurrentUser() user: any, @Param('kind') kind: string, @Body() dto: ConfirmCreationInterestDto) {
+    return this.creation.confirm(user.id, kind, dto.code);
+  }
+
+  @Post('me/creation/:kind/pay')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Pay the Driver/Owner account creation charge; the account is created on confirmed payment' })
+  async creationPay(@CurrentUser() user: any, @Param('kind') kind: string, @Body() dto: PayAccountCreationDto) {
+    return this.creation.pay(user.id, kind, dto);
+  }
+
+  @Get('me/creation/:kind/status')
+  @ApiOperation({ summary: 'Driver/Owner creation order status (polls a pending payment)' })
+  async creationStatus(@CurrentUser() user: any, @Param('kind') kind: string) {
+    return this.creation.status(user.id, kind);
   }
 
   @Post('me/service-provider')

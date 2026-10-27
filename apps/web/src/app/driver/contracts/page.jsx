@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import { SectionHeader, EmptyState, StatusBadge } from '@/components/dashboard/DashboardUI';
 import { contractsApi, resolveVehiclePhoto } from '@/lib/api';
+import { formatOffDays, hasOffDays } from '@/lib/offDays';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -22,7 +23,7 @@ function plainSummary(c) {
   if (!w) return null;
   const freqWord = { DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month' }[w.installmentFrequency] || 'week';
   const total = Number(w.totalPayable); const inst = Number(w.installmentAmount); const count = Number(w.totalInstallments);
-  const last = total - inst * (count - 1);
+  const last = (total - (Number(w.depositAmount) || 0)) - inst * (count - 1);
   const grace = Math.max(0, Math.round(Number(w.gracePeriodDays) || 0));
   const countingStart = new Date(); countingStart.setDate(countingStart.getDate() + grace);
   const firstDue = new Date(countingStart);
@@ -106,9 +107,9 @@ export default function DriverContractsPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-neutral-900 dark:text-white">{TYPE_LABEL[c.type] || c.type}</p>
+                  <p className="text-base font-bold text-neutral-900 dark:text-white">{c.vehicle ? [c.vehicle.year, c.vehicle.make, c.vehicle.model].filter(Boolean).join(' ') : 'Vehicle not specified'}</p>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    {c.vehicle?.registrationNumber || c.vehicleId || '—'} &middot; {fmtDate(c.startDate)} – {fmtDate(c.endDate)}
+                    {TYPE_LABEL[c.type] || c.type}{c.title ? ` · ${c.title}` : ''}{c.contractNumber ? ` · ${c.contractNumber}` : ''}<br />{c.vehicle?.registrationNumber ? `Registration ${c.vehicle.registrationNumber}` : 'No registration number'} &middot; {c.startDate ? `${fmtDate(c.startDate)} – ${fmtDate(c.endDate)}` : 'Starts when you sign'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -127,11 +128,29 @@ export default function DriverContractsPage() {
                 </div>
               </div>
 
-              {selected?.id === c.id && (
-                <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-dark-border grid grid-cols-2 gap-3 text-xs">
+              {selected?.id === c.id && (<div>
+                <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-dark-border dark:bg-dark-surface">{c.vehicle?.imageUrls?.[0] ? (
+                    <img src={resolveVehiclePhoto(c.vehicle.imageUrls[0])} alt={[c.vehicle.year, c.vehicle.make, c.vehicle.model].filter(Boolean).join(' ')} className="h-44 w-full object-cover" />
+                  ) : (
+                    <div className="flex h-28 items-center justify-center bg-neutral-100 px-4 text-center dark:bg-dark-card">
+                      <div>
+                        <p className="text-sm font-bold text-neutral-800 dark:text-neutral-100">{c.vehicle ? [c.vehicle.year, c.vehicle.make, c.vehicle.model].filter(Boolean).join(' ') : 'Vehicle not specified'}</p>
+                        <p className="mt-1 text-xs text-neutral-500">No vehicle photo provided</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-3 text-xs sm:grid-cols-3">
+                    <div><p className="text-neutral-500">Vehicle</p><p className="mt-0.5 font-semibold text-neutral-900 dark:text-white">{c.vehicle ? [c.vehicle.year, c.vehicle.make, c.vehicle.model].filter(Boolean).join(' ') : '—'}</p></div>
+                    <div><p className="text-neutral-500">Registration</p><p className="mt-0.5 font-semibold text-neutral-900 dark:text-white">{c.vehicle?.registrationNumber || '—'}</p></div>
+                    <div><p className="text-neutral-500">Vehicle type</p><p className="mt-0.5 font-semibold text-neutral-900 dark:text-white">{c.vehicle?.type ? String(c.vehicle.type).replace(/_/g, ' ') : '—'}</p></div>
+                    <div><p className="text-neutral-500">Colour</p><p className="mt-0.5 font-semibold text-neutral-900 dark:text-white">{c.vehicle?.color || '—'}</p></div>
+                    <div><p className="text-neutral-500">Mileage</p><p className="mt-0.5 font-semibold text-neutral-900 dark:text-white">{c.vehicle?.mileage != null ? `${Number(c.vehicle.mileage).toLocaleString()} km` : '—'}</p></div>
+                    <div><p className="text-neutral-500">Location</p><p className="mt-0.5 font-semibold text-neutral-900 dark:text-white">{[c.vehicle?.location, c.vehicle?.region].filter(Boolean).join(', ') || '—'}</p></div>
+                  </div></div><div className="mt-4 pt-4 border-t border-neutral-200 dark:border-dark-border grid grid-cols-2 gap-3 text-xs">
                   <div>
+                    <div>
                     <p className="text-neutral-500">Total Amount</p>
-                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.workAndPayTerms?.totalPayable ?? c.totalAmount)}</p>
+                    <p className="text-neutral-900 dark:text-white mt-0.5">{fmtGHS(c.workAndPayTerms?.totalPayable ?? c.totalAmount)}</p></div>
                   </div>
                   <div>
                     <p className="text-neutral-500">Amount Paid</p>
@@ -163,9 +182,9 @@ export default function DriverContractsPage() {
                         </p>
                       )}
                       <p className="text-neutral-800 dark:text-neutral-100 mt-1 leading-relaxed">{plainSummary(c)}</p>
-                      {(c.terms?.offDays || c.responsibilityMatrix?.maintenance) && (
+                      {(hasOffDays(c.terms?.offDays) || c.responsibilityMatrix?.maintenance) && (
                         <p className="text-neutral-800 dark:text-neutral-100 mt-1.5 leading-relaxed">
-                          {c.terms?.offDays ? `Off days: ${c.terms.offDays}. ` : ''}
+                          {hasOffDays(c.terms?.offDays) ? `Off days: ${c.terms.offDaysLabel || formatOffDays(c.terms.offDays)}. ` : ''}
                           {c.responsibilityMatrix?.maintenance ? `Maintenance: ${String(c.responsibilityMatrix.maintenance).toLowerCase()} takes care of it.` : ''}
                         </p>
                       )}
@@ -185,7 +204,7 @@ export default function DriverContractsPage() {
                         You bring {fmtGHS(c.drivingOnTerms.dailySalesAmount)} sales every day, paid {String(c.drivingOnTerms.paymentFrequency || 'DAILY').toLowerCase()}
                         {c.terms?.duration?.value ? `, for ${c.terms.duration.value} ${String(c.terms.duration.unit || '').toLowerCase()}` : ''}.
                         You keep everything you make above the sales amount. Grace period: {c.terms?.gracePeriodDays ?? 0} days from the day you confirm.
-                        {c.terms?.offDays ? ` Off days: ${c.terms.offDays}.` : ''}
+                        {hasOffDays(c.terms?.offDays) ? ` Off days: ${c.terms.offDaysLabel || formatOffDays(c.terms.offDays)}.` : ''}
                         {c.responsibilityMatrix?.maintenance ? ` Maintenance: ${String(c.responsibilityMatrix.maintenance).toLowerCase()} takes care of it.` : ''}
                         {c.responsibilityMatrix?.fuel ? ` Fuel: ${String(c.responsibilityMatrix.fuel).toLowerCase()} pays.` : ''}
                       </p>
@@ -219,6 +238,7 @@ export default function DriverContractsPage() {
                       {codeMsg && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{codeMsg}</p>}
                     </div>
                   )}
+                </div>
                 </div>
               )}
             </div>

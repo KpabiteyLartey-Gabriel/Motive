@@ -40,18 +40,17 @@ export class OnboardingService {
     const idStatus = identityStatus(profile);
     const licStatus = accountType === UserRole.DRIVER ? licenceStatus(user.driver) : null;
 
+    // National ID and Driver's Licence verification are no longer part
+    // of onboarding. An account is fully set up once its type exists
+    // (created through the paid flow in My Account).
     const steps = [
       { key: 'account', label: 'Create account', status: 'VERIFIED' as VerificationStepStatus, done: true },
       { key: 'accountType', label: 'Choose account type', status: (accountType ? 'VERIFIED' : 'NOT_SUBMITTED') as VerificationStepStatus, done: !!accountType },
-      { key: 'nationalId', label: 'Verify National ID', status: idStatus, done: idStatus !== 'NOT_SUBMITTED' },
-      ...(accountType === UserRole.DRIVER
-        ? [{ key: 'licence', label: "Verify Driver's Licence", status: licStatus as VerificationStepStatus, done: licStatus !== 'NOT_SUBMITTED' }]
-        : []),
     ];
 
     const submitted = steps.every((s) => s.done);
-    const verified = !!accountType && idStatus === 'VERIFIED' && (accountType !== UserRole.DRIVER || licStatus === 'VERIFIED');
-    const nextStep = steps.find((s) => !s.done)?.key || (verified ? 'done' : 'review');
+    const verified = submitted;
+    const nextStep = steps.find((s) => !s.done)?.key || 'done';
 
     // Once every required detail has been submitted, onboarding is complete
     // from the user's side even while a Super Admin review is pending.

@@ -56,6 +56,29 @@ describe('AuthService password reset', () => {
     expect(slowNotifications.send).toHaveBeenCalled();
   });
 
+  it('register without a role creates a plain PENDING user and sends the email code', async () => {
+    const p: any = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'new-2', email: 'plain@test.com', phone: null, firstName: 'Plain', lastName: 'User', primaryRole: 'PENDING', status: 'PENDING_VERIFICATION', emailVerifiedAt: null, createdAt: new Date() }),
+      },
+      role: { findUnique: jest.fn().mockResolvedValue(null) },
+      userRoleAssignment: { findMany: jest.fn().mockResolvedValue([]) },
+      refreshToken: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const usersService = { sendVerificationCode: jest.fn().mockResolvedValue({}) };
+    const svc = new AuthService(p, usersService as any, { sign: () => 'access-token' } as any, { get: (_k: string, d: any) => d } as any, { send: jest.fn().mockResolvedValue({}) } as any);
+    const res: any = await svc.register({ firstName: 'Plain', lastName: 'User', email: 'plain@test.com', password: 'Password@123' } as any);
+
+    expect(res.user.primaryRole).toBe('PENDING');
+    const created = p.user.create.mock.calls[0][0].data;
+    expect(created.primaryRole).toBe('PENDING');
+    expect(created.roles).toBeUndefined();
+    expect(created.owner).toBeUndefined();
+    expect(created.driver).toBeUndefined();
+    expect(usersService.sendVerificationCode).toHaveBeenCalledWith('new-2', 'email');
+  });
+
   it('issues a hashed expiring token and notifies without revealing the token', async () => {
     prisma.user.findFirst.mockResolvedValue(user);
     const res = await service.forgotPassword('A@Test.com');
